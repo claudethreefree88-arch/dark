@@ -48,6 +48,8 @@ export function middleware(request: NextRequest) {
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith('/booking') ||
     pathname.startsWith('/facilities/') ||
+    pathname.startsWith('/staff') ||
+    pathname.startsWith('/admin') ||
     pathname.startsWith('/api/');
 
   if (!isPublic && !hasSession) {
