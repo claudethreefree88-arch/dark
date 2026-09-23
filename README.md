@@ -171,11 +171,11 @@ The app uses `output: 'standalone'` for optimized Hostinger deployment.
 ## 📊 Phases
 
 - [x] **Phase 1**: Project setup, design system, database schema, authentication
-- [ ] **Phase 2**: Public website, facilities, pricing, customer accounts
-- [ ] **Phase 3**: Booking system, station availability, payments, QR codes
-- [ ] **Phase 4**: Admin panel and staff operations
-- [ ] **Phase 5**: Reports, website CMS, notifications, audit logs
-- [ ] **Phase 6**: Security testing, load testing, production deployment
+- [x] **Phase 2**: Public website, facilities, pricing, customer accounts
+- [x] **Phase 3**: Booking system, station availability, payments, QR codes
+- [x] **Phase 4**: Admin panel and staff operations
+- [x] **Phase 5**: Reports, website CMS, notifications, audit logs
+- [x] **Phase 6**: Security testing, load testing, production deployment
 
 ---
 

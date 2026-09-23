@@ -30,6 +30,8 @@ function parseDatabaseUrl(urlStr?: string) {
       password: decodeURIComponent(parsed.password || ''),
       database: parsed.pathname ? parsed.pathname.replace(/^\//, '') : 'dark_syndicate',
       connectionLimit: 10,
+      connectTimeout: 1500,
+      acquireTimeout: 1500,
     };
   } catch {
     return {
@@ -39,6 +41,8 @@ function parseDatabaseUrl(urlStr?: string) {
       password: '',
       database: 'dark_syndicate',
       connectionLimit: 10,
+      connectTimeout: 1500,
+      acquireTimeout: 1500,
     };
   }
 }
