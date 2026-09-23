@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 export interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline' | 'accent' | 'secondary';
   size?: 'sm' | 'md';
   pulse?: boolean;
   className?: string;
@@ -19,6 +19,8 @@ const variantStyles: Record<string, string> = {
   danger: 'bg-ds-danger-bg text-ds-danger border-ds-danger/30',
   info: 'bg-ds-info-bg text-ds-info border-ds-info/30',
   outline: 'bg-transparent text-ds-text-muted border-ds-border-light',
+  accent: 'bg-ds-accent/15 text-ds-ice border-ds-accent/30',
+  secondary: 'bg-ds-secondary/40 text-ds-text-muted border-ds-border',
 };
 
 const sizeStyles: Record<string, string> = {

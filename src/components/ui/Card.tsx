@@ -10,6 +10,8 @@ export interface CardProps {
   className?: string;
   variant?: 'default' | 'glass' | 'hover' | 'bordered';
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  hover?: boolean;
+  glass?: boolean;
   onClick?: () => void;
 }
 
@@ -25,6 +27,8 @@ export function Card({
   className,
   variant = 'default',
   padding = 'md',
+  hover = false,
+  glass = false,
   onClick,
 }: CardProps) {
   return (
@@ -32,10 +36,10 @@ export function Card({
       onClick={onClick}
       className={cn(
         'rounded-xl',
-        variant === 'default' && 'bg-ds-surface border border-ds-border',
-        variant === 'glass' && 'glass',
-        variant === 'hover' &&
-          'bg-ds-surface border border-ds-border hover-lift cursor-pointer hover:border-ds-accent/30',
+        variant === 'default' && !glass && 'bg-ds-surface border border-ds-border',
+        (variant === 'glass' || glass) && 'glass',
+        (variant === 'hover' || hover) &&
+          'hover-lift cursor-pointer hover:border-ds-accent/30',
         variant === 'bordered' &&
           'bg-ds-surface-2 border border-ds-border-light',
         paddingStyles[padding],

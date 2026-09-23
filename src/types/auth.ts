@@ -22,6 +22,7 @@ export interface SessionUser {
 export interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
+  loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;

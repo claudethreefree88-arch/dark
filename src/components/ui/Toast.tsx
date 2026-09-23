@@ -16,10 +16,11 @@ interface Toast {
   duration?: number;
 }
 
-interface ToastContextType {
+export interface ToastContextType {
   toasts: Toast[];
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
+  toast: (title: string, type?: ToastType) => void;
   success: (title: string, message?: string) => void;
   error: (title: string, message?: string) => void;
   warning: (title: string, message?: string) => void;
@@ -49,6 +50,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [removeToast]
   );
 
+  const toast = useCallback(
+    (title: string, type: ToastType = 'info') =>
+      addToast({ type, title }),
+    [addToast]
+  );
   const success = useCallback(
     (title: string, message?: string) =>
       addToast({ type: 'success', title, message }),
@@ -72,7 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider
-      value={{ toasts, addToast, removeToast, success, error, warning, info }}
+      value={{ toasts, addToast, removeToast, toast, success, error, warning, info }}
     >
       {children}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -80,12 +86,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useToast(): ToastContextType {
+export type UseToastReturn = {
+  (title: string, type?: ToastType): void;
+  toast: (title: string, type?: ToastType) => void;
+  success: (title: string, message?: string) => void;
+  error: (title: string, message?: string) => void;
+  warning: (title: string, message?: string) => void;
+  info: (title: string, message?: string) => void;
+  toasts: Toast[];
+  addToast: (toast: Omit<Toast, 'id'>) => void;
+  removeToast: (id: string) => void;
+};
+
+export function useToast(): UseToastReturn {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
   }
-  return context;
+
+  const toastFn = ((title: string, type?: ToastType) => {
+    context.toast(title, type);
+  }) as UseToastReturn;
+
+  toastFn.toast = context.toast;
+  toastFn.success = context.success;
+  toastFn.error = context.error;
+  toastFn.warning = context.warning;
+  toastFn.info = context.info;
+  toastFn.toasts = context.toasts;
+  toastFn.addToast = context.addToast;
+  toastFn.removeToast = context.removeToast;
+
+  return toastFn;
 }
 
 // ─── Toast Container ────────────────────────────────────────────────────────

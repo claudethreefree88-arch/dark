@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, Gamepad2 } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@/validators/auth.schema';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -51,9 +52,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative animate-fade-in-up">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4 animate-pulse-glow">
-            <Gamepad2 className="w-8 h-8 text-ds-accent" />
-          </div>
+          <Link href="/" className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-ds-surface/80 border border-ds-accent/40 shadow-glow mb-4 p-1">
+            <Image
+              src="/logo.png"
+              alt="DARK SYNDICATE Logo"
+              width={72}
+              height={72}
+              className="w-full h-full object-contain"
+              priority
+            />
+          </Link>
           <h1 className="text-3xl font-heading font-extrabold text-ds-text tracking-wider">
             DARK <span className="gradient-text">SYNDICATE</span>
           </h1>
