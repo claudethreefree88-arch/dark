@@ -46,6 +46,7 @@ export function middleware(request: NextRequest) {
   // Check if the path requires authentication
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
+    pathname.startsWith('/booking') ||
     pathname.startsWith('/facilities/') ||
     pathname.startsWith('/api/');
 

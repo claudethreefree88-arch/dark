@@ -304,3 +304,5 @@ export function Navbar() {
     </header>
   );
 }
+
+export default Navbar;
