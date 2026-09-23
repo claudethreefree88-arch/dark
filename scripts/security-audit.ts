@@ -2,6 +2,7 @@
  * DARK SYNDICATE GAMING WORLD — Automated Security Audit Suite
  * Run with: npx tsx scripts/security-audit.ts
  */
+export {};
 
 const BASE_URL = process.env.TEST_APP_URL || 'http://localhost:3000';
 

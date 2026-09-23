@@ -171,7 +171,7 @@ export default function BookingConfirmationPage() {
         <Navbar />
       </div>
 
-      <main className="flex-1 py-10 sm:py-16">
+      <main className="flex-1 pt-32 sm:pt-36 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Success Banner */}
           <div className="text-center mb-10 print:hidden">

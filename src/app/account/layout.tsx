@@ -56,7 +56,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-ds-dark text-ds-text selection:bg-ds-accent selection:text-ds-dark flex flex-col">
       <Navbar />
 
-      <main className="flex-1 pt-24 sm:pt-28 pb-16">
+      <main className="flex-1 pt-32 sm:pt-36 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Welcome Header */}
           <div className="mb-8 p-6 rounded-2xl bg-ds-surface/60 border border-ds-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">

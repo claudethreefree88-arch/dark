@@ -64,7 +64,7 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* ─── Hero Section ────────────────────────────────────────── */}
-        <section className="relative min-h-[92vh] flex items-center justify-center pt-24 pb-16 px-4 overflow-hidden">
+        <section className="relative min-h-[92vh] flex items-center justify-center pt-32 sm:pt-36 pb-16 px-4 overflow-hidden">
           {/* Futuristic Background Gradients & Grid Lines */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-ds-primary/20 rounded-full blur-[160px]" />

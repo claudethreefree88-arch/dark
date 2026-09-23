@@ -379,7 +379,7 @@ function BookingContent() {
     <div className="min-h-screen bg-ds-darker text-ds-text flex flex-col selection:bg-ds-accent selection:text-white">
       <Navbar />
 
-      <main className="flex-1 py-10 md:py-16">
+      <main className="flex-1 pt-32 sm:pt-36 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Banner */}
           <div className="text-center max-w-3xl mx-auto mb-10">

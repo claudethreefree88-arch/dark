@@ -76,25 +76,27 @@ export function Navbar() {
   };
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-ds-surface/90 backdrop-blur-md border-b border-ds-border shadow-lg shadow-black/40 py-2.5'
-          : 'bg-gradient-to-b from-ds-dark/95 via-ds-dark/80 to-transparent py-3'
-      }`}
-    >
+    <header className="fixed top-0 left-0 right-0 z-40">
       {/* Dynamic Announcement Banner */}
       {announcement && (
-        <div className="bg-gradient-to-r from-ds-primary via-ds-accent to-ds-primary text-white text-[11px] font-heading font-bold py-1 px-4 text-center tracking-wider flex items-center justify-center gap-2 mb-2">
-          <Megaphone className="w-3.5 h-3.5 animate-pulse text-amber-300" />
-          <Link href={announcement.link} className="hover:underline flex items-center gap-1.5">
-            <span>{announcement.text}</span>
-            <span className="text-[10px] text-ds-ice uppercase font-black underline ml-1">Claim Now →</span>
+        <div className="bg-gradient-to-r from-ds-primary via-ds-accent to-ds-primary text-white text-[11px] font-heading font-bold py-1.5 px-4 text-center tracking-wider flex items-center justify-center gap-2 border-b border-white/10 shadow-sm relative z-50">
+          <Megaphone className="w-3.5 h-3.5 animate-pulse text-amber-300 shrink-0" />
+          <Link href={announcement.link} className="hover:underline flex items-center gap-1.5 truncate">
+            <span className="truncate">{announcement.text}</span>
+            <span className="text-[10px] text-ds-ice uppercase font-black underline ml-1 shrink-0">Claim Now →</span>
           </Link>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Main Navigation Bar */}
+      <div
+        className={`transition-all duration-300 ${
+          isScrolled
+            ? 'bg-ds-surface/95 backdrop-blur-md border-b border-ds-border shadow-lg shadow-black/40 py-2.5'
+            : 'bg-gradient-to-b from-ds-dark/95 via-ds-dark/85 to-transparent py-3'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Brand Logo & Name */}
           <Link href="/" className="flex items-center gap-3 group">
@@ -250,6 +252,7 @@ export function Navbar() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (

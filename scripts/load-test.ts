@@ -2,6 +2,7 @@
  * DARK SYNDICATE GAMING WORLD — Automated High-Concurrency Load Testing Suite
  * Run with: npx tsx scripts/load-test.ts
  */
+export {};
 
 const BASE_URL = process.env.TEST_APP_URL || 'http://localhost:3000';
 
