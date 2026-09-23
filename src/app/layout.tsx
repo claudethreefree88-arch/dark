@@ -1,7 +1,22 @@
 import type { Metadata } from 'next';
+import { Oxanium, Rajdhani } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/hooks/useAuth';
+
+const oxanium = Oxanium({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-heading',
+  display: 'swap',
+});
+
+const rajdhani = Rajdhani({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -35,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${oxanium.variable} ${rajdhani.variable}`}>
       <head>
         <meta name="theme-color" content="#0A111C" />
         <link rel="icon" href="/favicon.ico" />

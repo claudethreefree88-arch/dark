@@ -112,13 +112,15 @@ export async function GET() {
       },
     });
 
+    const cacheHeader = { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' };
+
     if (facilities.length > 0) {
-      return apiSuccess(facilities);
+      return apiSuccess(facilities, 200, cacheHeader);
     }
 
-    return apiSuccess(DEFAULT_FACILITIES);
+    return apiSuccess(DEFAULT_FACILITIES, 200, cacheHeader);
   } catch (err) {
     // If DB is offline or not migrated yet, return high quality fallback
-    return apiSuccess(DEFAULT_FACILITIES);
+    return apiSuccess(DEFAULT_FACILITIES, 200, { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' });
   }
 }

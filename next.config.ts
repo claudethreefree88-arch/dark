@@ -4,8 +4,13 @@ const nextConfig: NextConfig = {
   // Optimize for production deployment on Hostinger
   output: 'standalone',
 
-  // Image optimization
+  // Enable Gzip and Brotli compression
+  compress: true,
+
+  // High-performance image optimization
   images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: 'https',
@@ -14,9 +19,18 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Security headers
+  // HTTP Performance & Security headers
   async headers() {
     return [
+      {
+        source: '/(.*)\\.(png|jpg|jpeg|webp|avif|ico|svg)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [

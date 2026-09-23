@@ -11,46 +11,66 @@ import {
   ChevronDown,
   Tv,
   Trophy,
-  Activity,
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export function HeroSection() {
-  const [scrollY, setScrollY] = useState(0);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHoveredLogo, setIsHoveredLogo] = useState(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isVisibleRef = useRef<boolean>(true);
 
-  // Scroll listener for scroll-driven parallax and opacity
+  // GPU-Accelerated Scroll Parallax with Zero React Re-render Thrashing
   useEffect(() => {
     let ticking = false;
+
+    const updateParallax = () => {
+      const scrollY = window.scrollY;
+      if (!sectionRef.current) return;
+
+      const heroTranslateY = Math.min(scrollY * 0.28, 140);
+      const heroOpacity = Math.max(0, 1 - scrollY / 620);
+      const heroScale = Math.max(0.93, 1 - scrollY * 0.0004);
+      const bgTranslateY = scrollY * 0.15;
+
+      sectionRef.current.style.setProperty('--hero-translate-y', `${heroTranslateY}px`);
+      sectionRef.current.style.setProperty('--hero-opacity', `${heroOpacity}`);
+      sectionRef.current.style.setProperty('--hero-scale', `${heroScale}`);
+      sectionRef.current.style.setProperty('--bg-translate-y', `${bgTranslateY}px`);
+
+      ticking = false;
+    };
+
     const handleScroll = () => {
       if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setScrollY(window.scrollY);
-          ticking = false;
-        });
+        window.requestAnimationFrame(updateParallax);
         ticking = true;
       }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    updateParallax(); // Initial state
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Mouse move tracker for interactive tilt and particles
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+  // Hardware-Accelerated Mouse Move Tracker via CSS Variables
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!sectionRef.current) return;
+    const rect = sectionRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setMousePos({ x, y });
+
+    sectionRef.current.style.setProperty('--mouse-x', x.toFixed(3));
+    sectionRef.current.style.setProperty('--mouse-y', y.toFixed(3));
   };
 
-  // Cyber particle web canvas
+  // Cyber Particle Web Canvas with Intersection-Observer Pause
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const section = sectionRef.current;
+    if (!canvas || !section) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -63,10 +83,10 @@ export function HeroSection() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
 
-    // Particle nodes
-    const particleCount = Math.min(45, Math.floor(width / 30));
+    // Node count optimized for high FPS
+    const particleCount = Math.min(40, Math.floor(width / 35));
     const particles: Array<{
       x: number;
       y: number;
@@ -81,15 +101,16 @@ export function HeroSection() {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
         size: Math.random() * 2 + 1,
-        alpha: Math.random() * 0.6 + 0.2,
+        alpha: Math.random() * 0.5 + 0.2,
         alphaSpeed: (Math.random() * 0.01 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
       });
     }
 
     const render = () => {
+      if (!isVisibleRef.current) return;
       ctx.clearRect(0, 0, width, height);
 
       // Draw and update particles
@@ -108,7 +129,7 @@ export function HeroSection() {
         if (p.y < 0) p.y = height;
         if (p.y > height) p.y = 0;
 
-        ctx.fillStyle = `rgba(121, 189, 233, ${p.alpha * 0.7})`;
+        ctx.fillStyle = `rgba(121, 189, 233, ${p.alpha * 0.6})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -120,8 +141,8 @@ export function HeroSection() {
           const dy = p.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 110) {
-            const lineAlpha = (1 - dist / 110) * 0.18;
+          if (dist < 100) {
+            const lineAlpha = (1 - dist / 100) * 0.16;
             ctx.strokeStyle = `rgba(97, 173, 223, ${lineAlpha})`;
             ctx.lineWidth = 0.8;
             ctx.beginPath();
@@ -135,10 +156,26 @@ export function HeroSection() {
       animationFrameId = requestAnimationFrame(render);
     };
 
+    // Pause canvas animation when hero is off-screen to save CPU/GPU cycles
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisibleRef.current = entry.isIntersecting;
+        if (entry.isIntersecting) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = requestAnimationFrame(render);
+        } else {
+          cancelAnimationFrame(animationFrameId);
+        }
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(section);
+
     render();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      observer.disconnect();
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -150,16 +187,20 @@ export function HeroSection() {
     }
   };
 
-  // Scroll parallax calculations
-  const heroContentTranslateY = Math.min(scrollY * 0.28, 140);
-  const heroContentOpacity = Math.max(0, 1 - scrollY / 620);
-  const heroContentScale = Math.max(0.93, 1 - scrollY * 0.0004);
-  const backgroundGlowTranslateY = scrollY * 0.15;
-
   return (
     <section
+      ref={sectionRef}
       onMouseMove={handleMouseMove}
-      className="relative min-h-[94vh] flex items-center justify-center pt-32 sm:pt-36 pb-20 px-4 overflow-hidden"
+      className="relative min-h-[94vh] flex items-center justify-center pt-32 sm:pt-36 pb-20 px-4 overflow-hidden gpu-accelerate"
+      style={{
+        // Default CSS fallback variables
+        ['--mouse-x' as any]: '0',
+        ['--mouse-y' as any]: '0',
+        ['--hero-translate-y' as any]: '0px',
+        ['--hero-scale' as any]: '1',
+        ['--hero-opacity' as any]: '1',
+        ['--bg-translate-y' as any]: '0px',
+      }}
     >
       {/* Interactive Background Canvas */}
       <canvas
@@ -167,11 +208,12 @@ export function HeroSection() {
         className="absolute inset-0 pointer-events-none z-0 opacity-60"
       />
 
-      {/* Cyber Ambient Radial Glows with Parallax Shift */}
+      {/* Cyber Ambient Radial Glows with Hardware Accelerated Parallax Shift */}
       <div
-        className="absolute inset-0 pointer-events-none z-0 transition-transform duration-100 ease-out"
+        className="absolute inset-0 pointer-events-none z-0 gpu-accelerate"
         style={{
-          transform: `translateY(${backgroundGlowTranslateY}px)`,
+          transform: 'translate3d(0, var(--bg-translate-y, 0px), 0)',
+          willChange: 'transform',
         }}
       >
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] sm:w-[850px] h-[650px] sm:h-[850px] bg-gradient-to-tr from-ds-primary/25 via-ds-secondary/20 to-ds-accent/15 rounded-full blur-[170px]" />
@@ -192,21 +234,23 @@ export function HeroSection() {
         <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-ds-accent/25 to-transparent blur-[1px]" />
       </div>
 
-      {/* Main Hero Dynamic Container with Scroll Parallax */}
+      {/* Main Hero Dynamic Container with Smooth GPU-Accelerated Parallax */}
       <div
-        className="relative max-w-6xl mx-auto text-center z-10 space-y-6 transition-all duration-150 ease-out"
+        className="relative max-w-6xl mx-auto text-center z-10 space-y-6 gpu-accelerate"
         style={{
-          transform: `translateY(${heroContentTranslateY}px) scale(${heroContentScale})`,
-          opacity: heroContentOpacity,
+          transform: 'translate3d(0, var(--hero-translate-y, 0px), 0) scale(var(--hero-scale, 1))',
+          opacity: 'var(--hero-opacity, 1)',
+          willChange: 'transform, opacity',
         }}
       >
         {/* Symmetrical Command Center Row: Left Badge, Center Hologram, Right Badge */}
         <div className="flex items-center justify-center gap-4 lg:gap-8 xl:gap-12 mb-2">
           {/* Left Arena Badge (PS5 Pro) */}
           <div
-            className="hidden md:flex items-center gap-3 p-3 rounded-2xl bg-ds-surface/80 backdrop-blur-xl border border-ds-accent/30 shadow-elevated hover:border-ds-accent transition-all duration-300 animate-float-slow text-left max-w-[220px] lg:max-w-[240px] group"
+            className="hidden md:flex items-center gap-3 p-3 rounded-2xl bg-ds-surface/80 backdrop-blur-xl border border-ds-accent/30 shadow-elevated hover:border-ds-accent transition-all duration-300 animate-float-slow text-left max-w-[220px] lg:max-w-[240px] group gpu-accelerate"
             style={{
-              transform: `translate(${mousePos.x * -10}px, ${mousePos.y * -10}px)`,
+              transform: 'translate3d(calc(var(--mouse-x, 0) * -10px), calc(var(--mouse-y, 0) * -10px), 0)',
+              willChange: 'transform',
             }}
           >
             <div className="w-10 h-10 rounded-xl bg-ds-dark border border-ds-accent/40 flex items-center justify-center text-ds-accent shrink-0 group-hover:scale-105 group-hover:border-ds-accent transition-all duration-300 shadow-glow">
@@ -252,11 +296,12 @@ export function HeroSection() {
 
             {/* Emblem Box */}
             <div
-              className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-ds-dark/95 p-2.5 flex items-center justify-center border border-ds-accent/40 shadow-glow backdrop-blur-2xl transition-transform duration-500 group-hover:scale-105"
+              className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-ds-dark/95 p-2.5 flex items-center justify-center border border-ds-accent/40 shadow-glow backdrop-blur-2xl transition-transform duration-300 group-hover:scale-105 gpu-accelerate"
               style={{
                 transform: isHoveredLogo
-                  ? `perspective(600px) rotateY(${mousePos.x * 24}deg) rotateX(${mousePos.y * -24}deg)`
+                  ? 'perspective(600px) rotateY(calc(var(--mouse-x, 0) * 24deg)) rotateX(calc(var(--mouse-y, 0) * -24deg))'
                   : 'perspective(600px) rotateY(0deg) rotateX(0deg)',
+                willChange: 'transform',
               }}
             >
               {/* Scanline Sweep */}
@@ -275,9 +320,10 @@ export function HeroSection() {
 
           {/* Right Arena Badge (Championship Pool) */}
           <div
-            className="hidden md:flex items-center gap-3 p-3 rounded-2xl bg-ds-surface/80 backdrop-blur-xl border border-ds-accent/30 shadow-elevated hover:border-ds-accent transition-all duration-300 animate-float-reverse text-left max-w-[220px] lg:max-w-[240px] group"
+            className="hidden md:flex items-center gap-3 p-3 rounded-2xl bg-ds-surface/80 backdrop-blur-xl border border-ds-accent/30 shadow-elevated hover:border-ds-accent transition-all duration-300 animate-float-reverse text-left max-w-[220px] lg:max-w-[240px] group gpu-accelerate"
             style={{
-              transform: `translate(${mousePos.x * 10}px, ${mousePos.y * 10}px)`,
+              transform: 'translate3d(calc(var(--mouse-x, 0) * 10px), calc(var(--mouse-y, 0) * 10px), 0)',
+              willChange: 'transform',
             }}
           >
             <div className="w-10 h-10 rounded-xl bg-ds-dark border border-ds-accent/40 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 group-hover:border-ds-accent transition-all duration-300 shadow-glow">
@@ -343,19 +389,18 @@ export function HeroSection() {
 
         {/* Action CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-3">
-          <Link href="/booking" className="w-full sm:w-auto">
+          <Link href="/booking" prefetch={true} className="w-full sm:w-auto">
             <Button
               size="lg"
               variant="accent"
               className="w-full sm:w-auto text-base px-8 py-6 shadow-glow relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200"
             >
-              {/* Shimmer sweep on button */}
               <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-in-out pointer-events-none" />
               <Sparkles className="w-5 h-5 mr-2 text-white animate-spin-slow" />
               Book Your Session
             </Button>
           </Link>
-          <Link href="/facilities" className="w-full sm:w-auto">
+          <Link href="/facilities" prefetch={true} className="w-full sm:w-auto">
             <Button
               size="lg"
               variant="outline"

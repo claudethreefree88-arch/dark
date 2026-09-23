@@ -118,5 +118,7 @@ export async function GET() {
     ],
   };
 
-  return apiSuccess(pricingData);
+  return apiSuccess(pricingData, 200, {
+    'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600',
+  });
 }

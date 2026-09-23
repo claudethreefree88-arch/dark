@@ -126,6 +126,7 @@ export function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
+                prefetch={true}
                 className={`px-3 py-2 rounded-lg font-heading text-sm uppercase tracking-wider font-semibold transition-all duration-200 ${
                   isActive(link.href)
                     ? 'text-ds-ice bg-ds-accent/10 border border-ds-accent/30 shadow-glow-sm'
@@ -224,7 +225,7 @@ export function Navbar() {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/booking">
+                <Link href="/booking" prefetch={true}>
                   <Button variant="accent" size="sm" className="shadow-glow-sm">
                     <Sparkles className="w-3.5 h-3.5 mr-1" />
                     Book Now

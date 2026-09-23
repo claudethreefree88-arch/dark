@@ -86,12 +86,19 @@ export async function GET() {
       };
     }
 
-    return apiSuccess({
-      testimonials,
-      gallery,
-      settings: settingsMap,
-    });
+    return apiSuccess(
+      {
+        testimonials,
+        gallery,
+        settings: settingsMap,
+      },
+      200,
+      { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' }
+    );
   } catch (error) {
-    return NextResponse.json({ success: true, data: { testimonials: [], gallery: [], settings: {} } });
+    return NextResponse.json(
+      { success: true, data: { testimonials: [], gallery: [], settings: {} } },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+    );
   }
 }

@@ -128,8 +128,8 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
 /**
  * Success response wrapper for consistency.
  */
-export function apiSuccess<T>(data: T, status: number = 200) {
-  return NextResponse.json({ success: true, data }, { status });
+export function apiSuccess<T>(data: T, status: number = 200, headers?: Record<string, string>) {
+  return NextResponse.json({ success: true, data }, { status, headers });
 }
 
 /**
