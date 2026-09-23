@@ -23,6 +23,8 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { HeroSection } from '@/components/home/HeroSection';
+import { LiveStatsBar } from '@/components/home/LiveStatsBar';
 
 export default function HomePage() {
   const flagshipGames = [
@@ -63,118 +65,11 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* ─── Hero Section ────────────────────────────────────────── */}
-        <section className="relative min-h-[92vh] flex items-center justify-center pt-32 sm:pt-36 pb-16 px-4 overflow-hidden">
-          {/* Futuristic Background Gradients & Grid Lines */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-ds-primary/20 rounded-full blur-[160px]" />
-            <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-ds-accent/15 rounded-full blur-[140px]" />
-            <div className="absolute bottom-10 right-1/4 w-[500px] h-[500px] bg-ds-secondary/25 rounded-full blur-[180px]" />
-            <div
-              className="absolute inset-0 opacity-[0.03]"
-              style={{
-                backgroundImage:
-                  'radial-gradient(circle at 1px 1px, #79BDE9 1px, transparent 0)',
-                backgroundSize: '40px 40px',
-              }}
-            />
-          </div>
+        {/* ─── Hero Section with Cyber Animations & Scroll Parallax ─ */}
+        <HeroSection />
 
-          <div className="relative max-w-5xl mx-auto text-center z-10 space-y-6">
-            {/* Brand Logo with Glow Halo */}
-            <div className="inline-flex items-center justify-center p-2 rounded-3xl bg-ds-surface/60 backdrop-blur-xl border border-ds-accent/40 shadow-glow animate-fade-in-down mb-2">
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-ds-dark/90 p-2 flex items-center justify-center">
-                <Image
-                  src="/logo.png"
-                  alt="DARK SYNDICATE Logo"
-                  width={128}
-                  height={128}
-                  priority
-                  className="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(97,173,223,0.6)]"
-                />
-              </div>
-            </div>
-
-            {/* Sub-pill */}
-            <div>
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ds-surface border border-ds-accent/30 text-xs sm:text-sm font-heading font-bold uppercase tracking-[0.2em] text-ds-ice shadow-glow-sm">
-                <Flame className="w-4 h-4 text-ds-accent animate-pulse" />
-                Premier Esports & Billiards Arena
-              </span>
-            </div>
-
-            {/* Brand Title */}
-            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-heading font-extrabold tracking-tight uppercase leading-none">
-              <span className="text-ds-text">DARK </span>
-              <span className="gradient-text text-glow">SYNDICATE</span>
-              <span className="block text-2xl sm:text-3xl md:text-4xl text-ds-text-muted font-heading font-medium tracking-[0.25em] mt-2">
-                GAMING WORLD
-              </span>
-            </h1>
-
-            {/* Iconic Tagline */}
-            <p className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-ds-ice tracking-widest uppercase">
-              ENTER THE GAME. OWN THE NIGHT.
-            </p>
-
-            <p className="text-ds-text-muted text-base sm:text-lg max-w-2xl mx-auto font-body leading-relaxed">
-              Step into an icy-dark, high-voltage gaming sanctum. Ultra-smooth 4K 120Hz PlayStation 5 Pro battle stations, championship slate pool tables, and elite esports competition.
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link href="/booking" className="w-full sm:w-auto">
-                <Button size="lg" variant="accent" className="w-full sm:w-auto text-base px-8 py-6 shadow-glow">
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Book Your Session
-                </Button>
-              </Link>
-              <Link href="/facilities" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8 py-6">
-                  <Gamepad2 className="w-5 h-5 mr-2" />
-                  Explore Gaming Zones
-                </Button>
-              </Link>
-            </div>
-
-            {/* Highlights ticker */}
-            <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-ds-text-muted font-heading uppercase tracking-wider">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Instant QR Check-in
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-ds-accent" /> 4K 120Hz OLED Displays
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-ds-ice" /> Zero Double-Booking Guarantee
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── Live Stats Bar ──────────────────────────────────────── */}
-        <section className="relative py-10 bg-ds-surface/50 border-y border-ds-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              {[
-                { value: '8+', label: 'PS5 Pro Consoles', sub: 'Custom Gaming Rigs' },
-                { value: '3', label: 'Tournament Pool Tables', sub: 'Simonis 860 Cloth' },
-                { value: '4K @ 120Hz', label: 'OLED Refresh Rate', sub: 'Zero Motion Blur' },
-                { value: '250+', label: 'Digital AAA Library', sub: 'Latest Released Titles' },
-              ].map((stat) => (
-                <div key={stat.label} className="p-4 rounded-xl bg-ds-dark/40 border border-ds-border/60">
-                  <div className="text-3xl sm:text-4xl font-heading font-extrabold gradient-text">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm font-heading font-bold text-ds-text uppercase tracking-wider mt-1">
-                    {stat.label}
-                  </div>
-                  <div className="text-xs text-ds-text-dim mt-0.5">{stat.sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ─── Live Stats Bar with Intersection Observer & Cyber HUD ── */}
+        <LiveStatsBar />
 
         {/* ─── Featured Gaming Zones ───────────────────────────────── */}
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
