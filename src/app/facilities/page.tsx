@@ -50,8 +50,9 @@ export default function FacilitiesPage() {
       try {
         const res = await fetch('/api/facilities');
         const json = await res.json();
-        if (json.success) {
-          setFacilities(json.data);
+        const data = json.data || json;
+        if (Array.isArray(data)) {
+          setFacilities(data);
         }
       } catch (err) {
         console.error('Error fetching facilities:', err);

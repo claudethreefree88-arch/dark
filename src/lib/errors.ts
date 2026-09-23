@@ -129,7 +129,7 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
  * Success response wrapper for consistency.
  */
 export function apiSuccess<T>(data: T, status: number = 200) {
-  return NextResponse.json({ data }, { status });
+  return NextResponse.json({ success: true, data }, { status });
 }
 
 /**
@@ -142,6 +142,7 @@ export function apiPaginatedSuccess<T>(
   pageSize: number
 ) {
   return NextResponse.json({
+    success: true,
     data,
     pagination: {
       total,
