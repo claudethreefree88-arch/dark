@@ -14,6 +14,7 @@ import {
   Shield,
   Clock,
   Sparkles,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components/layout/Navbar';
@@ -33,6 +34,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
   const navItems = [
     { name: 'Dashboard Overview', href: '/account', icon: Gamepad2 },
     { name: 'My Bookings & QR', href: '/account/bookings', icon: Calendar },
+    { name: 'Notifications & Alerts', href: '/account/notifications', icon: Bell },
     { name: 'Profile & Security', href: '/account/profile', icon: User },
     { name: 'Payment History', href: '/account/payments', icon: CreditCard },
   ];

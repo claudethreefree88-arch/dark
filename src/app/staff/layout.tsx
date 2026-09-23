@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from 'lucide-react';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -105,8 +106,10 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             </Link>
           </nav>
 
-          {/* Right Clock & User */}
+          {/* Right Clock, Notifications & User */}
           <div className="flex items-center gap-3">
+            <NotificationBell role="STAFF" />
+
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-ds-surface/60 border border-ds-border text-xs font-mono text-ds-text-dim">
               <Clock className="w-3.5 h-3.5 text-ds-accent" />
               <span>{timeStr || '10:00:00 AM'} IST</span>

@@ -19,7 +19,12 @@ import {
   LogOut,
   ChevronRight,
   Sparkles,
+  BarChart3,
+  Globe,
+  ShieldCheck,
+  Bell,
 } from 'lucide-react';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,11 +32,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navigation = [
     { name: 'Executive Overview', href: '/admin', icon: LayoutDashboard },
+    { name: 'Financial Reports', href: '/admin/reports', icon: BarChart3 },
     { name: 'Station Inventory', href: '/admin/stations', icon: Gamepad2 },
     { name: 'All Bookings', href: '/admin/bookings', icon: Calendar },
     { name: 'Customer Directory', href: '/admin/customers', icon: Users },
     { name: 'Promo Coupons', href: '/admin/coupons', icon: Tag },
     { name: 'Payments Ledger', href: '/admin/payments', icon: CreditCard },
+    { name: 'Website CMS & Venue', href: '/admin/cms', icon: Globe },
+    { name: 'Broadcast Alerts', href: '/admin/notifications', icon: Bell },
+    { name: 'System Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },
     { name: 'Staff Accounts', href: '/admin/staff', icon: UserCog },
   ];
 
@@ -133,17 +142,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Admin Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Mobile Header */}
-        <header className="md:hidden bg-ds-dark border-b border-ds-border p-4 flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Dark Syndicate" width={24} height={24} />
-            <span className="font-heading font-black text-xs uppercase tracking-wider text-ds-text">
-              DARK SYNDICATE ADMIN
+        {/* Top Header Bar */}
+        <header className="bg-ds-dark/80 backdrop-blur-md border-b border-ds-border px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <span className="md:hidden font-heading font-black text-xs uppercase tracking-wider text-ds-text">
+              DARK SYNDICATE
             </span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/staff" className="text-xs text-ds-ice font-semibold">
-              Staff Grid
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] font-mono text-ds-text-dim">LIVE SYNDICATE NETWORK</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <NotificationBell role="ADMIN" />
+            <Link
+              href="/staff"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-surface border border-ds-accent/30 text-xs font-heading font-bold text-ds-ice hover:bg-ds-accent/20 transition-all"
+            >
+              <MonitorPlay className="w-3.5 h-3.5" />
+              <span>Staff Floor View</span>
             </Link>
           </div>
         </header>

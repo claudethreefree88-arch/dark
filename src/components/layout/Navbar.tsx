@@ -18,9 +18,11 @@ import {
   ChevronDown,
   Sparkles,
   Clock,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -28,6 +30,23 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout, isAuthenticated } = useAuth();
+
+  const [announcement, setAnnouncement] = useState<{ text: string; link: string } | null>(null);
+
+  // Fetch announcement banner from CMS
+  useEffect(() => {
+    fetch('/api/cms/public')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data?.settings?.announcement_enabled === 'true') {
+          setAnnouncement({
+            text: json.data.settings.announcement_text || '',
+            link: json.data.settings.announcement_link || '/booking',
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Scroll detection for enhanced glass effect
   useEffect(() => {
@@ -60,10 +79,21 @@ export function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
         isScrolled
-          ? 'bg-ds-surface/90 backdrop-blur-md border-b border-ds-border shadow-lg shadow-black/40 py-3'
-          : 'bg-gradient-to-b from-ds-dark/95 via-ds-dark/80 to-transparent py-4'
+          ? 'bg-ds-surface/90 backdrop-blur-md border-b border-ds-border shadow-lg shadow-black/40 py-2.5'
+          : 'bg-gradient-to-b from-ds-dark/95 via-ds-dark/80 to-transparent py-3'
       }`}
     >
+      {/* Dynamic Announcement Banner */}
+      {announcement && (
+        <div className="bg-gradient-to-r from-ds-primary via-ds-accent to-ds-primary text-white text-[11px] font-heading font-bold py-1 px-4 text-center tracking-wider flex items-center justify-center gap-2 mb-2">
+          <Megaphone className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+          <Link href={announcement.link} className="hover:underline flex items-center gap-1.5">
+            <span>{announcement.text}</span>
+            <span className="text-[10px] text-ds-ice uppercase font-black underline ml-1">Claim Now →</span>
+          </Link>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Brand Logo & Name */}
@@ -113,14 +143,16 @@ export function Navbar() {
               <span>OPEN NOW</span>
             </div>
 
-            {/* Authentication / User Dropdown */}
+            {/* Authentication / User Dropdown & Notifications */}
             {isAuthenticated && user ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ds-surface border border-ds-border hover:border-ds-border-light text-ds-text transition-all"
-                >
+              <div className="flex items-center gap-2">
+                <NotificationBell role={user.role} />
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ds-surface border border-ds-border hover:border-ds-border-light text-ds-text transition-all"
+                  >
                   <div className="w-6 h-6 rounded-full bg-ds-primary flex items-center justify-center text-xs font-heading font-bold text-ds-ice">
                     {user.firstName ? user.firstName[0].toUpperCase() : 'U'}
                   </div>
@@ -182,7 +214,8 @@ export function Navbar() {
                   </div>
                 )}
               </div>
-            ) : (
+            </div>
+          ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="ghost" size="sm">
