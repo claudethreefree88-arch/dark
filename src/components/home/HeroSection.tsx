@@ -32,10 +32,10 @@ export function HeroSection() {
             <span>Next-Gen Gaming & Snooker Arena</span>
           </div>
 
-          {/* Headline - Tight Esports Stack */}
-          <h1 className="font-heading text-4xl sm:text-6xl lg:text-[4.25rem] xl:text-[5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-[0.75] sm:leading-[0.76] lg:leading-[0.76]">
+          {/* Headline - Ultra-Tight Esports Stack */}
+          <h1 className="font-heading text-4xl sm:text-6xl lg:text-[4.25rem] xl:text-[5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-[0.68] sm:leading-[0.69] lg:leading-[0.69]">
             <span className="block">Play</span>
-            <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent py-0.5">
+            <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent">
               Beyond
             </span>
             <span className="block">Reality</span>
