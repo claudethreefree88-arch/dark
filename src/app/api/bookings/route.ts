@@ -22,6 +22,7 @@ const createBookingSchema = z.object({
   customerEmail: z.string().email('Invalid email address').optional(),
   customerPhone: z.string().min(10, 'Valid phone number is required').optional(),
   notes: z.string().max(500).optional(),
+  playerCount: z.number().int().min(1).max(10).default(1),
   couponCode: z.string().optional(),
   payAtCounter: z.boolean().default(false),
   paymentMethod: z.enum(['RAZORPAY', 'CASHFREE', 'UPI', 'CASH', 'OTHER']).default('UPI'),
@@ -149,8 +150,29 @@ export async function POST(req: NextRequest) {
         throw new ValidationError('Selected station is currently under maintenance');
       }
 
-      // 3. Pricing & Discounts Calculation
-      const baseHourlyRate = station.pricePerHourPaise;
+      // 3. Dynamic Pricing Calculation based on Station Type & Player Count
+      let baseHourlyRate = station.pricePerHourPaise;
+      const isPs5 = station.stationType === 'PS5' || station.name.toUpperCase().includes('PS5');
+      const isSnooker = station.stationType === 'POOL_TABLE' || station.name.toUpperCase().includes('SNOOKER') || station.name.toUpperCase().includes('POOL');
+
+      if (isPs5) {
+        // PS5: 1 player = ₹150/hr, 2 players = ₹200/hr, 3-4 players = ₹250/hr
+        if (data.playerCount === 1) {
+          baseHourlyRate = 15000;
+        } else if (data.playerCount === 2) {
+          baseHourlyRate = 20000;
+        } else {
+          baseHourlyRate = 25000;
+        }
+      } else if (isSnooker) {
+        // Snooker: ₹250/hr for 1-4 players per table, +₹50/hr per person beyond 4
+        if (data.playerCount <= 4) {
+          baseHourlyRate = 25000;
+        } else {
+          baseHourlyRate = 25000 + (data.playerCount - 4) * 5000;
+        }
+      }
+
       const hoursCount = data.durationMinutes / 60;
       const subtotalPaise = Math.round(baseHourlyRate * hoursCount);
 
@@ -248,7 +270,9 @@ export async function POST(req: NextRequest) {
             qrToken,
             customerName: data.customerName || (session ? `${session.firstName} ${session.lastName}` : null),
             customerPhone: data.customerPhone || null,
-            notes: data.notes || null,
+            notes: data.notes
+              ? `${data.notes} • [Players: ${data.playerCount}]`
+              : `Players: ${data.playerCount}`,
             isWalkIn: false,
           },
           include: {

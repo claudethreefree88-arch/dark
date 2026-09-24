@@ -94,7 +94,7 @@ export default function HomePage() {
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center justify-between">
                   <Badge variant="accent">PlayStation 5</Badge>
-                  <span className="text-lg font-heading font-bold text-ds-ice">From ₹200 / hr</span>
+                  <span className="text-lg font-heading font-bold text-ds-ice">From ₹150 / hr</span>
                 </div>
 
                 <div>
@@ -102,7 +102,7 @@ export default function HomePage() {
                     PS5 Pro Battle Stations
                   </h3>
                   <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
-                    Flagship Sony PlayStation 5 consoles paired with high-end 55-inch LG OLED TVs running at pure 4K 120FPS with ray-tracing enabled.
+                    3 PlayStation 5 consoles paired with 55-inch LG OLED TVs at 4K 120FPS. Single player ₹150/hr, duo ₹200/hr, squad (3-4) ₹250/hr.
                   </p>
                 </div>
 
@@ -140,23 +140,23 @@ export default function HomePage() {
               </div>
             </Card>
 
-            {/* Zone 2: Billiards & Pool */}
+            {/* Zone 2: Snooker Lounge */}
             <Card hover glass className="p-8 border-ds-border relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Sparkles className="w-36 h-36 text-ds-ice" />
               </div>
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center justify-between">
-                  <Badge variant="info">Billiards & Pool</Badge>
-                  <span className="text-lg font-heading font-bold text-ds-ice">From ₹250 / hr</span>
+                  <Badge variant="info">Snooker</Badge>
+                  <span className="text-lg font-heading font-bold text-ds-ice">₹250 / hr per table</span>
                 </div>
 
                 <div>
                   <h3 className="text-2xl sm:text-3xl font-heading font-bold text-ds-text">
-                    Championship Pool Lounge
+                    Championship Snooker Lounge
                   </h3>
                   <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
-                    Tournament-certified 8ft Italian slate pool tables fitted with authentic Simonis tournament cloth and Belgian Aramith billiard balls.
+                    3 championship snooker tables. ₹250/hr for 3-4 players per table, +₹50 per extra person beyond 4.
                   </p>
                 </div>
 
@@ -175,7 +175,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-ds-ice" />
-                    <span>Up to 6 Players / Table</span>
+                    <span>3-4 Players / Table (+₹50 extra)</span>
                   </div>
                 </div>
 
@@ -187,7 +187,7 @@ export default function HomePage() {
                   </Link>
                   <Link href="/booking">
                     <Button variant="secondary" size="sm">
-                      Book Pool Table <ChevronRight className="w-4 h-4 ml-1" />
+                      Book Snooker Table <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </Link>
                 </div>
@@ -383,16 +383,20 @@ export default function HomePage() {
                     <span className="text-emerald-400 font-bold">15% OFF</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-ds-border/60">
-                    <span className="text-ds-text-muted">PS5 Pro Hourly</span>
+                    <span className="text-ds-text-muted">PS5 Single Player</span>
+                    <span className="text-ds-text font-bold">₹150 / hr</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-ds-border/60">
+                    <span className="text-ds-text-muted">PS5 Duo (2 Players)</span>
                     <span className="text-ds-text font-bold">₹200 / hr</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-ds-border/60">
-                    <span className="text-ds-text-muted">Championship Pool Table</span>
+                    <span className="text-ds-text-muted">PS5 Squad (3-4 Players)</span>
                     <span className="text-ds-text font-bold">₹250 / hr</span>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-ds-text-muted">All-Night LAN Pass (6 Hours)</span>
-                    <span className="text-ds-ice font-bold">₹900 Flat</span>
+                    <span className="text-ds-text-muted">Snooker Table (3-4 Players)</span>
+                    <span className="text-ds-ice font-bold">₹250 / hr</span>
                   </div>
                 </div>
               </div>

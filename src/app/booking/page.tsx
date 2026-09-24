@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useTransition, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Card } from '@/components/ui/Card';
@@ -79,6 +80,7 @@ function BookingContent() {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
+  const [playerCount, setPlayerCount] = useState<number>(1);
 
   // Slots State
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -185,8 +187,33 @@ function BookingContent() {
     fetchSlots();
   }, [selectedStation?.id, selectedDate, durationMinutes]);
 
-  // Calculate pricing breakdown
-  const hourlyRatePaise = selectedStation ? selectedStation.pricePerHourPaise : 20000;
+  // Calculate dynamic hourly rate based on station and player count
+  const getHourlyRatePaise = () => {
+    if (!selectedStation) return 15000;
+    const isPs5 =
+      selectedStation.stationType === 'PS5' ||
+      selectedStation.name.toUpperCase().includes('PS5');
+    const isSnooker =
+      selectedStation.stationType === 'POOL_TABLE' ||
+      selectedStation.name.toUpperCase().includes('SNOOKER') ||
+      selectedStation.name.toUpperCase().includes('POOL');
+
+    if (isPs5) {
+      if (playerCount === 1) return 15000; // Single player: ₹150/hr
+      if (playerCount === 2) return 20000; // 2 players: ₹200/hr
+      return 25000; // 3-4 players: ₹250/hr
+    }
+
+    if (isSnooker) {
+      // Snooker: ₹250/hr for 1-4 players per table, +₹50 per person beyond 4
+      if (playerCount <= 4) return 25000;
+      return 25000 + (playerCount - 4) * 5000;
+    }
+
+    return selectedStation.pricePerHourPaise;
+  };
+
+  const hourlyRatePaise = getHourlyRatePaise();
   const hours = durationMinutes / 60;
   const subtotalPaise = Math.round(hourlyRatePaise * hours);
 
@@ -288,6 +315,7 @@ function BookingContent() {
         date: selectedDate,
         startTime: selectedSlot.time,
         durationMinutes,
+        playerCount,
         customerName,
         customerEmail: customerEmail || undefined,
         customerPhone,
@@ -459,16 +487,16 @@ function BookingContent() {
                         1. Choose Your Station
                       </h2>
                       <p className="text-xs text-ds-text-muted mt-0.5">
-                        Select a battle station or billiards table for your match.
+                        Select a PS5 station or snooker table for your session.
                       </p>
                     </div>
 
                     {/* Category Filter Pills */}
                     <div className="flex gap-2">
                       {[
-                        { id: 'ALL', label: 'All Arenas' },
-                        { id: 'PS5', label: 'PS5 Pro' },
-                        { id: 'POOL_TABLE', label: 'Pool Lounge' },
+                        { id: 'ALL', label: 'All' },
+                        { id: 'PS5', label: 'PS5' },
+                        { id: 'POOL_TABLE', label: 'Snooker' },
                       ].map((cat) => (
                         <button
                           key={cat.id}
@@ -483,6 +511,42 @@ function BookingContent() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Zone Image Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    {(facilityFilter === 'ALL' || facilityFilter === 'PS5') && (
+                      <div className="relative rounded-xl overflow-hidden border border-ds-border/60 group">
+                        <Image
+                          src="/ps5-station.jpg"
+                          alt="PlayStation 5 Gaming Station"
+                          width={600}
+                          height={340}
+                          className="w-full h-40 sm:h-44 object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-ds-dark/90 via-ds-dark/30 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <h4 className="font-heading font-bold text-sm text-ds-text uppercase">PlayStation 5 Arena</h4>
+                          <p className="text-[11px] text-ds-text-muted mt-0.5">3 Stations · From ₹150/hr</p>
+                        </div>
+                      </div>
+                    )}
+                    {(facilityFilter === 'ALL' || facilityFilter === 'POOL_TABLE') && (
+                      <div className="relative rounded-xl overflow-hidden border border-ds-border/60 group">
+                        <Image
+                          src="/snooker-table.jpg"
+                          alt="Championship Snooker Table"
+                          width={600}
+                          height={340}
+                          className="w-full h-40 sm:h-44 object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-ds-dark/90 via-ds-dark/30 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <h4 className="font-heading font-bold text-sm text-ds-text uppercase">Snooker Lounge</h4>
+                          <p className="text-[11px] text-ds-text-muted mt-0.5">3 Tables · ₹250/hr per table</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Stations Grid */}
@@ -520,12 +584,18 @@ function BookingContent() {
                                 <p className="text-xs text-ds-text-muted line-clamp-2 mt-1">{station.specs}</p>
                               </div>
 
-                              <div className="flex items-center gap-4 text-xs text-ds-text-dim pt-2 border-t border-ds-border/40">
-                                <span>{station.capacity} Max Players</span>
-                                <span>•</span>
-                                <span className="text-ds-ice font-bold">
-                                  ₹{(station.pricePerHourPaise / 100).toFixed(0)} / hr
-                                </span>
+                              <div className="flex flex-col gap-1 text-xs text-ds-text-dim pt-2 border-t border-ds-border/40">
+                                <div className="flex items-center justify-between">
+                                  <span>{station.capacity} Max Players</span>
+                                  <span className="text-ds-ice font-bold">
+                                    {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr (Table)'}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-ds-text-muted">
+                                  {station.stationType === 'PS5'
+                                    ? 'Single: ₹150 · Duo: ₹200 · Squad (3-4): ₹250'
+                                    : '3-4 players included · +₹50/extra player'}
+                                </p>
                               </div>
                             </div>
 
@@ -607,7 +677,71 @@ function BookingContent() {
                     </div>
                   </div>
 
-                  {/* 2. Duration Selector */}
+                    {/* 2. Player Count Selector */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                        <span>Number of Players</span>
+                        <span className="text-ds-ice font-semibold">
+                          {selectedStation?.stationType === 'PS5'
+                            ? playerCount === 1
+                              ? '1 Player (₹150/hr)'
+                              : playerCount === 2
+                              ? '2 Players (₹200/hr)'
+                              : '3-4 Players (₹250/hr)'
+                            : playerCount <= 4
+                            ? '3-4 Players (₹250/hr)'
+                            : `${playerCount} Players (₹${250 + (playerCount - 4) * 50}/hr)`}
+                        </span>
+                      </div>
+                      {selectedStation?.stationType === 'PS5' ? (
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { count: 1, label: 'Single Player', rate: '₹150 / hr' },
+                            { count: 2, label: 'Duo (2 Players)', rate: '₹200 / hr' },
+                            { count: 4, label: 'Squad (3-4 Players)', rate: '₹250 / hr' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.count}
+                              type="button"
+                              onClick={() => setPlayerCount(opt.count)}
+                              className={`p-3 rounded-xl border text-center transition-all ${
+                                playerCount === opt.count
+                                  ? 'bg-ds-surface border-ds-accent text-ds-ice ring-1 ring-ds-accent shadow-md'
+                                  : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
+                              }`}
+                            >
+                              <div className="text-xs font-heading font-bold">{opt.label}</div>
+                              <span className="text-[10px] text-ds-accent block mt-0.5">{opt.rate}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { count: 4, label: '3-4 Players', rate: 'Standard Table (₹250/hr)' },
+                            { count: 5, label: '5 Players', rate: '+₹50 extra (₹300/hr)' },
+                            { count: 6, label: '6 Players', rate: '+₹100 extra (₹350/hr)' },
+                            { count: 8, label: '7-8 Players', rate: '+₹150+ (₹400/hr)' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.count}
+                              type="button"
+                              onClick={() => setPlayerCount(opt.count)}
+                              className={`p-3 rounded-xl border text-center transition-all ${
+                                playerCount === opt.count
+                                  ? 'bg-ds-surface border-ds-accent text-ds-ice ring-1 ring-ds-accent shadow-md'
+                                  : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
+                              }`}
+                            >
+                              <div className="text-xs font-heading font-bold">{opt.label}</div>
+                              <span className="text-[10px] text-ds-accent block mt-0.5">{opt.rate}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 3. Duration Selector */}
                   <div className="space-y-3">
                     <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
                       Session Length
@@ -969,6 +1103,27 @@ function BookingContent() {
                       <p className="text-ds-text-dim text-[11px]">{selectedStation?.facilityName}</p>
                     </div>
                     <Gamepad2 className="w-5 h-5 text-ds-ice mt-1" />
+                  </div>
+
+                  <div className="flex items-start justify-between pt-3 border-t border-ds-border/40">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-ds-accent">Players</p>
+                      <p className="font-heading font-bold text-sm text-ds-text">
+                        {selectedStation?.stationType === 'PS5'
+                          ? playerCount === 1
+                            ? 'Single Player (1P)'
+                            : playerCount === 2
+                            ? 'Duo (2P)'
+                            : 'Squad (3-4P)'
+                          : playerCount <= 4
+                          ? 'Up to 4 Players'
+                          : `${playerCount} Players`}
+                      </p>
+                      <p className="text-ds-ice font-semibold text-[11px]">
+                        ₹{(hourlyRatePaise / 100).toFixed(0)} / hr
+                      </p>
+                    </div>
+                    <UserIcon className="w-5 h-5 text-ds-text-dim mt-1" />
                   </div>
 
                   <div className="flex items-start justify-between pt-3 border-t border-ds-border/40">

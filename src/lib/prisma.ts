@@ -32,6 +32,7 @@ function parseDatabaseUrl(urlStr?: string) {
       connectionLimit: 10,
       connectTimeout: 1500,
       acquireTimeout: 1500,
+      ...(process.env.DB_SSL === 'true' ? { ssl: true } : {}),
     };
   } catch {
     return {
@@ -43,6 +44,7 @@ function parseDatabaseUrl(urlStr?: string) {
       connectionLimit: 10,
       connectTimeout: 1500,
       acquireTimeout: 1500,
+      ...(process.env.DB_SSL === 'true' ? { ssl: true } : {}),
     };
   }
 }

@@ -21,14 +21,42 @@ import { Badge } from '@/components/ui/Badge';
 
 export default function PricingPage() {
   const [calcStation, setCalcStation] = useState<'PS5' | 'POOL_TABLE'>('PS5');
+  const [calcPlayers, setCalcPlayers] = useState<number>(1);
   const [calcHours, setCalcHours] = useState<number>(2);
   const [isHappyHour, setIsHappyHour] = useState<boolean>(false);
 
   // Pricing plans
-  const plans = [
+  interface Plan {
+    id: string;
+    title: string;
+    category: string;
+    rate: number;
+    badge: string;
+    popular: boolean;
+    isFlat?: boolean;
+    flatDuration?: string;
+    features: string[];
+  }
+
+  const plans: Plan[] = [
     {
-      id: 'ps5-hourly',
-      title: 'PS5 Single / Duo',
+      id: 'ps5-single',
+      title: 'PS5 Single Player',
+      category: 'PlayStation 5',
+      rate: 150,
+      badge: 'Solo',
+      popular: false,
+      features: [
+        '55" 4K 120Hz LG OLED Display',
+        '1x Sony DualSense Wireless Controller',
+        '250+ Digital Games Library',
+        'SteelSeries 3D Spatial Audio',
+        'High-Speed Low Latency LAN',
+      ],
+    },
+    {
+      id: 'ps5-duo',
+      title: 'PS5 Duo (2 Players)',
       category: 'PlayStation 5',
       rate: 200,
       badge: 'Popular',
@@ -43,55 +71,49 @@ export default function PricingPage() {
     },
     {
       id: 'ps5-squad',
-      title: 'PS5 4-Player Lounge',
+      title: 'PS5 Squad (3-4 Players)',
       category: 'PlayStation 5 Squad',
       rate: 250,
       badge: 'Squad Pick',
       popular: false,
       features: [
-        '65" 4K HDR High Refresh Display',
+        '55" 4K 120Hz LG OLED Display',
         '4x DualSense Wireless Controllers',
-        'Dolby Atmos Surround Audio',
         'Co-Op & Party Games Library',
+        'SteelSeries 3D Audio',
         'Refreshment table service',
       ],
     },
     {
-      id: 'pool-table',
-      title: 'Championship Pool',
-      category: 'Billiards & Pool',
+      id: 'snooker-table',
+      title: 'Snooker Table',
+      category: 'Snooker',
       rate: 250,
-      badge: 'Tournament',
+      badge: 'Per Table',
       popular: false,
       features: [
-        '8ft Italian Slate Table',
-        'Simonis 860 Tournament Cloth',
-        'Belgian Aramith Pro Balls',
+        'Full-size Championship Snooker Table',
+        '3-4 players included in base rate',
+        '+₹50 per extra person beyond 4',
         'Shadowless Overhead LED Canopy',
-        'Handcrafted Canadian Maple Cues',
-      ],
-    },
-    {
-      id: 'all-night',
-      title: 'All-Night LAN Pass',
-      category: 'Special Combo',
-      rate: 900,
-      isFlat: true,
-      flatDuration: '6 Hours (11 PM - 5 AM)',
-      badge: 'Save 35%',
-      popular: true,
-      features: [
-        '6 Full Hours continuous gameplay',
-        'Valid on any PS5 or Pool Table',
-        '1x Complimentary Monster Energy / Beverage',
-        'Priority station reserve',
-        'Best value for midnight squads',
+        'Premium cues & accessories provided',
       ],
     },
   ];
 
-  // Dynamic Calculator Calculation
-  const baseRatePerHour = calcStation === 'PS5' ? 200 : 250;
+  // Dynamic Calculator Calculation based on Station & Player Count
+  const getBaseRatePerHour = () => {
+    if (calcStation === 'PS5') {
+      if (calcPlayers === 1) return 150;
+      if (calcPlayers === 2) return 200;
+      return 250; // 3-4 players
+    }
+    // Snooker Table: ₹250/hr for up to 4 players, +₹50 per extra person beyond 4
+    if (calcPlayers <= 4) return 250;
+    return 250 + (calcPlayers - 4) * 50;
+  };
+
+  const baseRatePerHour = getBaseRatePerHour();
   const rawTotal = baseRatePerHour * calcHours;
   // Multi-hour discount: 3+ hours gives 10%
   const multiHourDiscount = calcHours >= 3 ? rawTotal * 0.1 : 0;
@@ -230,27 +252,94 @@ export default function PricingPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setCalcStation('PS5')}
+                      onClick={() => {
+                        setCalcStation('PS5');
+                        if (calcPlayers > 4) setCalcPlayers(1);
+                      }}
                       className={`py-2.5 px-4 rounded-xl font-heading font-bold text-sm uppercase transition-all ${
                         calcStation === 'PS5'
                           ? 'bg-ds-accent text-ds-dark shadow-glow-sm'
                           : 'bg-ds-dark/60 border border-ds-border text-ds-text-muted'
                       }`}
                     >
-                      PS5 Pro (₹200/h)
+                      PS5 (from ₹150/h)
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCalcStation('POOL_TABLE')}
+                      onClick={() => {
+                        setCalcStation('POOL_TABLE');
+                        if (calcPlayers < 3) setCalcPlayers(4);
+                      }}
                       className={`py-2.5 px-4 rounded-xl font-heading font-bold text-sm uppercase transition-all ${
                         calcStation === 'POOL_TABLE'
                           ? 'bg-ds-accent text-ds-dark shadow-glow-sm'
                           : 'bg-ds-dark/60 border border-ds-border text-ds-text-muted'
                       }`}
                     >
-                      Pool Table (₹250/h)
+                      Snooker (from ₹250/h)
                     </button>
                   </div>
+                </div>
+
+                {/* Player Count Selection */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-heading font-bold uppercase">
+                    <span className="text-ds-text">Number of Players:</span>
+                    <span className="text-ds-ice">
+                      {calcStation === 'PS5'
+                        ? calcPlayers === 1
+                          ? '1 Player (₹150/h)'
+                          : calcPlayers === 2
+                          ? '2 Players (₹200/h)'
+                          : '3-4 Players (₹250/h)'
+                        : calcPlayers <= 4
+                        ? '3-4 Players (₹250/h)'
+                        : `${calcPlayers} Players (₹${250 + (calcPlayers - 4) * 50}/h)`}
+                    </span>
+                  </div>
+                  {calcStation === 'PS5' ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { count: 1, label: 'Single (₹150)' },
+                        { count: 2, label: 'Duo (₹200)' },
+                        { count: 4, label: 'Squad 3-4 (₹250)' },
+                      ].map((p) => (
+                        <button
+                          key={p.count}
+                          type="button"
+                          onClick={() => setCalcPlayers(p.count)}
+                          className={`py-2 px-3 rounded-lg text-xs font-heading font-bold uppercase transition-all border ${
+                            calcPlayers === p.count
+                              ? 'bg-ds-accent text-ds-dark border-ds-accent shadow-sm'
+                              : 'bg-ds-dark/40 border-ds-border text-ds-text-muted hover:border-ds-accent/40'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { count: 4, label: '3-4 Players (₹250)' },
+                        { count: 5, label: '5 Players (₹300)' },
+                        { count: 6, label: '6 Players (₹350)' },
+                      ].map((p) => (
+                        <button
+                          key={p.count}
+                          type="button"
+                          onClick={() => setCalcPlayers(p.count)}
+                          className={`py-2 px-3 rounded-lg text-xs font-heading font-bold uppercase transition-all border ${
+                            calcPlayers === p.count
+                              ? 'bg-ds-accent text-ds-dark border-ds-accent shadow-sm'
+                              : 'bg-ds-dark/40 border-ds-border text-ds-text-muted hover:border-ds-accent/40'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Duration Slider */}
@@ -304,7 +393,17 @@ export default function PricingPage() {
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between text-ds-text-muted">
                     <span>
-                      {calcStation === 'PS5' ? 'PS5 Pro Station' : 'Championship Pool Table'} × {calcHours}h
+                      {calcStation === 'PS5' ? 'PS5 Station' : 'Snooker Table'} (
+                      {calcStation === 'PS5'
+                        ? calcPlayers === 1
+                          ? 'Single'
+                          : calcPlayers === 2
+                          ? 'Duo'
+                          : 'Squad'
+                        : calcPlayers <= 4
+                        ? '3-4 Players'
+                        : `${calcPlayers} Players`}
+                      ) × {calcHours}h
                     </span>
                     <span className="font-mono text-ds-text">₹{rawTotal}</span>
                   </div>

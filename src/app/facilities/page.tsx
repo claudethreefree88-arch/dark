@@ -88,7 +88,7 @@ export default function FacilitiesPage() {
               GAMING <span className="gradient-text">ZONES & FACILITIES</span>
             </h1>
             <p className="text-ds-text-muted text-base sm:text-lg">
-              Explore our fleet of PlayStation 5 Pro consoles, tournament-grade billiards tables, and luxury VIP lounges. All stations feature real-time live availability.
+              Explore our 3 PlayStation 5 battle stations and 3 championship snooker tables. All stations feature real-time live availability.
             </p>
           </div>
 
@@ -127,7 +127,7 @@ export default function FacilitiesPage() {
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              Tournament Pool Tables
+              Snooker Tables
             </button>
           </div>
 
@@ -157,9 +157,14 @@ export default function FacilitiesPage() {
                     </Badge>
                     <div className="text-right">
                       <span className="text-xl font-heading font-extrabold text-ds-ice">
-                        ₹{(station.pricePerHourPaise / 100).toFixed(0)}
+                        {station.stationType === 'PS5' ? 'From ₹150' : '₹250'}
                       </span>
                       <span className="text-xs text-ds-text-dim"> / hour</span>
+                      <p className="text-[10px] text-ds-text-muted">
+                        {station.stationType === 'PS5'
+                          ? '1P: ₹150 · 2P: ₹200 · 3-4P: ₹250'
+                          : '3-4 players · +₹50/extra person'}
+                      </p>
                     </div>
                   </div>
 
