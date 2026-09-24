@@ -148,54 +148,6 @@ export async function GET() {
         }
       });
 
-      // Synchronize database records in background so they persist
-      try {
-        for (const fac of standardized) {
-          for (const st of fac.stations) {
-            await prisma.gamingStation
-              .update({
-                where: { id: st.id },
-                data: {
-                  name: st.name,
-                  pricePerHourPaise: st.pricePerHourPaise,
-                  description: st.specs,
-                },
-              })
-              .catch(() => {});
-          }
-          await prisma.gamingFacility
-            .update({
-              where: { id: fac.id },
-              data: {
-                name: fac.name,
-                description: fac.description,
-              },
-            })
-            .catch(() => {});
-        }
-
-        // Deactivate excess stations beyond the 3 PS5 and 3 Snooker stations
-        const extraStations = await prisma.gamingStation.findMany({
-          where: {
-            OR: [
-              { name: { contains: 'Delta' } },
-              { name: { contains: 'Racing' } },
-              { name: 'PS5 Station 4' },
-              { name: 'PS5 Station 5' },
-              { name: 'PS5 Station 6' },
-            ],
-          },
-        });
-        for (const extra of extraStations) {
-          await prisma.gamingStation
-            .update({
-              where: { id: extra.id },
-              data: { status: 'DEACTIVATED' },
-            })
-            .catch(() => {});
-        }
-      } catch {}
-
       return apiSuccess(standardized, 200, {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       });

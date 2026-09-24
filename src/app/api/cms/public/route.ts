@@ -9,19 +9,22 @@ export async function GET() {
     let settingsMap: Record<string, string> = {};
 
     try {
-      testimonials = await prisma.testimonial.findMany({
-        where: { isApproved: true },
-        orderBy: { displayOrder: 'asc' },
-        take: 6,
-      });
+      const [testimonialRows, galleryRows, settings] = await Promise.all([
+        prisma.testimonial.findMany({
+          where: { isApproved: true },
+          orderBy: { displayOrder: 'asc' },
+          take: 6,
+        }),
+        prisma.galleryImage.findMany({
+          where: { isActive: true },
+          orderBy: { displayOrder: 'asc' },
+          take: 12,
+        }),
+        prisma.websiteSetting.findMany(),
+      ]);
 
-      gallery = await prisma.galleryImage.findMany({
-        where: { isActive: true },
-        orderBy: { displayOrder: 'asc' },
-        take: 12,
-      });
-
-      const settings = await prisma.websiteSetting.findMany();
+      testimonials = testimonialRows;
+      gallery = galleryRows;
       settings.forEach((s) => {
         settingsMap[s.key] = s.value;
       });
