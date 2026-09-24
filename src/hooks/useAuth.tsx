@@ -6,8 +6,10 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
+import { usePathname } from 'next/navigation';
 import type { AuthUser, AuthContextType, RegisterData } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,6 +17,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
+  const isPublicAuthPage = useMemo(
+    () => ['/login', '/register', '/forgot-password', '/reset-password'].includes(pathname),
+    [pathname]
+  );
 
   const refreshUser = useCallback(async () => {
     try {
@@ -33,8 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (isPublicAuthPage) {
+      setIsLoading(false);
+      return;
+    }
     refreshUser();
-  }, [refreshUser]);
+  }, [isPublicAuthPage, refreshUser]);
 
   const login = useCallback(
     async (email: string, password: string) => {

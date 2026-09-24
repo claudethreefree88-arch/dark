@@ -1,6 +1,6 @@
-import { NextRequest } from 'next/server';
+import { after, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, createAccessToken } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth';
 import { setSessionCookie } from '@/lib/session';
 import { loginSchema } from '@/validators/auth.schema';
 import { handleApiError, apiSuccess, AuthError, AppError } from '@/lib/errors';
@@ -75,22 +75,29 @@ export async function POST(request: NextRequest) {
       lastName: user.lastName,
     });
 
-    // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'LOGIN',
-        entityType: 'user',
-        entityId: user.id,
-        ipAddress: ip,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+    // These bookkeeping writes are not required to authenticate the user.
+    // Run them after the response so login is not delayed by two extra DB writes.
+    after(async () => {
+      try {
+        await Promise.all([
+          prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() },
+          }),
+          prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              action: 'LOGIN',
+              entityType: 'user',
+              entityId: user.id,
+              ipAddress: ip,
+              userAgent: request.headers.get('user-agent') || undefined,
+            },
+          }),
+        ]);
+      } catch (error) {
+        console.error('Post-login bookkeeping failed:', error);
+      }
     });
 
     return apiSuccess({
