@@ -111,7 +111,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
                   );
                 })}
 
-                {user && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+                {user?.role === 'CUSTOMER' && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                   <Link
                     href="/admin"
                     className="flex items-center justify-between px-3.5 py-3 rounded-xl font-heading font-semibold text-sm text-amber-400 hover:bg-amber-500/10 transition-colors"

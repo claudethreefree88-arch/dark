@@ -30,6 +30,7 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout, isAuthenticated } = useAuth();
+  const isPlayer = user?.role === 'CUSTOMER';
 
   const [announcement, setAnnouncement] = useState<{ text: string; link: string } | null>(null);
 
@@ -147,7 +148,7 @@ export function Navbar() {
             </div>
 
             {/* Authentication / User Dropdown & Notifications */}
-            {isAuthenticated && user ? (
+            {isAuthenticated && user && isPlayer ? (
               <div className="flex items-center gap-2">
                 <NotificationBell role={user.role} />
                 <div className="relative">
@@ -194,7 +195,7 @@ export function Navbar() {
                       <span>My Bookings</span>
                     </Link>
 
-                    {['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+                    {isPlayer && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                       <Link
                         href="/admin"
                         className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
@@ -287,7 +288,7 @@ export function Navbar() {
           </div>
 
           <div className="pt-2 border-t border-ds-border/60 space-y-2">
-            {isAuthenticated && user ? (
+            {isAuthenticated && user && isPlayer ? (
               <>
                 <Link
                   href="/account"
@@ -303,7 +304,7 @@ export function Navbar() {
                   <Calendar className="w-4 h-4 text-ds-ice" />
                   <span>My Bookings</span>
                 </Link>
-                {['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+                {isPlayer && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                   <Link
                     href="/admin"
                     className="flex items-center gap-2 px-3 py-2 text-amber-400 font-medium rounded-lg hover:bg-amber-500/10"

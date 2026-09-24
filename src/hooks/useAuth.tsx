@@ -48,11 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isPublicAuthPage, refreshUser]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, portal: 'player' | 'admin' | 'staff' = 'player') => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, portal }),
       });
 
       const json = await res.json();

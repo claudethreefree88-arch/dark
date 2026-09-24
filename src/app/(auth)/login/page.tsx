@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, Eye, EyeOff, Sparkles, Shield, User, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, UserRound, KeyRound } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@/validators/auth.schema';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,14 @@ function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/';
+  const portalParam = searchParams.get('portal');
+  const portal = portalParam === 'admin' || portalParam === 'staff' ? portalParam : 'player';
+  const portalDetails = {
+    player: { title: 'Player Login', subtitle: 'Sign in to manage your bookings and game time.', destination: searchParams.get('redirect') || '/account', icon: UserRound },
+    admin: { title: 'Admin Portal', subtitle: 'Secure access to operations, payments, and reporting.', destination: '/admin', icon: ShieldCheck },
+    staff: { title: 'Staff Portal', subtitle: 'Secure access to live stations and today’s bookings.', destination: '/staff', icon: ShieldCheck },
+  }[portal];
+  const PortalIcon = portalDetails.icon;
   const toast = useToast();
 
   const {
@@ -33,9 +40,9 @@ function LoginContent() {
 
   const onSubmit = async (data: LoginInput) => {
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, portal);
       toast.success('Welcome back!', 'You have been logged in successfully.');
-      router.push(redirectTarget);
+      router.push(portalDetails.destination);
     } catch (error) {
       toast.error(
         'Login failed',
@@ -76,11 +83,13 @@ function LoginContent() {
           <h1 className="text-3xl font-heading font-extrabold text-ds-text tracking-wider">
             DARK <span className="gradient-text">SYNDICATE</span>
           </h1>
-          <p className="text-ds-text-muted mt-1 font-body text-base">
-            Sign in to access your dashboard
-          </p>
+          <div className="mt-2 inline-flex items-center gap-2 text-ds-text-muted font-body text-sm">
+            <PortalIcon className="w-4 h-4 text-ds-accent" />
+            <span>{portalDetails.subtitle}</span>
+          </div>
         </div>
 
+        {portal === 'player' && process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === 'true' && <>
         {/* Demo Fast Logins for reviewers */}
         <div className="p-3.5 rounded-xl bg-ds-surface/60 border border-ds-border text-xs space-y-2">
           <div className="flex items-center gap-1.5 text-ds-ice font-semibold">
@@ -111,6 +120,8 @@ function LoginContent() {
             </button>
           </div>
         </div>
+
+        </>}
 
         {/* Login Form */}
         <div className="glass-strong rounded-2xl p-8 shadow-elevated">
@@ -164,7 +175,7 @@ function LoginContent() {
               className="mt-2"
               id="login-submit"
             >
-              Sign In
+              {portalDetails.title}
             </Button>
           </form>
 

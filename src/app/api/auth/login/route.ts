@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
+    const portal = body.portal === 'admin' || body.portal === 'staff' ? body.portal : 'player';
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -64,6 +65,19 @@ export async function POST(request: NextRequest) {
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
       throw new AuthError('Invalid email or password');
+    }
+
+    const hasPortalAccess =
+      (portal === 'admin' && ['SUPER_ADMIN', 'ADMIN'].includes(user.role)) ||
+      (portal === 'staff' && user.role === 'STAFF') ||
+      (portal === 'player' && user.role === 'CUSTOMER');
+
+    if (!hasPortalAccess) {
+      throw new AuthError(
+        portal === 'player'
+          ? 'This account uses a private staff or admin portal.'
+          : 'This account does not have access to this portal.'
+      );
     }
 
     // Set session cookie

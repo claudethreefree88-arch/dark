@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   Gamepad2,
   Calendar,
-  Shield,
   Clock,
   Sparkles,
   Layers,
@@ -96,14 +95,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
             <span className="w-px h-5 bg-ds-border mx-1" />
 
-            {/* Switch to Admin link */}
-            <Link
-              href="/admin"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-ds-accent hover:bg-ds-accent/10 transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Admin Panel</span>
-            </Link>
           </nav>
 
           {/* Right Clock, Notifications & User */}
