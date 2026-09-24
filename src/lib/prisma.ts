@@ -51,6 +51,15 @@ function parseDatabaseUrl(urlStr?: string) {
 
 function createPrismaClient(): PrismaClient {
   const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL);
+  const sslCa = process.env.DB_SSL_CA?.replace(/\\n/g, '\n');
+  const ssl = process.env.DB_SSL === 'true'
+    ? sslCa
+      ? { ca: sslCa, rejectUnauthorized: true }
+      : true
+    : undefined;
+  if (ssl) {
+    (dbConfig as Record<string, unknown>).ssl = ssl;
+  }
   const pool = globalForPrisma.pool ?? mariadb.createPool(dbConfig);
   if (process.env.NODE_ENV !== 'production') {
     globalForPrisma.pool = pool;
