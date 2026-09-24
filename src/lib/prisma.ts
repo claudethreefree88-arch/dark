@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import mariadb, { type Pool } from 'mariadb';
+import fs from 'node:fs';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -51,7 +52,10 @@ function parseDatabaseUrl(urlStr?: string) {
 
 function createPrismaClient(): PrismaClient {
   const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL);
-  const sslCa = process.env.DB_SSL_CA?.replace(/\\n/g, '\n');
+  const sslCaValue = process.env.DB_SSL_CA;
+  const sslCa = sslCaValue && fs.existsSync(sslCaValue)
+    ? fs.readFileSync(sslCaValue, 'utf8')
+    : sslCaValue?.replace(/\\n/g, '\n');
   const ssl = process.env.DB_SSL === 'true'
     ? sslCa
       ? { ca: sslCa, rejectUnauthorized: true }
