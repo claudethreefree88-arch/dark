@@ -90,21 +90,21 @@ function LoginContent() {
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => handleFillDemo('admin@darksyndicate.in', 'Admin@123456')}
+              onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
               className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-[11px] font-heading font-bold"
             >
               👑 Admin
             </button>
             <button
               type="button"
-              onClick={() => handleFillDemo('staff@darksyndicate.in', 'Staff@123456')}
+              onClick={() => handleFillDemo('staff@darksyndicate.com', 'Staff@123456')}
               className="p-1.5 rounded-lg bg-ds-accent/10 border border-ds-accent/30 text-ds-ice hover:bg-ds-accent/20 text-[11px] font-heading font-bold"
             >
               🎮 Staff
             </button>
             <button
               type="button"
-              onClick={() => handleFillDemo('demo@darksyndicate.in', 'Customer@123456')}
+              onClick={() => handleFillDemo('player@example.com', 'Customer@123')}
               className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-[11px] font-heading font-bold"
             >
               🕹️ Gamer
