@@ -64,7 +64,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-ds-dark text-ds-text selection:bg-ds-accent selection:text-ds-dark flex flex-col">
       <Navbar />
 
-      <main className="flex-1">
+      <main className="flex-1 pb-20 lg:pb-0">
         {/* ─── Hero Section with Cyber Animations & Scroll Parallax ─ */}
         <HeroSection />
 

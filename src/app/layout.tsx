@@ -3,6 +3,7 @@ import { Oxanium, Rajdhani } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/hooks/useAuth';
+import { MobileBottomBar } from '@/components/layout/MobileBottomBar';
 
 const oxanium = Oxanium({
   subsets: ['latin'],
@@ -59,6 +60,7 @@ export default function RootLayout({
         <AuthProvider>
           <ToastProvider>
             {children}
+            <MobileBottomBar />
           </ToastProvider>
         </AuthProvider>
       </body>
