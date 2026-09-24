@@ -27,27 +27,27 @@ export function HeroSection() {
         {/* Top Text & CTA Block */}
         <div className="max-w-2xl pt-2 sm:pt-4 lg:pt-6">
           {/* Eyebrow Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ds-accent/10 border border-ds-accent/30 text-ds-ice text-[11px] sm:text-xs font-heading font-semibold tracking-wider uppercase backdrop-blur-sm mb-3 sm:mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ds-accent/10 border border-ds-accent/30 text-ds-ice text-[11px] sm:text-xs font-heading font-semibold tracking-wider uppercase backdrop-blur-sm mb-2 sm:mb-2.5">
             <span className="w-1.5 h-1.5 rounded-full bg-ds-accent animate-pulse" />
             <span>Next-Gen Gaming & Snooker Arena</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="font-heading text-4xl sm:text-6xl lg:text-[4.25rem] xl:text-[5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-[0.94]">
+          {/* Headline - Tight Esports Stack */}
+          <h1 className="font-heading text-4xl sm:text-6xl lg:text-[4.25rem] xl:text-[5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-[0.75] sm:leading-[0.76] lg:leading-[0.76]">
             <span className="block">Play</span>
-            <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent">
+            <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent py-0.5">
               Beyond
             </span>
             <span className="block">Reality</span>
           </h1>
 
           {/* Tagline */}
-          <p className="mt-3 sm:mt-4 font-heading text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-ds-text-muted">
+          <p className="mt-3.5 sm:mt-4 font-heading text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-ds-text-muted">
             Consoles <span className="px-1.5 text-ds-accent">·</span> PC Gaming <span className="px-1.5 text-ds-accent">·</span> Snooker <span className="px-1.5 text-ds-accent">·</span> Good Vibes
           </p>
 
           {/* Divider */}
-          <div className="mt-3.5 h-0.5 w-24 bg-gradient-to-r from-ds-accent via-ds-accent/40 to-transparent" />
+          <div className="mt-3 h-0.5 w-24 bg-gradient-to-r from-ds-accent via-ds-accent/40 to-transparent" />
 
           {/* Action CTAs */}
           <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
