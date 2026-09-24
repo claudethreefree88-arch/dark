@@ -13,7 +13,7 @@ const zones = [
 
 export function HeroSection() {
   return (
-    <section className="relative isolate min-h-[100dvh] lg:h-[100dvh] lg:min-h-[640px] lg:max-h-[960px] overflow-hidden bg-ds-dark pt-20 sm:pt-24 lg:pt-24 pb-4 sm:pb-6 lg:pb-7 flex flex-col justify-between">
+    <section className="relative isolate min-h-[100dvh] lg:h-[100dvh] overflow-hidden bg-ds-dark pt-16 sm:pt-20 lg:pt-20 pb-3 sm:pb-5 lg:pb-6 flex flex-col justify-between">
       {/* Background Image & Cyber Overlays */}
       <div
         className="absolute inset-0 -z-20 bg-cover bg-center lg:bg-[center_top]"
@@ -25,37 +25,37 @@ export function HeroSection() {
       {/* Main Content Container */}
       <div className="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col justify-between px-4 sm:px-8 lg:px-10">
         {/* Top Text & CTA Block */}
-        <div className="max-w-2xl pt-2 sm:pt-4 lg:pt-6">
+        <div className="max-w-2xl pt-1 sm:pt-3 lg:pt-4">
           {/* Eyebrow Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ds-accent/10 border border-ds-accent/30 text-ds-ice text-[11px] sm:text-xs font-heading font-semibold tracking-wider uppercase backdrop-blur-sm mb-2 sm:mb-2.5">
+          <div className="inline-flex items-center gap-2 px-3 py-0.5 sm:py-1 rounded-full bg-ds-accent/10 border border-ds-accent/30 text-ds-ice text-[10px] sm:text-xs font-heading font-semibold tracking-wider uppercase backdrop-blur-sm mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-ds-accent animate-pulse" />
             <span>Next-Gen Gaming & Snooker Arena</span>
           </div>
 
-          {/* Headline - Ultra-Tight Esports Stack */}
-          <h1 className="font-heading text-4xl sm:text-6xl lg:text-[4.25rem] xl:text-[5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-[0.68] sm:leading-[0.69] lg:leading-[0.69]">
+          {/* Headline - Physical Negative Margin for Zero Gap */}
+          <h1 className="font-heading text-4xl sm:text-5xl lg:text-[3.75rem] xl:text-[4.5rem] font-black uppercase tracking-tight text-white drop-shadow-2xl leading-none">
             <span className="block">Play</span>
-            <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent">
+            <span className="block -mt-1 sm:-mt-2.5 lg:-mt-3.5 bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent">
               Beyond
             </span>
-            <span className="block">Reality</span>
+            <span className="block -mt-1 sm:-mt-2.5 lg:-mt-3.5">Reality</span>
           </h1>
 
           {/* Tagline */}
-          <p className="mt-3.5 sm:mt-4 font-heading text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-ds-text-muted">
+          <p className="mt-2.5 sm:mt-3 font-heading text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-ds-text-muted">
             Consoles <span className="px-1.5 text-ds-accent">·</span> PC Gaming <span className="px-1.5 text-ds-accent">·</span> Snooker <span className="px-1.5 text-ds-accent">·</span> Good Vibes
           </p>
 
           {/* Divider */}
-          <div className="mt-3 h-0.5 w-24 bg-gradient-to-r from-ds-accent via-ds-accent/40 to-transparent" />
+          <div className="mt-2.5 h-0.5 w-24 bg-gradient-to-r from-ds-accent via-ds-accent/40 to-transparent" />
 
           {/* Action CTAs */}
-          <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-3 sm:gap-4">
             <Link href="/booking">
               <Button
                 size="lg"
                 variant="accent"
-                className="rounded-full px-6 py-3 text-sm font-heading font-bold uppercase tracking-wider shadow-[0_0_24px_rgba(41,186,255,0.35)] hover:shadow-[0_0_36px_rgba(41,186,255,0.55)] transition-all"
+                className="rounded-full px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-heading font-bold uppercase tracking-wider shadow-[0_0_24px_rgba(41,186,255,0.35)] hover:shadow-[0_0_36px_rgba(41,186,255,0.55)] transition-all"
               >
                 <CalendarDays className="mr-2 h-4 w-4" />
                 Book Your Slot
@@ -65,7 +65,7 @@ export function HeroSection() {
 
             <Link
               href="/facilities"
-              className="inline-flex items-center gap-2 rounded-full border border-ds-border-light/70 bg-ds-dark/60 px-5 py-3 font-heading text-sm font-semibold text-ds-text backdrop-blur-md transition hover:border-ds-accent hover:text-ds-ice hover:bg-ds-surface/70"
+              className="inline-flex items-center gap-2 rounded-full border border-ds-border-light/70 bg-ds-dark/60 px-4 sm:px-5 py-2.5 sm:py-3 font-heading text-xs sm:text-sm font-semibold text-ds-text backdrop-blur-md transition hover:border-ds-accent hover:text-ds-ice hover:bg-ds-surface/70"
             >
               <CirclePlay className="h-4 w-4 text-ds-accent" />
               Explore the arena
@@ -73,29 +73,29 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Bottom Zone Cards - Perfectly Framed Above The Fold */}
-        <div className="pt-6 sm:pt-8 lg:pt-4">
+        {/* Bottom Zone Cards - Scaled for all screen heights */}
+        <div className="pt-4 sm:pt-6 lg:pt-3">
           <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
             {zones.map((zone) => (
               <Link
                 key={zone.name}
                 href={zone.href}
-                className="group relative h-20 sm:h-24 lg:h-28 overflow-hidden rounded-xl sm:rounded-2xl border border-ds-border-light/50 bg-ds-dark/70 shadow-lg backdrop-blur-sm transition-all duration-300 hover:border-ds-accent/70 hover:shadow-[0_0_20px_rgba(41,186,255,0.2)]"
+                className="group relative h-16 sm:h-20 lg:h-22 xl:h-24 overflow-hidden rounded-xl sm:rounded-2xl border border-ds-border-light/50 bg-ds-dark/70 shadow-lg backdrop-blur-sm transition-all duration-300 hover:border-ds-accent/70 hover:shadow-[0_0_20px_rgba(41,186,255,0.2)]"
               >
                 <div
                   className="absolute inset-0 bg-cover bg-center opacity-45 transition duration-500 group-hover:scale-110 group-hover:opacity-65"
                   style={{ backgroundImage: `url('${zone.image}')` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#02070d] via-[#02070d]/60 to-transparent" />
-                <div className="relative z-10 flex h-full flex-col justify-end p-2.5 sm:p-3.5">
-                  <span className="text-[10px] font-heading font-medium uppercase tracking-wider text-ds-accent line-clamp-1">
+                <div className="relative z-10 flex h-full flex-col justify-end p-2 sm:p-3">
+                  <span className="text-[9px] sm:text-[10px] font-heading font-medium uppercase tracking-wider text-ds-accent line-clamp-1">
                     {zone.tag}
                   </span>
                   <div className="flex items-center justify-between gap-1">
-                    <span className="font-heading text-xs sm:text-sm lg:text-base font-extrabold uppercase tracking-wide text-white group-hover:text-ds-ice transition-colors truncate">
+                    <span className="font-heading text-xs sm:text-sm lg:text-sm xl:text-base font-extrabold uppercase tracking-wide text-white group-hover:text-ds-ice transition-colors truncate">
                       {zone.name}
                     </span>
-                    <span className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full border border-ds-accent/50 text-ds-ice transition group-hover:bg-ds-accent group-hover:text-ds-dark group-hover:scale-105">
+                    <span className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-full border border-ds-accent/50 text-ds-ice transition group-hover:bg-ds-accent group-hover:text-ds-dark group-hover:scale-105">
                       <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                     </span>
                   </div>
