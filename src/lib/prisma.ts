@@ -30,8 +30,8 @@ function parseDatabaseUrl(urlStr?: string) {
       password: decodeURIComponent(parsed.password || ''),
       database: parsed.pathname ? parsed.pathname.replace(/^\//, '') : 'dark_syndicate',
       connectionLimit: 10,
-      connectTimeout: 1500,
-      acquireTimeout: 1500,
+      connectTimeout: 10000,
+      acquireTimeout: 10000,
       ...(process.env.DB_SSL === 'true' ? { ssl: true } : {}),
     };
   } catch {
@@ -42,8 +42,8 @@ function parseDatabaseUrl(urlStr?: string) {
       password: '',
       database: 'dark_syndicate',
       connectionLimit: 10,
-      connectTimeout: 1500,
-      acquireTimeout: 1500,
+      connectTimeout: 10000,
+      acquireTimeout: 10000,
       ...(process.env.DB_SSL === 'true' ? { ssl: true } : {}),
     };
   }
