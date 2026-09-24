@@ -123,6 +123,17 @@ function LoginContent() {
 
         </>}
 
+        {portal === 'admin' && (
+          <button
+            type="button"
+            onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-ds-accent/35 bg-ds-accent/10 px-4 py-3 text-xs font-heading font-bold uppercase tracking-wider text-ds-ice transition hover:bg-ds-accent/20"
+          >
+            <KeyRound className="h-4 w-4" />
+            Fill admin demo credentials
+          </button>
+        )}
+
         {/* Login Form */}
         <div className="glass-strong rounded-2xl p-8 shadow-elevated">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>

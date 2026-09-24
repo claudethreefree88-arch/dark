@@ -23,7 +23,7 @@ export function HeroSection() {
 
       <div className="mx-auto flex min-h-[650px] max-w-7xl flex-col justify-between px-5 pb-8 sm:px-8 lg:min-h-[calc(100vh-9rem)] lg:px-10">
         <div className="max-w-2xl pt-10 sm:pt-14 lg:pt-16">
-          <h1 className="font-heading text-[clamp(4rem,9vw,8.75rem)] font-black uppercase leading-[0.76] tracking-[-0.07em] text-white drop-shadow-2xl">
+          <h1 className="font-heading text-[clamp(4rem,9vw,8.75rem)] font-black uppercase leading-[0.5] tracking-[-0.07em] text-white drop-shadow-2xl">
             <span className="block">Play</span>
             <span className="block bg-gradient-to-r from-[#3299ff] via-[#18d6ea] to-[#58e0ef] bg-clip-text text-transparent">Beyond</span>
             <span className="block">Reality</span>
