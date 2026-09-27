@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import { getSession } from '@/lib/session';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const data = walkInSchema.parse(body);
+    const staffSession = await getSession();
+    const staffName = staffSession ? `${staffSession.firstName} ${staffSession.lastName}`.trim() : null;
 
     try {
       const station = await prisma.gamingStation.findUnique({
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
             isWalkIn: true,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
-            notes: data.notes || 'Front desk walk-in check-in',
+            notes: data.notes || (staffName ? `Walk-in registered by ${staffName}` : 'Front desk walk-in check-in'),
           },
         });
 
@@ -97,20 +100,39 @@ export async function POST(req: NextRequest) {
             method: data.paymentMethod === 'UPI' ? 'UPI' : 'CASH',
             status: 'COMPLETED',
             paidAt: now,
-            notes: `Walk-in desk payment (${data.paymentMethod})`,
+            notes: `Walk-in desk payment (${data.paymentMethod})${staffName ? ` processed by ${staffName}` : ''}`,
           },
         });
 
-        // Launch session
+        // Launch session with staffId
         const session = await tx.gamingSession.create({
           data: {
             bookingId: booking.id,
             stationId: station.id,
+            staffId: staffSession?.userId || null,
             status: 'ACTIVE',
             startedAt: now,
             scheduledEndAt,
           },
         });
+
+        // Log staff activity if staff user is present
+        if (staffSession?.userId) {
+          await tx.staffActivityLog.create({
+            data: {
+              userId: staffSession.userId,
+              action: 'WALK_IN_CHECKIN',
+              entityType: 'booking',
+              entityId: booking.id,
+              details: {
+                bookingRef,
+                customerName: data.customerName,
+                stationName: station.name,
+                staffName,
+              },
+            },
+          });
+        }
 
         // Mark station OCCUPIED
         await tx.gamingStation.update({
