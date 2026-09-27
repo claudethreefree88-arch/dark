@@ -117,7 +117,6 @@ export async function GET(req: NextRequest) {
     const methodTotals = new Map<string, { amountPaise: number; count: number }>();
     const facilityRevenue = new Map<string, number>();
     const dailyRevenue = new Map<string, number>();
-    const refundByBooking = new Map<string, number>();
     const stationRefunds = new Map<string, number>();
 
     for (const payment of payments) {
@@ -134,10 +133,8 @@ export async function GET(req: NextRequest) {
       }
     }
     for (const refund of refunds) {
-      const bookingId = refund.payment.bookingId;
       const stationId = refund.payment.booking.station.id;
       const facilityId = refund.payment.booking.station.facility.id;
-      refundByBooking.set(bookingId, (refundByBooking.get(bookingId) || 0) + refund.amountPaise);
       stationRefunds.set(stationId, (stationRefunds.get(stationId) || 0) + refund.amountPaise);
       facilityRevenue.set(facilityId, (facilityRevenue.get(facilityId) || 0) - refund.amountPaise);
       if (refund.processedAt) {
@@ -189,7 +186,7 @@ export async function GET(req: NextRequest) {
       return {
         name: facility.name,
         revenueINR: Math.round(revenuePaise / 100),
-        percent: totalCollectedPaise ? Math.round((revenuePaise / totalCollectedPaise) * 100) : 0,
+        percent: totalCollectedPaise > refundsPaise ? Math.round((revenuePaise / (totalCollectedPaise - refundsPaise)) * 100) : 0,
       };
     });
 
@@ -219,7 +216,7 @@ export async function GET(req: NextRequest) {
         name: station.name,
         type: station.stationType,
         hoursBooked: Math.round((stationTotals.get(station.id)?.hours || 0) * 10) / 10,
-        revenuePaise: stationTotals.get(station.id)?.revenuePaise || 0,
+        revenuePaise: (stationTotals.get(station.id)?.revenuePaise || 0) - (stationRefunds.get(station.id) || 0),
       })),
       peakHours: hourCounts,
     });
