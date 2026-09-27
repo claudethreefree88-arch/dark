@@ -13,8 +13,6 @@ import {
   TrendingUp,
   Percent,
   ArrowRight,
-  ShieldCheck,
-  Clock,
   Sparkles,
   RotateCw,
 } from 'lucide-react';
@@ -145,7 +143,7 @@ export default function AdminDashboardPage() {
 
         <Card glass className="p-5 border-ds-border">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-mono text-ds-text-dim">Station Occupancy</span>
+            <span className="text-[10px] uppercase font-mono text-ds-text-dim">Station Usage</span>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
               <Percent className="w-4 h-4" />
             </div>
@@ -258,9 +256,9 @@ export default function AdminDashboardPage() {
         <div className="flex items-center justify-between border-b border-ds-border pb-4 mb-4">
           <div>
             <h3 className="text-base font-heading font-bold uppercase text-ds-text">
-              Live Operations Activity Feed
+              Recent Operations Activity
             </h3>
-            <p className="text-xs text-ds-text-muted mt-0.5">Real-time check-ins, payments, and sessions.</p>
+            <p className="text-xs text-ds-text-muted mt-0.5">Latest bookings recorded in the system.</p>
           </div>
 
           <Link href="/admin/bookings">

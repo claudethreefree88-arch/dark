@@ -33,6 +33,7 @@ export default function AdminReportsPage() {
   const loadReports = async () => {
     setLoading(true);
     setLoadError('');
+    setReportData(null);
     try {
       const res = await fetch(`/api/admin/reports?timeframe=${timeframe}`);
       const json = await res.json();

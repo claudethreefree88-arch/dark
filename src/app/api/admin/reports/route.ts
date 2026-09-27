@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
         orderBy: { date: 'asc' },
       }),
       prisma.payment.findMany({
-        where: { status: 'COMPLETED', paidAt: { gte: startDate, lt: endDate } },
+        where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: startDate, lt: endDate } },
         select: {
           amountPaise: true,
           method: true,
@@ -96,7 +96,18 @@ export async function GET(req: NextRequest) {
         select: {
           amountPaise: true,
           processedAt: true,
-          payment: { select: { bookingId: true, booking: { select: { station: { select: { id: true, facility: { select: { id: true } } } } } } },
+          payment: {
+            select: {
+              bookingId: true,
+              booking: {
+                select: {
+                  station: {
+                    select: { id: true, facility: { select: { id: true } } },
+                  },
+                },
+              },
+            },
+          },
         },
       }),
       prisma.gamingFacility.findMany({

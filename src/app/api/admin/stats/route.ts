@@ -72,7 +72,7 @@ export async function GET(_req: NextRequest) {
       recentBookings,
     ] = await Promise.all([
       prisma.payment.findMany({
-        where: { status: 'COMPLETED', paidAt: { gte: todayStart, lt: tomorrowStart } },
+        where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: todayStart, lt: tomorrowStart } },
         select: { amountPaise: true },
       }),
       prisma.refund.aggregate({
@@ -80,7 +80,7 @@ export async function GET(_req: NextRequest) {
         _sum: { amountPaise: true },
       }),
       prisma.payment.findMany({
-        where: { status: 'COMPLETED', paidAt: { gte: monthStart, lte: now } },
+        where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: monthStart, lte: now } },
         select: { amountPaise: true },
       }),
       prisma.refund.aggregate({
@@ -88,7 +88,7 @@ export async function GET(_req: NextRequest) {
         _sum: { amountPaise: true },
       }),
       prisma.payment.findMany({
-        where: { status: 'COMPLETED', paidAt: { gte: weekStart, lt: tomorrowStart } },
+        where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: weekStart, lt: tomorrowStart } },
         select: { amountPaise: true, paidAt: true },
       }),
       prisma.refund.findMany({
@@ -103,7 +103,7 @@ export async function GET(_req: NextRequest) {
       }),
       prisma.booking.count({ where: { status: { notIn: ['CANCELLED', 'PAYMENT_FAILED', 'NO_SHOW'] } } }),
       prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
-      prisma.gamingStation.count({ where: { status: { not: 'DEACTIVATED' } } }),
+      prisma.gamingStation.count({ where: { status: { in: ['AVAILABLE', 'OCCUPIED'] } } }),
       prisma.gamingSession.count({ where: { status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] } } }),
       prisma.booking.findMany({
         where: {
