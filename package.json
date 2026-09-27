@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "test:security": "npx tsx scripts/security-audit.ts",
     "test:load": "npx tsx scripts/load-test.ts",
+    "test:e2e": "node scripts/test_flow.mjs",
     "deploy:prepare": "node scripts/deploy-prepare.js"
   },
   "prisma": {
@@ -49,6 +50,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
