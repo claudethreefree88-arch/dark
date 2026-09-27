@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, UserRound, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, UserRound } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@/validators/auth.schema';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +31,6 @@ function LoginContent() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -59,11 +58,6 @@ function LoginContent() {
         error instanceof Error ? error.message : 'Invalid credentials'
       );
     }
-  };
-
-  const handleFillDemo = (email: string, pass: string) => {
-    setValue('email', email, { shouldValidate: true });
-    setValue('password', pass, { shouldValidate: true });
   };
 
   return (
@@ -98,52 +92,6 @@ function LoginContent() {
             <span>{portalDetails.subtitle}</span>
           </div>
         </div>
-
-        {portal === 'player' && (
-          <div className="p-3.5 rounded-xl bg-ds-surface/60 border border-ds-border text-xs space-y-2">
-            <div className="flex items-center justify-between text-ds-ice font-semibold">
-              <div className="flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-ds-accent" />
-                <span>Quick Test Credentials:</span>
-              </div>
-              <span className="text-[10px] text-ds-text-dim">1-Click Autofill</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
-                className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-[11px] font-heading font-bold transition-all text-center"
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('staff@darksyndicate.com', 'Staff@123456')}
-                className="p-1.5 rounded-lg bg-ds-accent/10 border border-ds-accent/30 text-ds-ice hover:bg-ds-accent/20 text-[11px] font-heading font-bold transition-all text-center"
-              >
-                🎮 Staff
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('player@example.com', 'Customer@123')}
-                className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-[11px] font-heading font-bold transition-all text-center"
-              >
-                🕹️ Gamer
-              </button>
-            </div>
-          </div>
-        )}
-
-        {portal === 'admin' && (
-          <button
-            type="button"
-            onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-ds-accent/35 bg-ds-accent/10 px-4 py-3 text-xs font-heading font-bold uppercase tracking-wider text-ds-ice transition hover:bg-ds-accent/20"
-          >
-            <KeyRound className="h-4 w-4" />
-            Fill admin demo credentials
-          </button>
-        )}
 
         {/* Login Form */}
         <div className="glass-strong rounded-2xl p-8 shadow-elevated">
