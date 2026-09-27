@@ -1,22 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import {
-  Bell,
   Send,
   Users,
   Shield,
   Gamepad2,
-  CheckCircle2,
-  AlertTriangle,
   History,
-  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+
+interface BroadcastRecord {
+  id: string;
+  title: string;
+  message: string;
+  target: string;
+  type: string;
+  recipients: number;
+  createdAt: string;
+}
 
 export default function AdminNotificationsPage() {
   const [title, setTitle] = useState('');
@@ -25,37 +31,30 @@ export default function AdminNotificationsPage() {
   const [type, setType] = useState('SYSTEM');
   const [sending, setSending] = useState(false);
 
-  const [history, setHistory] = useState([
-    {
-      id: 'b-1',
-      title: 'Weekend FIFA 24 Tournament Announced',
-      message: 'Registration is now live! 32 slots available with a ₹15,000 cash pool.',
-      target: 'ALL',
-      type: 'SYSTEM',
-      recipients: 52,
-      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    },
-    {
-      id: 'b-2',
-      title: 'Console Firmware Update Tonight',
-      message: 'Station 6 and 7 will undergo scheduled maintenance from 12:30 AM to 2:00 AM.',
-      target: 'STAFF',
-      type: 'SYSTEM',
-      recipients: 8,
-      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    },
-    {
-      id: 'b-3',
-      title: 'Happy Gaming! Special Midweek Discount',
-      message: 'Use code CHAMPION15 for 15% off any 2+ hour console or pool booking this Wednesday.',
-      target: 'CUSTOMERS',
-      type: 'BOOKING_CONFIRMED',
-      recipients: 44,
-      createdAt: new Date(Date.now() - 3600000 * 72).toISOString(),
-    },
-  ]);
+  const [history, setHistory] = useState<BroadcastRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
 
   const toast = useToast();
+
+  const loadHistory = async () => {
+    try {
+      const res = await fetch('/api/admin/notifications/broadcast');
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error('Could not load broadcast history.');
+      setHistory(json.data.history || []);
+      setHistoryError('');
+    } catch {
+      setHistoryError('Could not load broadcast history.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadHistory(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,20 +71,9 @@ export default function AdminNotificationsPage() {
         body: JSON.stringify({ title, message, target, type }),
       });
       const json = await res.json();
-      if (json.success) {
+      if (res.ok && json.success) {
         toast.success(json.data.message || 'Broadcast announcement dispatched!');
-        setHistory([
-          {
-            id: `b-${Date.now()}`,
-            title,
-            message,
-            target,
-            type,
-            recipients: json.data.recipientCount || 40,
-            createdAt: new Date().toISOString(),
-          },
-          ...history,
-        ]);
+        setHistory((previous) => [json.data.history, ...previous]);
         setTitle('');
         setMessage('');
       } else {
@@ -108,7 +96,7 @@ export default function AdminNotificationsPage() {
               Notification & Broadcast Center
             </h1>
             <Badge variant="accent" size="sm">
-              INSTANT PUSH
+              IN-APP ALERTS
             </Badge>
           </div>
           <p className="text-xs text-ds-text-muted mt-0.5">
@@ -134,15 +122,15 @@ export default function AdminNotificationsPage() {
                 Target Audience
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {[
+                {([
                   { id: 'ALL', label: 'All Users', icon: Users },
                   { id: 'CUSTOMERS', label: 'Gamers', icon: Gamepad2 },
                   { id: 'STAFF', label: 'Staff', icon: Shield },
-                ].map(({ id, label, icon: Icon }) => (
+                ] as const).map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setTarget(id as any)}
+                    onClick={() => setTarget(id)}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-[11px] font-heading font-bold transition-all ${
                       target === id
                         ? 'bg-ds-accent/20 border-ds-accent text-ds-ice shadow-glow-sm'
@@ -221,10 +209,19 @@ export default function AdminNotificationsPage() {
                 Broadcast History Log
               </h2>
             </div>
-            <span className="text-xs text-ds-text-dim">{history.length} dispatched</span>
+            <span className="text-xs text-ds-text-dim">{history.length} recent broadcasts</span>
           </div>
 
           <div className="space-y-3">
+            {historyLoading && <p className="py-8 text-center text-xs text-ds-text-dim">Loading broadcast history…</p>}
+            {!historyLoading && historyError && (
+              <div role="alert" className="py-8 text-center text-xs text-red-300">
+                {historyError} <button type="button" onClick={() => { setHistoryLoading(true); void loadHistory(); }} className="underline font-semibold">Retry</button>
+              </div>
+            )}
+            {!historyLoading && !historyError && history.length === 0 && (
+              <p className="py-8 text-center text-xs text-ds-text-dim">No broadcasts have been sent yet.</p>
+            )}
             {history.map((item) => (
               <div
                 key={item.id}
@@ -238,7 +235,7 @@ export default function AdminNotificationsPage() {
                     <div className="flex items-center gap-2 text-[10px] text-ds-text-dim font-mono mt-1">
                       <span>Target: <strong className="text-ds-ice">{item.target}</strong></span>
                       <span>•</span>
-                      <span>{new Date(item.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>{new Date(item.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
 

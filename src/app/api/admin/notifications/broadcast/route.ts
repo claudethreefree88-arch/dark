@@ -1,8 +1,9 @@
+import { randomUUID } from 'crypto';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError } from '@/lib/errors';
+import { apiSuccess, AuthError, ForbiddenError, handleApiError, ValidationError } from '@/lib/errors';
+import { getSession } from '@/lib/session';
 import { z } from 'zod';
-import { logAudit } from '@/lib/audit';
 
 const broadcastSchema = z.object({
   title: z.string().min(3, 'Title is required'),
@@ -19,55 +20,95 @@ const broadcastSchema = z.object({
   ]).default('SYSTEM'),
 });
 
+async function requireAdmin() {
+  const session = await getSession();
+  if (!session) throw new AuthError();
+  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') throw new ForbiddenError();
+  return session;
+}
+
+export async function GET() {
+  try {
+    await requireAdmin();
+    const logs = await prisma.auditLog.findMany({
+      where: { entityType: 'BroadcastNotification', action: 'CREATE' },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { id: true, newValue: true, createdAt: true },
+    });
+
+    const history = logs.flatMap((log) => {
+      const value = log.newValue;
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+      if (typeof value.title !== 'string' || typeof value.message !== 'string') return [];
+      return [{
+        id: log.id,
+        title: value.title,
+        message: value.message,
+        target: typeof value.target === 'string' ? value.target : 'ALL',
+        type: typeof value.type === 'string' ? value.type : 'SYSTEM',
+        recipients: typeof value.recipients === 'number' ? value.recipients : 0,
+        createdAt: log.createdAt,
+      }];
+    });
+
+    return apiSuccess({ history });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const data = broadcastSchema.parse(body);
+    const session = await requireAdmin();
+    const data = broadcastSchema.parse(await req.json());
+    const users = await prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        role: data.target === 'CUSTOMERS'
+          ? 'CUSTOMER'
+          : data.target === 'STAFF'
+            ? { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] }
+            : undefined,
+      },
+      select: { id: true },
+    });
+    if (users.length === 0) throw new ValidationError('No active users match the selected audience.');
 
-    let dispatchedCount = 0;
-    try {
-      let roleFilter: any = {};
-      if (data.target === 'CUSTOMERS') {
-        roleFilter = { role: 'CUSTOMER' };
-      } else if (data.target === 'STAFF') {
-        roleFilter = { role: { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] } };
-      }
-
-      const users = await prisma.user.findMany({
-        where: { status: 'ACTIVE', ...roleFilter },
-        select: { id: true },
-      });
-
-      if (users.length > 0) {
-        const notifData = users.map((u) => ({
-          userId: u.id,
+    const result = await prisma.$transaction(async (tx) => {
+      const created = await tx.notification.createMany({
+        data: users.map((user) => ({
+          userId: user.id,
           type: data.type,
           title: data.title,
           message: data.message,
           isRead: false,
-        }));
-
-        await prisma.notification.createMany({
-          data: notifData,
-        });
-        dispatchedCount = users.length;
-      }
-
-      await logAudit({
-        action: 'CREATE',
-        entityType: 'BroadcastNotification',
-        entityId: `broadcast-${Date.now()}`,
-        newValue: { ...data, recipients: dispatchedCount },
+        })),
       });
-    } catch {
-      dispatchedCount = data.target === 'STAFF' ? 8 : 42;
-    }
+      const audit = await tx.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'CREATE',
+          entityType: 'BroadcastNotification',
+          entityId: `broadcast-${randomUUID()}`,
+          newValue: { ...data, recipients: created.count },
+        },
+      });
+      return { count: created.count, history: {
+        id: audit.id,
+        title: data.title,
+        message: data.message,
+        target: data.target,
+        type: data.type,
+        recipients: created.count,
+        createdAt: audit.createdAt,
+      } };
+    });
 
     return apiSuccess({
-      message: `Announcement broadcast successfully to ${dispatchedCount} recipient${dispatchedCount === 1 ? '' : 's'}.`,
-      recipientCount: dispatchedCount,
-      title: data.title,
-      target: data.target,
+      message: `Announcement broadcast to ${result.count} recipient${result.count === 1 ? '' : 's'}.`,
+      recipientCount: result.count,
+      history: result.history,
     });
   } catch (error) {
     return handleApiError(error);

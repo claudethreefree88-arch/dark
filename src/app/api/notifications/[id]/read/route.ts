@@ -1,22 +1,21 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError } from '@/lib/errors';
+import { apiSuccess, AuthError, handleApiError, NotFoundError } from '@/lib/errors';
+import { getSession } from '@/lib/session';
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) throw new AuthError();
     const { id } = await params;
-
-    try {
-      await prisma.notification.update({
-        where: { id },
-        data: { isRead: true },
-      });
-    } catch {
-      // Fallback in simulation
-    }
+    const result = await prisma.notification.updateMany({
+      where: { id, userId: session.userId },
+      data: { isRead: true },
+    });
+    if (result.count === 0) throw new NotFoundError('Notification');
 
     return apiSuccess({ message: 'Notification marked as read', id });
   } catch (error) {
