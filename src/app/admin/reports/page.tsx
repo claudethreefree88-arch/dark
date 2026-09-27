@@ -5,19 +5,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import {
-  BarChart3,
-  TrendingUp,
   Download,
-  Calendar,
-  Clock,
-  Gamepad2,
-  DollarSign,
-  PieChart as PieChartIcon,
   RotateCw,
   Printer,
-  Sparkles,
-  Users,
-  Flame,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,7 +19,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
+  Line,
 } from 'recharts';
 import { useToast } from '@/components/ui/Toast';
 
@@ -65,7 +55,7 @@ export default function AdminReportsPage() {
 
   const handleExportCSV = () => {
     if (!reportData?.trend) return;
-    const headers = 'Date,Gross Revenue (INR),Total Bookings,Walk-in Bookings\n';
+    const headers = 'Date,Net Revenue (INR),Total Bookings,Walk-in Bookings\n';
     const rows = reportData.trend
       .map((t: any) => `${t.date},${t.revenue},${t.bookings},${t.walkIns || 0}`)
       .join('\n');
@@ -105,7 +95,9 @@ export default function AdminReportsPage() {
     walkInSharePercent: 0,
     walkInCount: 0,
     onlineCount: 0,
+    refundsPaise: 0,
   };
+  const reportCurrency = (paise: number) => loading ? '—' : `₹${(paise / 100).toLocaleString('en-IN')}`;
 
   return (
     <div className="space-y-8 print:p-0">
@@ -145,12 +137,12 @@ export default function AdminReportsPage() {
             ))}
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!reportData || loading}>
             <Download className="w-3.5 h-3.5 mr-1.5" />
             <span>CSV</span>
           </Button>
 
-          <Button variant="outline" size="sm" onClick={handleExportJSON}>
+          <Button variant="outline" size="sm" onClick={handleExportJSON} disabled={!reportData || loading}>
             <Download className="w-3.5 h-3.5 mr-1.5" />
             <span>JSON</span>
           </Button>
@@ -160,7 +152,7 @@ export default function AdminReportsPage() {
             <span>Print</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={loadReports}>
+          <Button variant="ghost" size="sm" onClick={loadReports} disabled={loading} aria-label="Refresh reports">
             <RotateCw className="w-3.5 h-3.5" />
           </Button>
         </div>
@@ -180,10 +172,10 @@ export default function AdminReportsPage() {
             Collected Payments
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-text mt-1">
-            ₹{(summary.grossRevenuePaise / 100).toLocaleString('en-IN')}
+            {reportCurrency(summary.grossRevenuePaise)}
           </p>
           <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
-            <TrendingUp className="w-3 h-3" /> Before refunds
+            Before refunds
           </span>
         </Card>
 
@@ -192,10 +184,10 @@ export default function AdminReportsPage() {
             Net Revenue
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-ice mt-1">
-            ₹{(summary.netRevenuePaise / 100).toLocaleString('en-IN')}
+            {reportCurrency(summary.netRevenuePaise)}
           </p>
           <span className="text-[10px] text-ds-text-dim mt-1 block">
-            Refunds: ₹{(summary.refundsPaise / 100).toLocaleString('en-IN')}
+            Refunds: {reportCurrency(summary.refundsPaise)}
           </span>
         </Card>
 
@@ -204,10 +196,10 @@ export default function AdminReportsPage() {
             Total Bookings
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-text mt-1">
-            {summary.totalBookings}
+            {loading ? '—' : summary.totalBookings}
           </p>
           <span className="text-[10px] text-ds-ice mt-1 block">
-            {summary.onlineCount} online / {summary.walkInCount} walk-in
+            {loading ? 'Loading bookings' : `${summary.onlineCount} online / ${summary.walkInCount} walk-in`}
           </span>
         </Card>
 
@@ -216,7 +208,7 @@ export default function AdminReportsPage() {
             Avg Order Value
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-text mt-1">
-            ₹{(summary.averageBookingValuePaise / 100).toFixed(0)}
+            {reportCurrency(summary.averageBookingValuePaise)}
           </p>
           <span className="text-[10px] text-ds-text-dim mt-1 block">Per paid booking</span>
         </Card>
@@ -226,7 +218,7 @@ export default function AdminReportsPage() {
             Booked Hours
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-ice mt-1">
-            {summary.totalHoursPlayed} hrs
+            {loading ? '—' : `${summary.totalHoursPlayed} hrs`}
           </p>
           <span className="text-[10px] text-ds-text-dim mt-1 block">Scheduled booking duration</span>
         </Card>
@@ -236,7 +228,7 @@ export default function AdminReportsPage() {
             Walk-in Share
           </p>
           <p className="text-xl font-heading font-extrabold text-emerald-400 mt-1">
-            {summary.walkInSharePercent}%
+            {loading ? '—' : `${summary.walkInSharePercent}%`}
           </p>
           <span className="text-[10px] text-ds-text-dim mt-1 block">{summary.walkInCount} walk-in bookings</span>
         </Card>
@@ -277,11 +269,13 @@ export default function AdminReportsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis
+                  yAxisId="revenue"
                   stroke="#64748b"
                   fontSize={11}
                   tickLine={false}
                   tickFormatter={(v) => `₹${v}`}
                 />
+                <YAxis yAxisId="bookings" orientation="right" stroke="#a78bfa" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#0a0f1d',
@@ -298,11 +292,13 @@ export default function AdminReportsPage() {
                 <Area
                   type="monotone"
                   dataKey="revenue"
+                  yAxisId="revenue"
                   stroke="#38bdf8"
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#revGrad)"
                 />
+                <Line type="monotone" dataKey="bookings" yAxisId="bookings" stroke="#a78bfa" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
