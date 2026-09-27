@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { hashPassword } from '@/lib/auth';
+import { getActiveUserMembership } from '@/lib/memberships';
 import {
   apiSuccess,
   handleApiError,
@@ -83,12 +84,22 @@ export async function POST(req: NextRequest) {
       let userId: string;
       if (session?.userId) {
         userId = session.userId;
+        const userRec = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { status: true },
+        });
+        if (userRec?.status === 'BLOCKED') {
+          throw new ValidationError('Your account is currently suspended. Please contact Dark Syndicate management.');
+        }
       } else if (data.customerEmail) {
         let existingUser = await prisma.user.findUnique({
           where: { email: data.customerEmail.toLowerCase() },
         });
 
         if (existingUser) {
+          if (existingUser.status === 'BLOCKED') {
+            throw new ValidationError('This account is currently suspended. Please contact Dark Syndicate management.');
+          }
           userId = existingUser.id;
         } else {
           // Auto create user
@@ -219,6 +230,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Automatic Membership Discount
+      let membershipDiscountPaise = 0;
+      let membershipPlanName: string | null = null;
+      try {
+        const activeMembership = await getActiveUserMembership(userId);
+        if (activeMembership && activeMembership.discountPercent > 0) {
+          membershipPlanName = activeMembership.planNameSnapshot;
+          membershipDiscountPaise = Math.round((subtotalPaise * activeMembership.discountPercent) / 100);
+          discountPaise += membershipDiscountPaise;
+        }
+      } catch {
+        // non-blocking fallback
+      }
+
       const totalPricePaise = Math.max(0, subtotalPaise - discountPaise);
 
       // 4. Concurrency Protection & Booking Creation inside Transaction
@@ -265,6 +290,8 @@ export async function POST(req: NextRequest) {
             durationMinutes: data.durationMinutes,
             subtotalPaise,
             discountPaise,
+            membershipDiscountPaise,
+            membershipPlanName,
             totalPricePaise,
             status: data.payAtCounter ? 'CONFIRMED' : 'PENDING',
             qrToken,

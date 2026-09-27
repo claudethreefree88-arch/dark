@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 import { getSession } from '@/lib/session';
+import { getActiveUserMembership } from '@/lib/memberships';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -64,9 +65,31 @@ export async function POST(req: NextRequest) {
       const subtotalPaise = Math.round(hourlyRate * (data.durationMinutes / 60));
 
       const result = await prisma.$transaction(async (tx) => {
-        // Resolve guest user
-        let user = await tx.user.findFirst({ where: { role: 'CUSTOMER' } });
+        // Resolve registered customer by phone or fallback guest user
+        const phoneDigits = data.customerPhone.replace(/\D/g, '').slice(-10);
+        const registeredUser = phoneDigits.length >= 10
+          ? await tx.user.findFirst({
+              where: {
+                role: 'CUSTOMER',
+                phone: { contains: phoneDigits },
+              },
+            })
+          : null;
+
+        let user = registeredUser || (await tx.user.findFirst({ where: { role: 'CUSTOMER' } }));
         if (!user) user = await tx.user.findFirst();
+
+        // Check active membership
+        let membershipDiscountPaise = 0;
+        let membershipPlanName: string | null = null;
+        if (registeredUser) {
+          const activeMem = await getActiveUserMembership(registeredUser.id);
+          if (activeMem && activeMem.discountPercent > 0) {
+            membershipPlanName = activeMem.planNameSnapshot;
+            membershipDiscountPaise = Math.round((subtotalPaise * activeMem.discountPercent) / 100);
+          }
+        }
+        const totalPricePaise = Math.max(0, subtotalPaise - membershipDiscountPaise);
 
         const bookingRef = `DS-WALK-${Date.now().toString().slice(-4)}`;
         const qrToken = `ds-walk-${crypto.randomUUID()}`;
@@ -81,13 +104,20 @@ export async function POST(req: NextRequest) {
             endTime: scheduledEndAt,
             durationMinutes: data.durationMinutes,
             subtotalPaise,
-            totalPricePaise: subtotalPaise,
+            discountPaise: membershipDiscountPaise,
+            membershipDiscountPaise,
+            membershipPlanName,
+            totalPricePaise,
             status: 'IN_PROGRESS',
             qrToken,
             isWalkIn: true,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
-            notes: data.notes || (staffName ? `Walk-in registered by ${staffName}` : 'Front desk walk-in check-in'),
+            notes:
+              data.notes ||
+              (staffName
+                ? `Walk-in registered by ${staffName}${membershipPlanName ? ` [${membershipPlanName}]` : ''}`
+                : 'Front desk walk-in check-in'),
           },
         });
 
@@ -96,11 +126,11 @@ export async function POST(req: NextRequest) {
           data: {
             bookingId: booking.id,
             userId: user?.id || 'guest_user',
-            amountPaise: subtotalPaise,
+            amountPaise: totalPricePaise,
             method: data.paymentMethod === 'UPI' ? 'UPI' : 'CASH',
             status: 'COMPLETED',
             paidAt: now,
-            notes: `Walk-in desk payment (${data.paymentMethod})${staffName ? ` processed by ${staffName}` : ''}`,
+            notes: `Walk-in desk payment (${data.paymentMethod})${staffName ? ` processed by ${staffName}` : ''}${membershipPlanName ? ` [${membershipPlanName} Discount: ₹${(membershipDiscountPaise / 100).toFixed(0)}]` : ''}`,
           },
         });
 

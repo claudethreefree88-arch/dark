@@ -115,6 +115,12 @@ enum NotificationType {
   SYSTEM
 }
 
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 // ─── MODELS ────────────────────────────────────────────────────────────────────
 
 /// Core user model for all roles (Admin, Staff, Customer)
@@ -143,6 +149,7 @@ model User {
   couponRedemptions  CouponRedemption[]
   passwordResets     PasswordReset[]
   refundsProcessed   Refund[]            @relation("RefundProcessor")
+  memberships        Membership[]
 
   @@index([role])
   @@index([status])
@@ -252,8 +259,10 @@ model Booking {
   endTime          DateTime      @map("end_time")
   durationMinutes  Int           @map("duration_minutes")
   subtotalPaise    Int           @map("subtotal_paise")
-  discountPaise    Int           @default(0) @map("discount_paise")
-  totalPricePaise  Int           @map("total_price_paise")
+  discountPaise           Int           @default(0) @map("discount_paise")
+  membershipDiscountPaise Int           @default(0) @map("membership_discount_paise")
+  membershipPlanName      String?       @map("membership_plan_name")
+  totalPricePaise         Int           @map("total_price_paise")
   status           BookingStatus @default(PENDING)
   qrToken          String        @unique @map("qr_token") // Opaque UUID for QR
   isWalkIn         Boolean       @default(false) @map("is_walk_in")
@@ -541,3 +550,54 @@ model PasswordReset {
   @@index([userId])
   @@map("password_resets")
 }
+
+/// Admin-configured customer membership plans
+model MembershipPlan {
+  id              String        @id @default(uuid())
+  slug            String        @unique
+  name            String
+  tier            String        @default("STANDARD") // SILVER, GOLD, VIP
+  description     String?       @db.Text
+  pricePaise      Int           @map("price_paise")
+  durationDays    Int           @default(30) @map("duration_days")
+  discountPercent Int           @default(10) @map("discount_percent")
+  freeHours       Int           @default(0) @map("free_hours")
+  perks           Json?
+  badgeColor      String?       @map("badge_color")
+  displayOrder    Int           @default(0) @map("display_order")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  memberships     Membership[]
+
+  @@map("membership_plans")
+}
+
+/// Active and historical user memberships
+model Membership {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  planId           String           @map("plan_id")
+  planNameSnapshot String           @map("plan_name_snapshot")
+  tierSnapshot     String           @default("SILVER") @map("tier_snapshot")
+  discountPercent  Int              @default(10) @map("discount_percent")
+  pricePaidPaise   Int              @default(0) @map("price_paid_paise")
+  paymentMethod    PaymentMethod    @default(UPI) @map("payment_method")
+  paymentId        String?          @map("payment_id")
+  status           MembershipStatus @default(ACTIVE)
+  startsAt         DateTime         @default(now()) @map("starts_at")
+  expiresAt        DateTime         @map("expires_at")
+  notes            String?          @db.Text
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             MembershipPlan   @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("memberships")
+}
+

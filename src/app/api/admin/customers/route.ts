@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError, NotFoundError } from '@/lib/errors';
+import { apiSuccess, AuthError, ForbiddenError, handleApiError, NotFoundError } from '@/lib/errors';
+import { getSession } from '@/lib/session';
 import { z } from 'zod';
 
 const updateCustomerStatusSchema = z.object({
@@ -8,8 +9,16 @@ const updateCustomerStatusSchema = z.object({
   status: z.enum(['ACTIVE', 'BLOCKED', 'DEACTIVATED', 'SUSPENDED']),
 });
 
+async function requireAdmin() {
+  const session = await getSession();
+  if (!session) throw new AuthError();
+  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') throw new ForbiddenError();
+  return session;
+}
+
 export async function GET(req: NextRequest) {
   try {
+    await requireAdmin();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || '';
 
@@ -31,35 +40,49 @@ export async function GET(req: NextRequest) {
         include: {
           customerProfile: true,
           bookings: { select: { id: true, totalPricePaise: true, status: true } },
+          memberships: {
+            where: { status: 'ACTIVE' },
+            orderBy: { expiresAt: 'desc' },
+            take: 1,
+            include: { plan: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: 100,
       });
 
-      if (customers.length > 0) {
-        return apiSuccess(
-          customers.map((c) => {
-            const completedBookings = c.bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'CONFIRMED');
-            const totalSpentPaise = completedBookings.reduce((sum, b) => sum + b.totalPricePaise, 0);
+      return apiSuccess(
+        customers.map((c) => {
+          const completedBookings = c.bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'CONFIRMED');
+          const totalSpentPaise = completedBookings.reduce((sum, b) => sum + b.totalPricePaise, 0);
+          const activeMembership = c.memberships?.[0] || null;
+          const isMembershipValid =
+            activeMembership && new Date(activeMembership.expiresAt).getTime() > Date.now();
 
-            return {
-              id: c.id,
-              name: `${c.firstName} ${c.lastName}`.trim(),
-              email: c.email,
-              phone: c.phone || '—',
-              status: c.status,
-              totalBookings: c.bookings.length,
-              totalSpentPaise: c.customerProfile?.totalSpent || totalSpentPaise,
-              joinedAt: c.createdAt,
-            };
-          })
-        );
-      }
+          return {
+            id: c.id,
+            name: `${c.firstName} ${c.lastName}`.trim(),
+            email: c.email,
+            phone: c.phone || '—',
+            status: c.status === 'BLOCKED' ? 'SUSPENDED' : c.status,
+            totalBookings: c.bookings.length,
+            totalSpentPaise: c.customerProfile?.totalSpent || totalSpentPaise,
+            joinedAt: c.createdAt,
+            membership: isMembershipValid
+              ? {
+                  id: activeMembership.id,
+                  planName: activeMembership.planNameSnapshot,
+                  tier: activeMembership.tierSnapshot,
+                  discountPercent: activeMembership.discountPercent,
+                  expiresAt: activeMembership.expiresAt,
+                }
+              : null,
+          };
+        })
+      );
     } catch {
-      // Fallback
+      return apiSuccess(getDemoCustomers());
     }
-
-    return apiSuccess(getDemoCustomers());
   } catch (error) {
     return handleApiError(error);
   }
@@ -67,27 +90,42 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const session = await requireAdmin();
     const body = await req.json();
     const { userId, status } = updateCustomerStatusSchema.parse(body);
     const dbStatus: 'ACTIVE' | 'BLOCKED' | 'DEACTIVATED' =
       status === 'SUSPENDED' ? 'BLOCKED' : status;
 
-    try {
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { status: dbStatus },
-      });
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, status: true, firstName: true, lastName: true },
+    });
 
-      return apiSuccess({
-        message: `Customer status updated to ${status}`,
-        user: { id: user.id, status: user.status },
-      });
-    } catch {
-      return apiSuccess({
-        message: `Customer status updated to ${status} (Preview)`,
-        user: { id: userId, status },
-      });
+    if (!existing) {
+      throw new NotFoundError('Customer account');
     }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { status: dbStatus },
+    });
+
+    // Record system audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: 'STATUS_CHANGE',
+        entityType: 'User',
+        entityId: userId,
+        oldValue: { status: existing.status },
+        newValue: { status: dbStatus, customerName: `${existing.firstName} ${existing.lastName}`.trim() },
+      },
+    }).catch(() => { /* non-blocking audit */ });
+
+    return apiSuccess({
+      message: `Customer status updated to ${status}`,
+      user: { id: user.id, status: user.status === 'BLOCKED' ? 'SUSPENDED' : user.status },
+    });
   } catch (error) {
     return handleApiError(error);
   }

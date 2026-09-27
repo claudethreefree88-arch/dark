@@ -33,6 +33,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { name: 'Dashboard Overview', href: '/account', icon: Gamepad2 },
+    { name: 'Syndicate Member Pass', href: '/account/membership', icon: Shield },
     { name: 'My Bookings & QR', href: '/account/bookings', icon: Calendar },
     { name: 'Notifications & Alerts', href: '/account/notifications', icon: Bell },
     { name: 'Profile & Security', href: '/account/profile', icon: User },
