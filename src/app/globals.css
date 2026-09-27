@@ -5,6 +5,8 @@
 @theme {
   /* Brand Colors */
   --color-ds-bg: #0A111C;
+  --color-ds-dark: #0A111C;
+  --color-ds-darker: #060A10;
   --color-ds-surface: #0B0F17;
   --color-ds-surface-2: #111827;
   --color-ds-surface-3: #1A2332;

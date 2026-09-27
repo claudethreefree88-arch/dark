@@ -136,9 +136,9 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
 
       {/* Dropdown Menu */}
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-ds-dark/95 backdrop-blur-xl border border-ds-border shadow-elevated z-50 overflow-hidden animate-fade-in-down">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-ds-surface border border-ds-border-light shadow-2xl shadow-black/90 z-50 overflow-hidden animate-fade-in-down">
           {/* Header */}
-          <div className="p-3.5 border-b border-ds-border flex items-center justify-between bg-ds-surface/40">
+          <div className="p-3.5 border-b border-ds-border flex items-center justify-between bg-ds-surface-2">
             <div className="flex items-center gap-2">
               <span className="font-heading font-black text-xs uppercase tracking-wider text-ds-text">
                 Live Notifications
@@ -155,7 +155,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="flex items-center gap-1 text-[11px] text-ds-accent hover:text-ds-accent-hover font-semibold px-2 py-1 rounded-lg hover:bg-ds-surface/60 transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-ds-accent hover:text-ds-accent-hover font-semibold px-2 py-1 rounded-lg hover:bg-ds-surface-3 transition-colors"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   <span>Mark all read</span>
@@ -164,7 +164,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="p-1 text-ds-text-dim hover:text-ds-text rounded-md hover:bg-ds-surface/40"
+                className="p-1 text-ds-text-dim hover:text-ds-text rounded-md hover:bg-ds-surface-3"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -172,7 +172,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-ds-border/40">
+          <div className="max-h-80 overflow-y-auto divide-y divide-ds-border/40 bg-ds-surface">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-xs text-ds-text-dim">
                 No notifications right now
@@ -184,11 +184,11 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                   onClick={() => handleItemClick(notif)}
                   className={`p-3.5 transition-colors flex gap-3 cursor-pointer ${
                     notif.isRead
-                      ? 'bg-transparent hover:bg-ds-surface/30 opacity-75'
-                      : 'bg-ds-accent/5 hover:bg-ds-accent/10 border-l-2 border-ds-accent'
+                      ? 'bg-ds-surface hover:bg-ds-surface-2/70 opacity-80'
+                      : 'bg-ds-surface-2/90 hover:bg-ds-surface-2 border-l-2 border-ds-accent'
                   }`}
                 >
-                  <div className="mt-0.5 shrink-0 p-2 rounded-xl bg-ds-surface/80 border border-ds-border">
+                  <div className="mt-0.5 shrink-0 p-2 rounded-xl bg-ds-surface-3/80 border border-ds-border">
                     {getTypeIcon(notif.type)}
                   </div>
 
@@ -223,7 +223,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
           </div>
 
           {/* Footer */}
-          <div className="p-2.5 border-t border-ds-border bg-ds-surface/20 text-center">
+          <div className="p-2.5 border-t border-ds-border bg-ds-surface-2 text-center">
             {role === 'CUSTOMER' ? (
               <Link
                 href="/account/notifications"
