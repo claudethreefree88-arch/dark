@@ -4,7 +4,7 @@ import { verifyPassword } from '@/lib/auth';
 import { setSessionCookie } from '@/lib/session';
 import { loginSchema } from '@/validators/auth.schema';
 import { handleApiError, apiSuccess, AuthError, AppError } from '@/lib/errors';
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { checkRateLimit, clearRateLimit, getClientIp } from '@/lib/rate-limit';
 import { RATE_LIMIT } from '@/lib/constants';
 
 // ─── POST /api/auth/login ───────────────────────────────────────────────────
@@ -68,17 +68,18 @@ export async function POST(request: NextRequest) {
     }
 
     const hasPortalAccess =
+      portal === 'player' ||
       (portal === 'admin' && ['SUPER_ADMIN', 'ADMIN'].includes(user.role)) ||
-      (portal === 'staff' && user.role === 'STAFF') ||
-      (portal === 'player' && user.role === 'CUSTOMER');
+      (portal === 'staff' && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role));
 
     if (!hasPortalAccess) {
       throw new AuthError(
-        portal === 'player'
-          ? 'This account uses a private staff or admin portal.'
-          : 'This account does not have access to this portal.'
+        'This account does not have access to this portal.'
       );
     }
+
+    // Clear rate limit on successful credentials
+    clearRateLimit(`login:${ip}`);
 
     // Set session cookie
     await setSessionCookie({

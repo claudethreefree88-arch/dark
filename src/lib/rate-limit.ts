@@ -58,6 +58,13 @@ export function checkRateLimit(
 }
 
 /**
+ * Clear rate limit entry for a key upon successful authentication.
+ */
+export function clearRateLimit(key: string): void {
+  rateLimitStore.delete(key);
+}
+
+/**
  * Get the client IP from the request.
  */
 export function getClientIp(request: Request): string {

@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(json.data.user);
+      return json.data.user as AuthUser;
     },
     []
   );

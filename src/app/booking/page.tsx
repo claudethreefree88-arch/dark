@@ -895,10 +895,11 @@ function BookingContent() {
                         <Info className="w-4 h-4 text-ds-accent flex-shrink-0" />
                         <span>Have an account? Sign in for loyalty perks and saved history.</span>
                       </div>
-                      <Link href={`/login?redirect=/booking`}>
-                        <Button variant="outline" size="sm">
-                          Sign In
-                        </Button>
+                      <Link
+                        href="/login?redirect=/booking"
+                        className="inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg px-3 py-1.5 text-xs border border-ds-border text-ds-text hover:border-ds-accent hover:text-ds-accent transition-all active:scale-[0.98] shrink-0"
+                      >
+                        Sign In
                       </Link>
                     </div>
                   )}

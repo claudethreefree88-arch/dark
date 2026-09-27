@@ -21,9 +21,9 @@ function LoginContent() {
   const portalParam = searchParams.get('portal');
   const portal = portalParam === 'admin' || portalParam === 'staff' ? portalParam : 'player';
   const portalDetails = {
-    player: { title: 'Player Login', subtitle: 'Sign in to manage your bookings and game time.', destination: searchParams.get('redirect') || '/account', icon: UserRound },
-    admin: { title: 'Admin Portal', subtitle: 'Secure access to operations, payments, and reporting.', destination: '/admin', icon: ShieldCheck },
-    staff: { title: 'Staff Portal', subtitle: 'Secure access to live stations and today’s bookings.', destination: '/staff', icon: ShieldCheck },
+    player: { title: 'Sign In', subtitle: 'Sign in to manage your bookings, passes, and game time.', destination: searchParams.get('redirect') || '/account', icon: UserRound },
+    admin: { title: 'Sign In to Admin Portal', subtitle: 'Secure access to operations, payments, and reporting.', destination: '/admin', icon: ShieldCheck },
+    staff: { title: 'Sign In to Staff Portal', subtitle: 'Secure access to live stations and today’s bookings.', destination: '/staff', icon: ShieldCheck },
   }[portal];
   const PortalIcon = portalDetails.icon;
   const toast = useToast();
@@ -40,9 +40,19 @@ function LoginContent() {
 
   const onSubmit = async (data: LoginInput) => {
     try {
-      await login(data.email, data.password, portal);
+      const loggedInUser = await login(data.email, data.password, portal);
       toast.success('Welcome back!', 'You have been logged in successfully.');
-      router.push(portalDetails.destination);
+      
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam) {
+        router.push(redirectParam);
+      } else if (loggedInUser?.role && ['SUPER_ADMIN', 'ADMIN'].includes(loggedInUser.role)) {
+        router.push('/admin');
+      } else if (loggedInUser?.role === 'STAFF') {
+        router.push('/staff');
+      } else {
+        router.push('/account');
+      }
     } catch (error) {
       toast.error(
         'Login failed',
@@ -89,39 +99,40 @@ function LoginContent() {
           </div>
         </div>
 
-        {portal === 'player' && process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === 'true' && <>
-        {/* Demo Fast Logins for reviewers */}
-        <div className="p-3.5 rounded-xl bg-ds-surface/60 border border-ds-border text-xs space-y-2">
-          <div className="flex items-center gap-1.5 text-ds-ice font-semibold">
-            <KeyRound className="w-3.5 h-3.5 text-ds-accent" />
-            <span>Quick Test Credentials:</span>
+        {portal === 'player' && (
+          <div className="p-3.5 rounded-xl bg-ds-surface/60 border border-ds-border text-xs space-y-2">
+            <div className="flex items-center justify-between text-ds-ice font-semibold">
+              <div className="flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-ds-accent" />
+                <span>Quick Test Credentials:</span>
+              </div>
+              <span className="text-[10px] text-ds-text-dim">1-Click Autofill</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
+                className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-[11px] font-heading font-bold transition-all text-center"
+              >
+                👑 Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFillDemo('staff@darksyndicate.com', 'Staff@123456')}
+                className="p-1.5 rounded-lg bg-ds-accent/10 border border-ds-accent/30 text-ds-ice hover:bg-ds-accent/20 text-[11px] font-heading font-bold transition-all text-center"
+              >
+                🎮 Staff
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFillDemo('player@example.com', 'Customer@123')}
+                className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-[11px] font-heading font-bold transition-all text-center"
+              >
+                🕹️ Gamer
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleFillDemo('admin@darksyndicate.com', 'Admin@123456')}
-              className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-[11px] font-heading font-bold"
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('staff@darksyndicate.com', 'Staff@123456')}
-              className="p-1.5 rounded-lg bg-ds-accent/10 border border-ds-accent/30 text-ds-ice hover:bg-ds-accent/20 text-[11px] font-heading font-bold"
-            >
-              🎮 Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('player@example.com', 'Customer@123')}
-              className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-[11px] font-heading font-bold"
-            >
-              🕹️ Gamer
-            </button>
-          </div>
-        </div>
-
-        </>}
+        )}
 
         {portal === 'admin' && (
           <button

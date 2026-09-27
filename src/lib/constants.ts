@@ -19,7 +19,7 @@ export const PASSWORD_MAX_LENGTH = 128;
 
 export const RATE_LIMIT = {
   LOGIN: {
-    maxAttempts: 5,
+    maxAttempts: 20,
     windowMs: 15 * 60 * 1000, // 15 minutes
   },
   REGISTER: {

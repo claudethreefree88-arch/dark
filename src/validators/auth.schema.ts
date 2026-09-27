@@ -6,11 +6,11 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '@/lib/constants';
 export const loginSchema = z.object({
   email: z
     .string()
+    .trim()
+    .toLowerCase()
     .min(1, 'Email is required')
     .email('Invalid email address')
-    .max(255)
-    .toLowerCase()
-    .trim(),
+    .max(255),
   password: z
     .string()
     .min(1, 'Password is required')

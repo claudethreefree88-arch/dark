@@ -44,6 +44,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading = false,
       fullWidth = false,
       disabled,
+      type = 'button',
       children,
       ...props
     },
@@ -52,6 +53,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         className={cn(
           'inline-flex items-center justify-center font-heading font-semibold tracking-wide',
           'rounded-lg transition-all duration-[var(--transition-base)]',

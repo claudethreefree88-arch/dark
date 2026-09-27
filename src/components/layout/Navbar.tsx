@@ -149,7 +149,7 @@ export function Navbar() {
             </div>
 
             {/* Authentication / User Dropdown & Notifications */}
-            {isAuthenticated && user && isPlayer ? (
+            {isAuthenticated && user ? (
               <div className="flex items-center gap-2">
                 <NotificationBell role={user.role} />
                 <div className="relative">
@@ -195,8 +195,15 @@ export function Navbar() {
                       <Calendar className="w-4 h-4 text-ds-ice" />
                       <span>My Bookings</span>
                     </Link>
+                <Link
+                      href="/account/membership"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-ds-text-muted hover:text-ds-text hover:bg-ds-border/50 rounded-lg transition-colors"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>My Syndicate Pass</span>
+                    </Link>
 
-                    {isPlayer && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+                    {['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                       <Link
                         href="/admin"
                         className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
@@ -222,16 +229,19 @@ export function Navbar() {
             </div>
           ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login">
-                  <Button variant="ghost" size="sm">
-                    Sign In
-                  </Button>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg px-3.5 py-1.5 text-sm text-ds-text-muted hover:text-ds-text hover:bg-ds-surface-2 transition-all active:scale-[0.98]"
+                >
+                  Sign In
                 </Link>
-                <Link href="/booking" prefetch={true}>
-                  <Button variant="accent" size="sm" className="shadow-glow-sm">
-                    <Sparkles className="w-3.5 h-3.5 mr-1" />
-                    Book Now
-                  </Button>
+                <Link
+                  href="/booking"
+                  prefetch={true}
+                  className="inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg px-3.5 py-1.5 text-sm bg-ds-accent text-ds-bg hover:bg-ds-accent-hover shadow-glow-sm transition-all active:scale-[0.98]"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" />
+                  Book Now
                 </Link>
               </div>
             )}
@@ -239,10 +249,11 @@ export function Navbar() {
 
           {/* Mobile Menu Toggle Button */}
           <div className="flex md:hidden items-center gap-2">
-            <Link href="/booking">
-              <Button variant="accent" size="sm" className="text-xs px-2.5 py-1">
-                Book
-              </Button>
+            <Link
+              href="/booking"
+              className="inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg text-xs px-2.5 py-1 bg-ds-accent text-ds-bg hover:bg-ds-accent-hover transition-all active:scale-[0.98]"
+            >
+              Book
             </Link>
             <button
               type="button"
@@ -289,7 +300,7 @@ export function Navbar() {
           </div>
 
           <div className="pt-2 border-t border-ds-border/60 space-y-2">
-            {isAuthenticated && user && isPlayer ? (
+            {isAuthenticated && user ? (
               <>
                 <Link
                   href="/account"
@@ -305,7 +316,7 @@ export function Navbar() {
                   <Calendar className="w-4 h-4 text-ds-ice" />
                   <span>My Bookings</span>
                 </Link>
-                {isPlayer && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+                {['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                   <Link
                     href="/admin"
                     className="flex items-center gap-2 px-3 py-2 text-amber-400 font-medium rounded-lg hover:bg-amber-500/10"
@@ -325,15 +336,17 @@ export function Navbar() {
               </>
             ) : (
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <Link href="/login" className="w-full">
-                  <Button variant="outline" className="w-full text-sm">
-                    Sign In
-                  </Button>
+                <Link
+                  href="/login"
+                  className="w-full inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg px-3 py-2 text-sm border border-ds-border text-ds-text hover:border-ds-accent hover:text-ds-accent transition-all text-center active:scale-[0.98]"
+                >
+                  Sign In
                 </Link>
-                <Link href="/register" className="w-full">
-                  <Button variant="secondary" className="w-full text-sm">
-                    Register
-                  </Button>
+                <Link
+                  href="/register"
+                  className="w-full inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg px-3 py-2 text-sm bg-ds-secondary text-ds-text hover:bg-ds-secondary/80 transition-all text-center active:scale-[0.98]"
+                >
+                  Register
                 </Link>
               </div>
             )}
