@@ -33,16 +33,20 @@ import {
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadStats = async () => {
+    setLoading(true);
+    setError('');
     try {
       const res = await fetch('/api/admin/stats');
       const json = await res.json();
-      if (json.success && json.data) {
-        setStats(json.data);
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error?.message || 'Could not load dashboard data.');
       }
+      setStats(json.data);
     } catch (err) {
-      console.error('Failed to load admin stats:', err);
+      setError(err instanceof Error ? err.message : 'Could not load dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -52,33 +56,11 @@ export default function AdminDashboardPage() {
     loadStats();
   }, []);
 
-  const kpis = stats?.kpis || {
-    todayRevenuePaise: 485000,
-    monthRevenuePaise: 14200000,
-    todayBookingsCount: 14,
-    totalBookingsCount: 142,
-    totalCustomersCount: 94,
-    totalStationsCount: 8,
-    activeSessionsCount: 2,
-    occupancyRate: 25,
-  };
-
-  const chartSeries = stats?.chartSeries || [
-    { day: 'Thu', revenue: 3200, bookings: 8 },
-    { day: 'Fri', revenue: 5800, bookings: 14 },
-    { day: 'Sat', revenue: 8400, bookings: 22 },
-    { day: 'Sun', revenue: 9100, bookings: 25 },
-    { day: 'Mon', revenue: 2900, bookings: 7 },
-    { day: 'Tue', revenue: 4100, bookings: 10 },
-    { day: 'Today', revenue: 4850, bookings: 14 },
-  ];
-
-  const categoryBreakdown = stats?.categoryBreakdown || [
-    { name: 'PS5 Pro Arena', value: 65, color: '#61ADDF' },
-    { name: 'Billiards Lounge', value: 35, color: '#16479B' },
-  ];
-
+  const kpis = stats?.kpis;
+  const chartSeries = stats?.chartSeries || [];
+  const categoryBreakdown = stats?.categoryBreakdown || [];
   const recentActivity = stats?.recentActivity || [];
+  const money = (paise?: number) => loading ? '—' : `₹${((paise || 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-8">
@@ -98,7 +80,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Button variant="outline" size="sm" onClick={loadStats}>
+          <Button variant="outline" size="sm" onClick={loadStats} disabled={loading}>
             <RotateCw className="w-4 h-4 mr-1.5" />
             <span>Refresh Data</span>
           </Button>
@@ -112,6 +94,13 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={loadStats}>Try again</Button>
+        </div>
+      )}
+
       {/* 1. Primary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card glass className="p-5 border-ds-border">
@@ -122,9 +111,9 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-heading font-black text-emerald-400">
-            ₹{(kpis.todayRevenuePaise / 100).toFixed(0)}
+            {money(kpis?.todayRevenuePaise)}
           </div>
-          <span className="text-[11px] text-ds-text-dim block mt-1">Live Online & Desk Collections</span>
+          <span className="text-[11px] text-ds-text-dim block mt-1">Completed payments after refunds</span>
         </Card>
 
         <Card glass className="p-5 border-ds-border">
@@ -135,9 +124,9 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-heading font-black text-ds-ice">
-            ₹{(kpis.monthRevenuePaise / 100).toFixed(0)}
+            {money(kpis?.monthRevenuePaise)}
           </div>
-          <span className="text-[11px] text-ds-text-dim block mt-1">Current Calendar Month</span>
+          <span className="text-[11px] text-ds-text-dim block mt-1">Current month after refunds</span>
         </Card>
 
         <Card glass className="p-5 border-ds-border">
@@ -147,9 +136,9 @@ export default function AdminDashboardPage() {
               <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-heading font-black text-ds-text">{kpis.todayBookingsCount}</div>
+          <div className="text-2xl font-heading font-black text-ds-text">{loading ? '—' : kpis?.todayBookingsCount ?? 0}</div>
           <span className="text-[11px] text-ds-text-dim block mt-1">
-            {kpis.totalBookingsCount} Lifetime Total Bookings
+            {loading ? 'Loading reservations' : `${kpis?.totalBookingsCount ?? 0} reservations overall`}
           </span>
         </Card>
 
@@ -160,9 +149,9 @@ export default function AdminDashboardPage() {
               <Percent className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-heading font-black text-amber-400">{kpis.occupancyRate}%</div>
+          <div className="text-2xl font-heading font-black text-amber-400">{loading ? '—' : `${kpis?.occupancyRate ?? 0}%`}</div>
           <span className="text-[11px] text-ds-text-dim block mt-1">
-            {kpis.activeSessionsCount} of {kpis.totalStationsCount} Consoles Active
+            {loading ? 'Loading station status' : `${kpis?.activeSessionsCount ?? 0} of ${kpis?.totalStationsCount ?? 0} stations in session`}
           </span>
         </Card>
       </div>
@@ -176,9 +165,7 @@ export default function AdminDashboardPage() {
               <h3 className="text-base font-heading font-bold uppercase text-ds-text">
                 7-Day Revenue Trends (₹)
               </h3>
-              <p className="text-xs text-ds-text-muted mt-0.5">
-                Daily financial intake across PS5 Pro Arenas and Billiards Lounge.
-              </p>
+              <p className="text-xs text-ds-text-muted mt-0.5">Completed payments and reservations by business date (IST).</p>
             </div>
             <Badge variant="outline" size="sm">
               Past 7 Days
@@ -186,6 +173,9 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="h-64 w-full">
+            {!loading && chartSeries.every((item: any) => item.revenue === 0 && item.bookings === 0) ? (
+              <div className="h-full flex items-center justify-center text-sm text-ds-text-muted">No payment or reservation activity in the past 7 days.</div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="day" stroke="#61ADDF" fontSize={11} tickLine={false} axisLine={false} />
@@ -203,6 +193,7 @@ export default function AdminDashboardPage() {
                 <Bar dataKey="revenue" fill="#61ADDF" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
@@ -214,6 +205,9 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="h-48 w-full flex items-center justify-center">
+            {!loading && categoryBreakdown.length === 0 ? (
+              <p className="text-sm text-ds-text-muted">No reservations in the past 7 days.</p>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -241,6 +235,7 @@ export default function AdminDashboardPage() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           <div className="space-y-2 pt-2 border-t border-ds-border/60 text-xs">
@@ -299,6 +294,9 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           ))}
+          {!loading && recentActivity.length === 0 && (
+            <p className="py-6 text-center text-sm text-ds-text-muted">No bookings have been recorded yet.</p>
+          )}
         </div>
       </Card>
     </div>

@@ -2,192 +2,189 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError } from '@/lib/errors';
 
-export async function GET(req: NextRequest) {
+const BUSINESS_TIMEZONE_OFFSET_MINUTES = 5 * 60 + 30;
+const FACILITY_COLORS = ['#61ADDF', '#16479B', '#34D399', '#F59E0B', '#A78BFA'];
+
+function businessDateStart(now: Date, daysAgo = 0) {
+  const businessNow = new Date(now.getTime() + BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+  const date = new Date(Date.UTC(
+    businessNow.getUTCFullYear(),
+    businessNow.getUTCMonth(),
+    businessNow.getUTCDate() - daysAgo,
+  ));
+  return new Date(date.getTime() - BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+}
+
+function businessCalendarDateStart(now: Date, daysAgo = 0) {
+  const businessNow = new Date(now.getTime() + BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+  return new Date(Date.UTC(
+    businessNow.getUTCFullYear(),
+    businessNow.getUTCMonth(),
+    businessNow.getUTCDate() - daysAgo,
+  ));
+}
+
+function formatBusinessDate(date: Date) {
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
+function formatBusinessTime(date: Date) {
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+export async function GET(_req: NextRequest) {
   try {
-    try {
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const now = new Date();
+    const todayStart = businessDateStart(now);
+    const tomorrowStart = businessDateStart(now, -1);
+    const todayCalendarDate = businessCalendarDateStart(now);
+    const tomorrowCalendarDate = businessCalendarDateStart(now, -1);
+    const monthStart = (() => {
+      const businessNow = new Date(now.getTime() + BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+      const localMonthStart = new Date(Date.UTC(businessNow.getUTCFullYear(), businessNow.getUTCMonth(), 1));
+      return new Date(localMonthStart.getTime() - BUSINESS_TIMEZONE_OFFSET_MINUTES * 60_000);
+    })();
+    const weekStart = businessDateStart(now, 6);
+    const weekCalendarStart = businessCalendarDateStart(now, 6);
 
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+    const [
+      todayPayments,
+      todayRefunds,
+      monthPayments,
+      monthRefunds,
+      weekPayments,
+      weekRefunds,
+      todayBookingsCount,
+      totalBookingsCount,
+      totalCustomersCount,
+      totalStationsCount,
+      activeSessionsCount,
+      weekBookings,
+      recentBookings,
+    ] = await Promise.all([
+      prisma.payment.findMany({
+        where: { status: 'COMPLETED', paidAt: { gte: todayStart, lt: tomorrowStart } },
+        select: { amountPaise: true },
+      }),
+      prisma.refund.aggregate({
+        where: { status: 'COMPLETED', processedAt: { gte: todayStart, lt: tomorrowStart } },
+        _sum: { amountPaise: true },
+      }),
+      prisma.payment.findMany({
+        where: { status: 'COMPLETED', paidAt: { gte: monthStart, lte: now } },
+        select: { amountPaise: true },
+      }),
+      prisma.refund.aggregate({
+        where: { status: 'COMPLETED', processedAt: { gte: monthStart, lte: now } },
+        _sum: { amountPaise: true },
+      }),
+      prisma.payment.findMany({
+        where: { status: 'COMPLETED', paidAt: { gte: weekStart, lt: tomorrowStart } },
+        select: { amountPaise: true, paidAt: true },
+      }),
+      prisma.refund.findMany({
+        where: { status: 'COMPLETED', processedAt: { gte: weekStart, lt: tomorrowStart } },
+        select: { amountPaise: true, processedAt: true },
+      }),
+      prisma.booking.count({
+        where: {
+          date: { gte: todayCalendarDate, lt: tomorrowCalendarDate },
+          status: { notIn: ['CANCELLED', 'PAYMENT_FAILED', 'NO_SHOW'] },
+        },
+      }),
+      prisma.booking.count({ where: { status: { notIn: ['CANCELLED', 'PAYMENT_FAILED', 'NO_SHOW'] } } }),
+      prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
+      prisma.gamingStation.count({ where: { status: { not: 'DEACTIVATED' } } }),
+      prisma.gamingSession.count({ where: { status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] } } }),
+      prisma.booking.findMany({
+        where: {
+          date: { gte: weekCalendarStart, lt: tomorrowCalendarDate },
+          status: { notIn: ['CANCELLED', 'PAYMENT_FAILED', 'NO_SHOW'] },
+        },
+        select: {
+          date: true,
+          station: { select: { facility: { select: { id: true, name: true } } } },
+        },
+      }),
+      prisma.booking.findMany({
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          station: { select: { name: true } },
+          user: { select: { firstName: true, lastName: true } },
+        },
+      }),
+    ]);
 
-      // 1. KPI Counts
-      const [
-        todayPayments,
-        monthPayments,
+    const daily = Array.from({ length: 7 }, (_, index) => {
+      const start = businessDateStart(now, 6 - index);
+      const end = businessDateStart(now, 5 - index);
+      const calendarDate = businessCalendarDateStart(now, 6 - index);
+      const key = calendarDate.toISOString().slice(0, 10);
+      const revenuePaise = weekPayments
+        .filter((payment) => payment.paidAt && payment.paidAt >= start && payment.paidAt < end)
+        .reduce((total, payment) => total + payment.amountPaise, 0);
+      const refundsPaise = weekRefunds
+        .filter((refund) => refund.processedAt && refund.processedAt >= start && refund.processedAt < end)
+        .reduce((total, refund) => total + refund.amountPaise, 0);
+      const bookings = weekBookings.filter((booking) => booking.date.toISOString().slice(0, 10) === key).length;
+      return { day: formatBusinessDate(start), revenue: Math.round((revenuePaise - refundsPaise) / 100), bookings };
+    });
+
+    const facilityCounts = new Map<string, { name: string; count: number }>();
+    for (const booking of weekBookings) {
+      const facility = booking.station.facility;
+      const item = facilityCounts.get(facility.id) || { name: facility.name, count: 0 };
+      item.count += 1;
+      facilityCounts.set(facility.id, item);
+    }
+    const facilityTotal = [...facilityCounts.values()].reduce((total, item) => total + item.count, 0);
+    const categoryBreakdown = [...facilityCounts.values()].map((item, index) => ({
+      name: item.name,
+      value: facilityTotal ? Math.round((item.count / facilityTotal) * 100) : 0,
+      color: FACILITY_COLORS[index % FACILITY_COLORS.length],
+    }));
+
+    const recentActivity = recentBookings.map((booking) => ({
+      id: booking.id,
+      bookingRef: booking.bookingRef,
+      action: booking.isWalkIn ? 'Desk walk-in' : 'Online reservation',
+      customerName: booking.customerName || `${booking.user.firstName} ${booking.user.lastName}`.trim(),
+      stationName: booking.station.name,
+      amount: `₹${(booking.totalPricePaise / 100).toLocaleString('en-IN')}`,
+      status: booking.status,
+      time: formatBusinessTime(booking.createdAt),
+    }));
+
+    const activeSessions = activeSessionsCount;
+    const netCollectedPaise = (payments: typeof todayPayments, refundsPaise: number) =>
+      payments.reduce((total, payment) => total + payment.amountPaise, 0) - refundsPaise;
+
+    return apiSuccess({
+      kpis: {
+        todayRevenuePaise: netCollectedPaise(todayPayments, todayRefunds._sum.amountPaise ?? 0),
+        monthRevenuePaise: netCollectedPaise(monthPayments, monthRefunds._sum.amountPaise ?? 0),
         todayBookingsCount,
         totalBookingsCount,
         totalCustomersCount,
         totalStationsCount,
-        activeSessionsCount,
-      ] = await Promise.all([
-        prisma.payment.findMany({
-          where: { createdAt: { gte: startOfDay, lte: endOfDay }, status: 'COMPLETED' },
-          select: { amountPaise: true },
-        }),
-        prisma.payment.findMany({
-          where: { createdAt: { gte: startOfMonth }, status: 'COMPLETED' },
-          select: { amountPaise: true },
-        }),
-        prisma.booking.count({
-          where: { date: { gte: startOfDay, lte: endOfDay } },
-        }),
-        prisma.booking.count(),
-        prisma.user.count({ where: { role: 'CUSTOMER' } }),
-        prisma.gamingStation.count({ where: { status: { not: 'DEACTIVATED' } } }),
-        prisma.gamingSession.count({ where: { status: 'ACTIVE' } }),
-      ]);
-
-      const todayRevenuePaise = todayPayments.reduce((s, p) => s + p.amountPaise, 0);
-      const monthRevenuePaise = monthPayments.reduce((s, p) => s + p.amountPaise, 0);
-      const occupancyRate = totalStationsCount > 0 ? Math.round((activeSessionsCount / totalStationsCount) * 100) : 0;
-
-      // 2. 7-Day Chart Data
-      const chartSeries = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-        const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
-        const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
-
-        const [dayP, dayB] = await Promise.all([
-          prisma.payment.findMany({
-            where: { createdAt: { gte: dayStart, lte: dayEnd }, status: 'COMPLETED' },
-            select: { amountPaise: true },
-          }),
-          prisma.booking.count({
-            where: { date: { gte: dayStart, lte: dayEnd } },
-          }),
-        ]);
-
-        const rev = Math.round(dayP.reduce((s, p) => s + p.amountPaise, 0) / 100);
-        chartSeries.push({
-          day: dayLabel,
-          revenue: rev > 0 ? rev : Math.floor(2500 + Math.random() * 4000), // realistic fallback
-          bookings: dayB > 0 ? dayB : Math.floor(5 + Math.random() * 12),
-        });
-      }
-
-      // 3. Recent activity
-      const recentBookings = await prisma.booking.findMany({
-        take: 6,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          station: { select: { name: true, stationType: true } },
-          user: { select: { firstName: true, lastName: true } },
-        },
-      });
-
-      const recentActivity = recentBookings.map((b) => ({
-        id: b.id,
-        bookingRef: b.bookingRef,
-        action: b.isWalkIn ? 'Desk Walk-in' : 'Online Reservation',
-        customerName: b.customerName || `${b.user?.firstName || 'Gamer'} ${b.user?.lastName || ''}`.trim(),
-        stationName: b.station?.name || 'PS5 Station',
-        amount: `₹${(b.totalPricePaise / 100).toFixed(0)}`,
-        status: b.status,
-        time: new Date(b.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }));
-
-      return apiSuccess({
-        kpis: {
-          todayRevenuePaise: todayRevenuePaise || 485000,
-          monthRevenuePaise: monthRevenuePaise || 14200000,
-          todayBookingsCount: todayBookingsCount || 14,
-          totalBookingsCount: totalBookingsCount || 128,
-          totalCustomersCount: totalCustomersCount || 86,
-          totalStationsCount: totalStationsCount || 8,
-          activeSessionsCount: activeSessionsCount || 2,
-          occupancyRate: occupancyRate || 25,
-        },
-        chartSeries,
-        categoryBreakdown: [
-          { name: 'PS5 Pro Arena', value: 68, color: '#61ADDF' },
-          { name: 'Billiards Lounge', value: 32, color: '#16479B' },
-        ],
-        recentActivity: recentActivity.length > 0 ? recentActivity : getDemoActivity(),
-      });
-    } catch {
-      // Fallback demo stats
-    }
-
-    return apiSuccess(getDemoAdminStats());
+        activeSessionsCount: activeSessions,
+        occupancyRate: totalStationsCount ? Math.round((activeSessions / totalStationsCount) * 100) : 0,
+      },
+      chartSeries: daily,
+      categoryBreakdown,
+      recentActivity,
+    });
   } catch (error) {
     return handleApiError(error);
   }
-}
-
-function getDemoActivity() {
-  return [
-    {
-      id: 'act-1',
-      bookingRef: 'DS-2026-9041',
-      action: 'Check-in Confirmed',
-      customerName: 'Alex Mercer',
-      stationName: 'PS5 Battle Station Alpha',
-      amount: '₹400',
-      status: 'IN_PROGRESS',
-      time: '10 mins ago',
-    },
-    {
-      id: 'act-2',
-      bookingRef: 'DS-WALK-8812',
-      action: 'Desk Walk-in (Cash)',
-      customerName: 'Karthik Raja',
-      stationName: 'Championship Pool Table 1',
-      amount: '₹500',
-      status: 'IN_PROGRESS',
-      time: '25 mins ago',
-    },
-    {
-      id: 'act-3',
-      bookingRef: 'DS-2026-8809',
-      action: 'Online UPI Reservation',
-      customerName: 'Priya Sundaram',
-      stationName: 'PS5 Battle Station Beta',
-      amount: '₹200',
-      status: 'CONFIRMED',
-      time: '1 hour ago',
-    },
-    {
-      id: 'act-4',
-      bookingRef: 'DS-2026-8799',
-      action: 'Session Completed',
-      customerName: 'Vikram Seth',
-      stationName: 'English Snooker Table',
-      amount: '₹600',
-      status: 'COMPLETED',
-      time: '2 hours ago',
-    },
-  ];
-}
-
-function getDemoAdminStats() {
-  return {
-    kpis: {
-      todayRevenuePaise: 485000,
-      monthRevenuePaise: 14200000,
-      todayBookingsCount: 14,
-      totalBookingsCount: 142,
-      totalCustomersCount: 94,
-      totalStationsCount: 8,
-      activeSessionsCount: 2,
-      occupancyRate: 25,
-    },
-    chartSeries: [
-      { day: 'Thu', revenue: 3200, bookings: 8 },
-      { day: 'Fri', revenue: 5800, bookings: 14 },
-      { day: 'Sat', revenue: 8400, bookings: 22 },
-      { day: 'Sun', revenue: 9100, bookings: 25 },
-      { day: 'Mon', revenue: 2900, bookings: 7 },
-      { day: 'Tue', revenue: 4100, bookings: 10 },
-      { day: 'Today', revenue: 4850, bookings: 14 },
-    ],
-    categoryBreakdown: [
-      { name: 'PS5 Pro Arena', value: 65, color: '#61ADDF' },
-      { name: 'Billiards Lounge', value: 35, color: '#16479B' },
-    ],
-    recentActivity: getDemoActivity(),
-  };
 }

@@ -37,18 +37,23 @@ export default function AdminReportsPage() {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | 'month' | 'year'>('30d');
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
+  const [loadError, setLoadError] = useState('');
   const toast = useToast();
 
   const loadReports = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const res = await fetch(`/api/admin/reports?timeframe=${timeframe}`);
       const json = await res.json();
-      if (json.success && json.data) {
-        setReportData(json.data);
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error?.message || 'Could not load reports.');
       }
-    } catch {
-      toast.error('Failed to load reports');
+      setReportData(json.data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not load reports.';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -97,7 +102,7 @@ export default function AdminReportsPage() {
     totalBookings: 0,
     averageBookingValuePaise: 0,
     totalHoursPlayed: 0,
-    occupancyRatePercent: 0,
+    walkInSharePercent: 0,
     walkInCount: 0,
     onlineCount: 0,
   };
@@ -116,7 +121,7 @@ export default function AdminReportsPage() {
             </Badge>
           </div>
           <p className="text-xs text-ds-text-muted mt-0.5">
-            Aggregated revenue metrics, station occupancy heatmaps, and capacity utilization analytics.
+            Settled payments, reservation volume, facility mix, and booked hours from your records.
           </p>
         </div>
 
@@ -161,17 +166,24 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
+      {loadError && (
+        <div role="alert" className="flex items-center justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <span>{loadError}</span>
+          <Button variant="outline" size="sm" onClick={loadReports}>Try again</Button>
+        </div>
+      )}
+
       {/* KPI Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card variant="glass" className="p-4 relative overflow-hidden group">
           <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-            Gross Revenue
+            Collected Payments
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-text mt-1">
             ₹{(summary.grossRevenuePaise / 100).toLocaleString('en-IN')}
           </p>
           <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
-            <TrendingUp className="w-3 h-3" /> +14.2% vs prev
+            <TrendingUp className="w-3 h-3" /> Before refunds
           </span>
         </Card>
 
@@ -183,7 +195,7 @@ export default function AdminReportsPage() {
             ₹{(summary.netRevenuePaise / 100).toLocaleString('en-IN')}
           </p>
           <span className="text-[10px] text-ds-text-dim mt-1 block">
-            After discounts (₹{(summary.discountPaise / 100).toLocaleString('en-IN')})
+            Refunds: ₹{(summary.refundsPaise / 100).toLocaleString('en-IN')}
           </span>
         </Card>
 
@@ -206,27 +218,27 @@ export default function AdminReportsPage() {
           <p className="text-xl font-heading font-extrabold text-ds-text mt-1">
             ₹{(summary.averageBookingValuePaise / 100).toFixed(0)}
           </p>
-          <span className="text-[10px] text-emerald-400 mt-1 block font-semibold">+₹45 per booking</span>
+          <span className="text-[10px] text-ds-text-dim mt-1 block">Per paid booking</span>
         </Card>
 
         <Card variant="glass" className="p-4 relative overflow-hidden group">
           <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-            Total Play Hours
+            Booked Hours
           </p>
           <p className="text-xl font-heading font-extrabold text-ds-ice mt-1">
             {summary.totalHoursPlayed} hrs
           </p>
-          <span className="text-[10px] text-ds-text-dim mt-1 block">Across 11 active stations</span>
+          <span className="text-[10px] text-ds-text-dim mt-1 block">Scheduled booking duration</span>
         </Card>
 
         <Card variant="glass" className="p-4 relative overflow-hidden group">
           <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-            Occupancy Rate
+            Walk-in Share
           </p>
           <p className="text-xl font-heading font-extrabold text-emerald-400 mt-1">
-            {summary.occupancyRatePercent}%
+            {summary.walkInSharePercent}%
           </p>
-          <span className="text-[10px] text-ds-text-dim mt-1 block">Peak weekend: 98%</span>
+          <span className="text-[10px] text-ds-text-dim mt-1 block">{summary.walkInCount} walk-in bookings</span>
         </Card>
       </div>
 
@@ -296,13 +308,13 @@ export default function AdminReportsPage() {
           </div>
         </Card>
 
-        {/* Peak Hours Occupancy Bar Chart (1 Col) */}
+        {/* Booking start hours (1 Col) */}
         <Card variant="glass" className="p-6 space-y-4">
           <div>
             <h2 className="font-heading font-bold text-sm uppercase tracking-wider text-ds-text">
-              Hourly Venue Occupancy
+              Bookings by Start Hour
             </h2>
-            <p className="text-xs text-ds-text-dim mt-0.5">Average utilization curve across operating hours.</p>
+            <p className="text-xs text-ds-text-dim mt-0.5">Reservations starting in each local hour (IST).</p>
           </div>
 
           <div className="h-72 w-full pt-2">
@@ -314,7 +326,7 @@ export default function AdminReportsPage() {
                   stroke="#64748b"
                   fontSize={10}
                   tickLine={false}
-                  tickFormatter={(v) => `${v}%`}
+                  tickFormatter={(v) => `${v}`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -323,9 +335,9 @@ export default function AdminReportsPage() {
                     borderRadius: '12px',
                     fontSize: '11px',
                   }}
-                  formatter={(v: any) => [`${v}% Occupied`, 'Occupancy']}
+                  formatter={(v: any) => [v, 'Bookings']}
                 />
-                <Bar dataKey="occupancy" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="bookings" fill="#6366f1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -399,7 +411,7 @@ export default function AdminReportsPage() {
               Station Performance Matrix
             </h2>
             <p className="text-xs text-ds-text-dim mt-0.5">
-              Ranked by total booked hours, utilization percentage, and revenue contribution.
+              Totals come from reservations and completed payments in this period.
             </p>
           </div>
         </div>
@@ -411,7 +423,6 @@ export default function AdminReportsPage() {
                 <th className="py-3 px-3">Station Name</th>
                 <th className="py-3 px-3">Category</th>
                 <th className="py-3 px-3">Hours Booked</th>
-                <th className="py-3 px-3">Occupancy %</th>
                 <th className="py-3 px-3 text-right">Revenue Generated</th>
               </tr>
             </thead>
@@ -425,17 +436,6 @@ export default function AdminReportsPage() {
                     </Badge>
                   </td>
                   <td className="py-3 px-3 text-ds-ice">{st.hoursBooked} hrs</td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-ds-dark overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-400 rounded-full"
-                          style={{ width: `${st.occupancyPercent}%` }}
-                        />
-                      </div>
-                      <span className="text-emerald-400 font-bold">{st.occupancyPercent}%</span>
-                    </div>
-                  </td>
                   <td className="py-3 px-3 text-right font-bold text-ds-text">
                     ₹{(st.revenuePaise / 100).toLocaleString('en-IN')}
                   </td>
