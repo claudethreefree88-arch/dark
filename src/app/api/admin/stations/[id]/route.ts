@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const updateStationSchema = z.object({
@@ -16,6 +17,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const { id } = await params;
     const body = await req.json();
     const data = updateStationSchema.parse(body);
@@ -67,6 +69,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const { id } = await params;
 
     try {

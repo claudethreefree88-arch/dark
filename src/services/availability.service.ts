@@ -62,15 +62,24 @@ export async function getStationAvailability(
     });
 
     if (station) {
-      // Find all active bookings for this station on this date
+      // Find all active bookings for this station on this date in IST
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      const dayStartUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - istOffsetMs);
+      const dayEndUtc = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0) - istOffsetMs);
       const targetDate = new Date(`${dateStr}T00:00:00.000Z`);
+
       existingBookings = await prisma.booking.findMany({
         where: {
           stationId,
-          date: targetDate,
           status: {
             in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'PENDING'],
           },
+          OR: [
+            { startTime: { lt: dayEndUtc, gte: dayStartUtc } },
+            { endTime: { gt: dayStartUtc, lte: dayEndUtc } },
+            { date: targetDate },
+          ],
         },
         select: {
           startTime: true,
@@ -124,17 +133,24 @@ export async function getStationAvailability(
       }
     }
 
-    // Check against existing bookings
+    // Check against existing bookings with IST timezone conversion
     if (available && existingBookings.length > 0) {
       for (const booking of existingBookings) {
-        const bStartHour = booking.startTime.getUTCHours();
-        const bEndHour = booking.endTime.getUTCHours();
+        const bStartIst = new Date(booking.startTime.getTime() + istOffsetMs);
+        const bEndIst = new Date(booking.endTime.getTime() + istOffsetMs);
+        const bStartHourIst = bStartIst.getUTCHours() + bStartIst.getUTCMinutes() / 60;
+        const bEndHourIst = bEndIst.getUTCHours() + bEndIst.getUTCMinutes() / 60;
+        const bStartHourRaw = booking.startTime.getUTCHours() + booking.startTime.getUTCMinutes() / 60;
+        const bEndHourRaw = booking.endTime.getUTCHours() + booking.endTime.getUTCMinutes() / 60;
 
-        // Check if candidate slot [hour, hour + durationHours] overlaps with [bStartHour, bEndHour]
+        // Check if candidate slot [hour, hour + durationHours] overlaps with IST or raw timestamps
         const candidateStart = hour;
         const candidateEnd = hour + durationHours;
 
-        if (candidateStart < bEndHour && candidateEnd > bStartHour) {
+        const overlapsIst = candidateStart < bEndHourIst && candidateEnd > bStartHourIst;
+        const overlapsRaw = candidateStart < bEndHourRaw && candidateEnd > bStartHourRaw;
+
+        if (overlapsIst || overlapsRaw) {
           available = false;
           reason = 'Station already reserved for this slot';
           break;

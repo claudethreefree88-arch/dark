@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const createStationSchema = z.object({
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = createStationSchema.parse(body);
 

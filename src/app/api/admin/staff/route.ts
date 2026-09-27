@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { apiSuccess, handleApiError, ConflictError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const createStaffSchema = z.object({
@@ -15,6 +16,7 @@ const createStaffSchema = z.object({
 
 export async function GET() {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     try {
       const staffMembers = await prisma.user.findMany({
         where: {
@@ -60,6 +62,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('SUPER_ADMIN');
     const body = await req.json();
     const data = createStaffSchema.parse(body);
 

@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN', 'STAFF');
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';

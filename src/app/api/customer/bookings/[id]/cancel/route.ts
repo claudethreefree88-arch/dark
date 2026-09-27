@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError, AuthError, NotFoundError, ValidationError } from '@/lib/errors';
+import { apiSuccess, handleApiError, AuthError, ForbiddenError, NotFoundError, ValidationError } from '@/lib/errors';
 
 export async function POST(
   req: NextRequest,
@@ -25,7 +25,7 @@ export async function POST(
       }
 
       if (booking.userId !== session.userId && !['SUPER_ADMIN', 'ADMIN'].includes(session.role)) {
-        throw new AuthError('You do not have permission to cancel this booking');
+        throw new ForbiddenError('You do not have permission to cancel this booking');
       }
 
       if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(booking.status)) {
@@ -33,17 +33,32 @@ export async function POST(
       }
 
       // Check cancellation window (must be >= 2 hours before booking start)
-      const bookingStart = new Date(`${booking.date.toISOString().split('T')[0]}T${booking.startTime}:00`);
+      const bookingStart = booking.startTime;
       const now = new Date();
       const diffHours = (bookingStart.getTime() - now.getTime()) / (1000 * 60 * 60);
 
       const isRefundEligible = diffHours >= 2;
 
-      const updated = await prisma.booking.update({
-        where: { id },
-        data: {
-          status: 'CANCELLED',
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        const cancelledBooking = await tx.booking.update({
+          where: { id },
+          data: {
+            status: 'CANCELLED',
+            cancelledBy: session.userId,
+            cancelledAt: now,
+          },
+        });
+
+        // If station was OCCUPIED by this booking, restore to AVAILABLE
+        await tx.gamingStation.updateMany({
+          where: {
+            id: booking.stationId,
+            status: 'OCCUPIED',
+          },
+          data: { status: 'AVAILABLE' },
+        });
+
+        return cancelledBooking;
       });
 
       return apiSuccess({
@@ -54,15 +69,10 @@ export async function POST(
         refundEligible: isRefundEligible,
       });
     } catch (err) {
-      if (err instanceof NotFoundError || err instanceof ValidationError || err instanceof AuthError) {
+      if (err instanceof NotFoundError || err instanceof ValidationError || err instanceof AuthError || err instanceof ForbiddenError) {
         throw err;
       }
-      // Demo fallback
-      return apiSuccess({
-        message: 'Booking successfully cancelled. Refund initiated to original payment method.',
-        bookingId: id,
-        refundEligible: true,
-      });
+      throw err;
     }
   } catch (error) {
     return handleApiError(error);

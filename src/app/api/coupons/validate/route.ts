@@ -3,10 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, ValidationError } from '@/lib/errors';
 import { z } from 'zod';
 
-const validateCouponSchema = z.object({
-  code: z.string().min(2).max(20).toUpperCase(),
-  orderAmountPaise: z.number().int().positive(),
-});
+const validateCouponSchema = z
+  .object({
+    code: z.string().min(2).max(20).toUpperCase(),
+    orderAmountPaise: z.number().int().positive().optional(),
+    subtotalPaise: z.number().int().positive().optional(),
+  })
+  .refine((data) => data.orderAmountPaise !== undefined || data.subtotalPaise !== undefined, {
+    message: 'orderAmountPaise or subtotalPaise is required',
+  });
 
 // Built-in standard coupons for testing and live promotions
 const PROMO_COUPONS: Record<
@@ -45,7 +50,9 @@ const PROMO_COUPONS: Record<
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { code, orderAmountPaise } = validateCouponSchema.parse(body);
+    const parsed = validateCouponSchema.parse(body);
+    const code = parsed.code;
+    const amountPaise = parsed.orderAmountPaise ?? parsed.subtotalPaise ?? 0;
 
     // 1. Check database for active coupon
     let coupon = null;
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
       throw new ValidationError(`Coupon code '${code}' has expired`);
     }
 
-    if (coupon.minOrderPaise && orderAmountPaise < coupon.minOrderPaise) {
+    if (coupon.minOrderPaise && amountPaise < coupon.minOrderPaise) {
       const minINR = (coupon.minOrderPaise / 100).toFixed(0);
       throw new ValidationError(
         `This coupon requires a minimum booking amount of ₹${minINR}`
@@ -89,7 +96,8 @@ export async function POST(req: NextRequest) {
     // Calculate discount amount
     let discountPaise = 0;
     if (coupon.discountType === 'PERCENTAGE') {
-      discountPaise = Math.round((orderAmountPaise * coupon.discountValue) / 100);
+      const rate = coupon.discountValue > 100 ? coupon.discountValue / 10000 : coupon.discountValue / 100;
+      discountPaise = Math.round(amountPaise * rate);
       if (coupon.maxDiscountPaise && discountPaise > coupon.maxDiscountPaise) {
         discountPaise = coupon.maxDiscountPaise;
       }
@@ -97,11 +105,11 @@ export async function POST(req: NextRequest) {
       discountPaise = coupon.discountValue; // Fixed amount in paise
     }
 
-    if (discountPaise > orderAmountPaise) {
-      discountPaise = orderAmountPaise;
+    if (discountPaise > amountPaise) {
+      discountPaise = amountPaise;
     }
 
-    const finalAmountPaise = orderAmountPaise - discountPaise;
+    const finalAmountPaise = amountPaise - discountPaise;
 
     return apiSuccess({
       valid: true,
@@ -109,6 +117,7 @@ export async function POST(req: NextRequest) {
       code: coupon.code,
       discountType: coupon.discountType,
       discountValue: coupon.discountValue,
+      discountPaise,
       discountAmountPaise: discountPaise,
       finalAmountPaise,
       message: `Coupon applied! You saved ₹${(discountPaise / 100).toFixed(0)}`,

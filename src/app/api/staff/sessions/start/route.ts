@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const startSessionSchema = z.object({
@@ -13,6 +14,7 @@ const startSessionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = startSessionSchema.parse(body);
 
@@ -42,9 +44,18 @@ export async function POST(req: NextRequest) {
 
         if (!bookingId) {
           // Create instant walk-in booking if no bookingId provided
-          let guest = await tx.user.findFirst({ where: { role: 'CUSTOMER' } });
+          let guest = await tx.user.findUnique({ where: { email: 'guest@darksyndicate.in' } });
           if (!guest) {
-            guest = await tx.user.findFirst();
+            guest = await tx.user.create({
+              data: {
+                email: 'guest@darksyndicate.in',
+                passwordHash: 'LOCKED_GUEST_ACCOUNT',
+                firstName: data.customerName || 'Walk-in',
+                lastName: 'Gamer',
+                phone: data.customerPhone || '9876543210',
+                role: 'CUSTOMER',
+              },
+            });
           }
 
           const basePricePaise = station.pricePerHourPaise * (data.durationMinutes / 60);

@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
   try {
+    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     try {
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);

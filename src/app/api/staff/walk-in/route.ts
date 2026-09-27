@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
-import { getSession } from '@/lib/session';
+import { requireRole } from '@/lib/session';
 import { getActiveUserMembership } from '@/lib/memberships';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -17,10 +17,10 @@ const walkInSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const staffSession = await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = walkInSchema.parse(body);
-    const staffSession = await getSession();
-    const staffName = staffSession ? `${staffSession.firstName} ${staffSession.lastName}`.trim() : null;
+    const staffName = `${staffSession.firstName} ${staffSession.lastName}`.trim();
 
     try {
       const station = await prisma.gamingStation.findUnique({
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       const conflict = await prisma.booking.findFirst({
         where: {
           stationId: station.id,
-          status: { in: ['CONFIRMED', 'PENDING'] },
+          status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
           startTime: { lt: scheduledEndAt },
           endTime: { gt: now },
         },
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       const subtotalPaise = Math.round(hourlyRate * (data.durationMinutes / 60));
 
       const result = await prisma.$transaction(async (tx) => {
-        // Resolve registered customer by phone or fallback guest user
+        // Resolve registered customer by phone or fallback to dedicated guest user
         const phoneDigits = data.customerPhone.replace(/\D/g, '').slice(-10);
         const registeredUser = phoneDigits.length >= 10
           ? await tx.user.findFirst({
@@ -76,8 +76,23 @@ export async function POST(req: NextRequest) {
             })
           : null;
 
-        let user = registeredUser || (await tx.user.findFirst({ where: { role: 'CUSTOMER' } }));
-        if (!user) user = await tx.user.findFirst();
+        let user = registeredUser;
+        if (!user) {
+          let guest = await tx.user.findUnique({ where: { email: 'guest@darksyndicate.in' } });
+          if (!guest) {
+            guest = await tx.user.create({
+              data: {
+                email: 'guest@darksyndicate.in',
+                passwordHash: 'LOCKED_GUEST_ACCOUNT',
+                firstName: 'Walk-in',
+                lastName: 'Gamer',
+                phone: '9876543210',
+                role: 'CUSTOMER',
+              },
+            });
+          }
+          user = guest;
+        }
 
         // Check active membership
         let membershipDiscountPaise = 0;

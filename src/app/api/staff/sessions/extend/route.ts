@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const extendSessionSchema = z.object({
@@ -12,6 +13,7 @@ const extendSessionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = extendSessionSchema.parse(body);
 

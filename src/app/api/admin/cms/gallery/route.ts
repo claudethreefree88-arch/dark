@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit';
 
@@ -22,6 +23,7 @@ const updateGallerySchema = z.object({
 
 export async function GET() {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     try {
       const images = await prisma.galleryImage.findMany({
         orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
@@ -41,6 +43,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = gallerySchema.parse(body);
 
@@ -77,6 +80,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const { id, ...updates } = updateGallerySchema.parse(body);
 
@@ -108,6 +112,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) throw new NotFoundError('Image ID required');

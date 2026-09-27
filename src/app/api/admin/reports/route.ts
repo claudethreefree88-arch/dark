@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 
 const OFFSET_MINUTES = 330;
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED'] as const;
@@ -34,6 +35,7 @@ function hourOf(date: Date) {
 
 export async function GET(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const { searchParams } = new URL(req.url);
     const requestedTimeframe = searchParams.get('timeframe') || '30d';
     const timeframe = ['7d', '30d', 'month', 'year'].includes(requestedTimeframe)

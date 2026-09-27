@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, ConflictError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const createCouponSchema = z.object({
@@ -22,6 +23,7 @@ const toggleCouponSchema = z.object({
 
 export async function GET() {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     try {
       const coupons = await prisma.coupon.findMany({
         orderBy: { createdAt: 'desc' },
@@ -42,6 +44,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = createCouponSchema.parse(body);
 
@@ -100,6 +103,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const { couponId, isActive } = toggleCouponSchema.parse(body);
 

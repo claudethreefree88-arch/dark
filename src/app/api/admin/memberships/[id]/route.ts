@@ -1,13 +1,10 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, AuthError, ForbiddenError, handleApiError, NotFoundError } from '@/lib/errors';
-import { getSession } from '@/lib/session';
+import { requireRole } from '@/lib/session';
 
 async function requireAdmin() {
-  const session = await getSession();
-  if (!session) throw new AuthError();
-  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') throw new ForbiddenError();
-  return session;
+  return await requireRole('ADMIN', 'SUPER_ADMIN');
 }
 
 export async function DELETE(

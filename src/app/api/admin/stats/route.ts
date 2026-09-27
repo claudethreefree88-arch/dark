@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 
 const BUSINESS_TIMEZONE_OFFSET_MINUTES = 5 * 60 + 30;
 const FACILITY_COLORS = ['#61ADDF', '#16479B', '#34D399', '#F59E0B', '#A78BFA'];
@@ -43,6 +44,7 @@ function formatBusinessTime(date: Date) {
 
 export async function GET(_req: NextRequest) {
   try {
+    await requireRole('ADMIN', 'SUPER_ADMIN');
     const now = new Date();
     const todayStart = businessDateStart(now);
     const tomorrowStart = businessDateStart(now, -1);

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
 const checkInSchema = z.object({
@@ -10,6 +11,7 @@ const checkInSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const { identifier, autoStartSession } = checkInSchema.parse(body);
 

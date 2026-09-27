@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { AUTH_COOKIE_NAME, AUTH_COOKIE_MAX_AGE } from './constants';
 import { createAccessToken, verifyToken, type TokenPayload } from './auth';
+import { AuthError, ForbiddenError } from './errors';
 
 // ─── Cookie-Based Session Management ────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export async function clearSessionCookie(): Promise<void> {
 export async function requireSession(): Promise<TokenPayload> {
   const session = await getSession();
   if (!session) {
-    throw new Error('Authentication required');
+    throw new AuthError('Authentication required');
   }
   return session;
 }
@@ -67,7 +68,7 @@ export async function requireRole(
 ): Promise<TokenPayload> {
   const session = await requireSession();
   if (!allowedRoles.includes(session.role)) {
-    throw new Error('Access denied');
+    throw new ForbiddenError('Access denied: Insufficient privileges');
   }
   return session;
 }

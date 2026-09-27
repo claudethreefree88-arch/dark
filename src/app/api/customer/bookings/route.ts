@@ -24,15 +24,10 @@ export async function GET() {
         },
       });
 
-      if (bookings.length > 0) {
-        return apiSuccess(bookings);
-      }
-
-      // Return high quality demo bookings for development preview if user has no bookings yet
-      return apiSuccess(getDemoBookings(session.userId));
+      return apiSuccess(bookings);
     } catch {
-      // Database not yet connected/migrated, return demo bookings
-      return apiSuccess(getDemoBookings(session.userId));
+      // Database offline fallback
+      return apiSuccess([]);
     }
   } catch (error) {
     return handleApiError(error);

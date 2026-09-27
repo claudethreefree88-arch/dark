@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      const isStaffOrAdmin = session.role === 'ADMIN' || session.role === 'STAFF';
+      const isStaffOrAdmin = session.role === 'ADMIN' || session.role === 'STAFF' || session.role === 'SUPER_ADMIN';
       const bookings = await prisma.booking.findMany({
         where: isStaffOrAdmin ? {} : { userId: session.userId },
         include: {
@@ -67,11 +67,12 @@ export async function POST(req: NextRequest) {
 
     const session = await getSession();
 
-    // Parse date and time
+    // Parse date and time in IST (UTC+5:30)
     const [year, month, day] = data.date.split('-').map(Number);
     const [hours, minutes] = data.startTime.split(':').map(Number);
 
-    const startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0) - istOffsetMs);
     const endDateTime = new Date(startDateTime.getTime() + data.durationMinutes * 60 * 1000);
 
     // Ensure slot is not in the past
@@ -127,9 +128,9 @@ export async function POST(req: NextRequest) {
           userId = newUser.id;
         }
       } else {
-        // Fallback demo/guest user
-        let guestUser = await prisma.user.findFirst({
-          where: { role: 'CUSTOMER' },
+        // Dedicated guest user
+        let guestUser = await prisma.user.findUnique({
+          where: { email: 'guest@darksyndicate.in' },
         });
         if (!guestUser) {
           const defaultPassword = await hashPassword('GuestPassword123!');
@@ -248,11 +249,11 @@ export async function POST(req: NextRequest) {
 
       // 4. Concurrency Protection & Booking Creation inside Transaction
       const result = await prisma.$transaction(async (tx) => {
-        // Query overlapping bookings
+        // Query overlapping bookings (including checked-in and in-progress sessions)
         const overlapping = await tx.booking.findFirst({
           where: {
             stationId: station.id,
-            status: { in: ['CONFIRMED', 'PENDING'] },
+            status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
             OR: [
               {
                 startTime: { lte: startDateTime },
@@ -276,7 +277,8 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const bookingRef = `DS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+        const bookingRef = `DS-${new Date().getFullYear()}-${randomHex}`;
         const qrToken = `ds-${crypto.randomUUID()}`;
 
         const booking = await tx.booking.create({
@@ -284,7 +286,7 @@ export async function POST(req: NextRequest) {
             bookingRef,
             userId,
             stationId: station.id,
-            date: new Date(year, month - 1, day),
+            date: new Date(Date.UTC(year, month - 1, day, 0, 0, 0)),
             startTime: startDateTime,
             endTime: endDateTime,
             durationMinutes: data.durationMinutes,
@@ -347,39 +349,8 @@ export async function POST(req: NextRequest) {
         throw err;
       }
 
-      console.warn('Database booking transaction failed or offline, returning generated booking response:', err);
-
-      // Fallback for development if DB has schema sync issue
-      const mockRef = `DS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const mockQrToken = `ds-mock-${crypto.randomUUID()}`;
-      const mockSubtotal = 20000 * (data.durationMinutes / 60);
-      const mockDiscount = data.couponCode ? 2000 : 0;
-
-      return apiSuccess(
-        {
-          id: `book_${Date.now()}`,
-          bookingRef: mockRef,
-          qrToken: mockQrToken,
-          stationId: data.stationId,
-          date: data.date,
-          startTime: startDateTime.toISOString(),
-          endTime: endDateTime.toISOString(),
-          durationMinutes: data.durationMinutes,
-          subtotalPaise: mockSubtotal,
-          discountPaise: mockDiscount,
-          totalPricePaise: Math.max(0, mockSubtotal - mockDiscount),
-          status: data.payAtCounter ? 'CONFIRMED' : 'PENDING',
-          customerName: data.customerName || 'Syndicate Player',
-          customerPhone: data.customerPhone,
-          notes: data.notes,
-          station: {
-            id: data.stationId,
-            name: 'PS5 Battle Station Alpha',
-            facility: { name: 'PlayStation 5 Pro Arena' },
-          },
-        },
-        201
-      );
+      console.error('Database booking transaction failed:', err);
+      throw err;
     }
   } catch (error) {
     return handleApiError(error);
