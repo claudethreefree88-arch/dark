@@ -141,9 +141,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Admin Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Bar */}
-        <header className="bg-ds-dark/80 backdrop-blur-md border-b border-ds-border px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-ds-dark/80 backdrop-blur-md border-b border-ds-border px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-3">
             <span className="md:hidden font-heading font-black text-xs uppercase tracking-wider text-ds-text">
               DARK SYNDICATE
