@@ -38,8 +38,12 @@ export async function GET(req: NextRequest) {
       console.error('Error auto-closing stale shifts:', e);
     }
 
-    // 2. Build query filters
-    const where: any = {};
+    // 2. Build query filters (Restricted strictly to floor STAFF)
+    const where: any = {
+      user: {
+        role: 'STAFF',
+      },
+    };
     if (staffId && staffId !== 'ALL') {
       where.userId = staffId;
     }
@@ -98,10 +102,10 @@ export async function GET(req: NextRequest) {
       orderBy: { loginAt: 'desc' },
     });
 
-    // 4. Fetch all staff members for selector dropdown
+    // 4. Fetch all staff members for selector dropdown (Floor staff only)
     const staffUsers = await prisma.user.findMany({
       where: {
-        role: { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] },
+        role: 'STAFF',
       },
       select: {
         id: true,

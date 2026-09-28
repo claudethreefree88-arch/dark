@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      if (user.role === 'STAFF' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+      // Record shift only for floor STAFF (Administrators are not tracked as floor shift workers)
+      if (user.role === 'STAFF') {
         // Auto-close any prior open shifts left hanging without logout (> 2 hours)
         const openShifts = await prisma.staffShift.findMany({
           where: { userId: user.id, logoutAt: null },

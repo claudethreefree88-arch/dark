@@ -46,8 +46,8 @@ export async function GET() {
       lastName: user.lastName,
     });
 
-    // Ensure active shift exists for on-duty staff and administrators
-    if (['STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    // Ensure active shift exists only for on-duty floor STAFF (not Admins or Super Admins)
+    if (user.role === 'STAFF') {
       try {
         const activeShift = await prisma.staffShift.findFirst({
           where: { userId: user.id, logoutAt: null },
