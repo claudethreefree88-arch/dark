@@ -606,13 +606,6 @@ export default function StaffBookingsSchedulePage() {
                                 <span>Check In</span>
                               </Button>
                             )}
-
-                            {/* External booking pass link */}
-                            <Link href={`/booking/confirmation/${b.bookingRef || b.id}`} target="_blank">
-                              <Button variant="outline" size="sm" className="text-[11px] py-1 px-2" title="View Pass">
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </Button>
-                            </Link>
                           </div>
                         </td>
                       </tr>
