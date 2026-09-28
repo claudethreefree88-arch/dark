@@ -548,14 +548,41 @@ export default function StaffBookingsSchedulePage() {
                               : b.status}
                           </Badge>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* In-Session Quick Actions: Extend & End Session */}
+                            {isSessionActive && (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => openExtendModal(b)}
+                                  className="text-[11px] py-1 px-2.5 flex items-center gap-1 border-ds-accent/30 hover:border-ds-accent text-ds-ice hover:bg-ds-accent/20"
+                                  title="Extend session duration"
+                                >
+                                  <PlusCircle className="w-3.5 h-3.5 text-ds-accent" />
+                                  <span>Extend</span>
+                                </Button>
+
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => handleEndSession(b)}
+                                  className="text-[11px] py-1 px-2.5 flex items-center gap-1 text-white bg-rose-600 hover:bg-rose-500"
+                                  title="End active session"
+                                >
+                                  <Square className="w-3.5 h-3.5" />
+                                  <span>End Session</span>
+                                </Button>
+                              </>
+                            )}
+
                             {/* 1. INFO BUTTON — Shows Station Grid View Modal */}
                             <Button
                               variant="secondary"
                               size="sm"
                               onClick={() => setSelectedBookingForGrid(b)}
-                              className="text-[11px] py-1 px-2.5 flex items-center gap-1 border-ds-accent/40 text-ds-ice hover:bg-ds-accent/20"
+                              className="text-[11px] py-1 px-2.5 flex items-center gap-1 border-ds-border text-ds-text-dim hover:text-white hover:bg-ds-surface"
                               title="Open Live Station Console Grid View"
                             >
                               <Info className="w-3.5 h-3.5 text-ds-accent" />
