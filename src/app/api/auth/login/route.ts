@@ -1,4 +1,4 @@
-import { after, NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth';
 import { setSessionCookie } from '@/lib/session';
@@ -90,64 +90,58 @@ export async function POST(request: NextRequest) {
       lastName: user.lastName,
     });
 
-    // These bookkeeping writes are not required to authenticate the user.
-    // Run them after the response so login is not delayed by two extra DB writes.
-    after(async () => {
-      try {
-        const bookkeepingPromises: Promise<any>[] = [
-          prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          }),
-          prisma.auditLog.create({
+    // Track Staff & Admin working hours / shifts and record login bookkeeping
+    try {
+      const userAgent = request.headers.get('user-agent') || undefined;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'LOGIN',
+          entityType: 'user',
+          entityId: user.id,
+          newValue: { portal: portal || 'staff', method: 'password' },
+          ipAddress: ip,
+          userAgent,
+        },
+      });
+
+      if (user.role === 'STAFF' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+        // Auto-close any prior open shifts left hanging without logout (> 2 hours)
+        const openShifts = await prisma.staffShift.findMany({
+          where: { userId: user.id, logoutAt: null },
+        });
+
+        for (const open of openShifts) {
+          const shiftAgeMin = Math.round((Date.now() - new Date(open.loginAt).getTime()) / (60 * 1000));
+          const duration = Math.min(120, Math.max(1, shiftAgeMin));
+          await prisma.staffShift.update({
+            where: { id: open.id },
             data: {
-              userId: user.id,
-              action: 'LOGIN',
-              entityType: 'user',
-              entityId: user.id,
-              newValue: { portal: portal || 'staff', method: 'password' },
-              ipAddress: ip,
-              userAgent: request.headers.get('user-agent') || undefined,
+              logoutAt: new Date(new Date(open.loginAt).getTime() + duration * 60 * 1000),
+              logoutReason: 'SYSTEM_INACTIVE',
+              durationMinutes: duration,
             },
-          }),
-        ];
-
-        // Track Staff & Admin working hours / shifts
-        if (user.role === 'STAFF' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-          // Auto-close any prior open shifts left hanging without logout
-          const openShifts = await prisma.staffShift.findMany({
-            where: { userId: user.id, logoutAt: null },
           });
-          for (const open of openShifts) {
-            const shiftAgeMin = Math.round((Date.now() - new Date(open.loginAt).getTime()) / (60 * 1000));
-            const duration = Math.min(120, Math.max(1, shiftAgeMin));
-            await prisma.staffShift.update({
-              where: { id: open.id },
-              data: {
-                logoutAt: new Date(new Date(open.loginAt).getTime() + duration * 60 * 1000),
-                logoutReason: 'SYSTEM_INACTIVE',
-                durationMinutes: duration,
-              },
-            });
-          }
-
-          bookkeepingPromises.push(
-            prisma.staffShift.create({
-              data: {
-                userId: user.id,
-                loginAt: new Date(),
-                ipAddress: ip,
-                userAgent: request.headers.get('user-agent') || undefined,
-              },
-            })
-          );
         }
 
-        await Promise.all(bookkeepingPromises);
-      } catch (error) {
-        console.error('Post-login bookkeeping failed:', error);
+        await prisma.staffShift.create({
+          data: {
+            userId: user.id,
+            loginAt: new Date(),
+            ipAddress: ip,
+            userAgent,
+          },
+        });
       }
-    });
+    } catch (error) {
+      console.error('Post-login bookkeeping failed:', error);
+    }
 
     return apiSuccess({
       user: {

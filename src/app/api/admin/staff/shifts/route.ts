@@ -53,13 +53,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Date range filter
-    const now = new Date();
     if (dateRange === 'TODAY') {
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const istDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+      const startOfDay = new Date(`${istDateStr}T00:00:00+05:30`);
       where.loginAt = { gte: startOfDay };
     } else if (dateRange === 'YESTERDAY') {
-      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
-      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+      const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const istDateStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const startOfYesterday = new Date(`${istDateStr}T00:00:00+05:30`);
+      const endOfYesterday = new Date(`${istDateStr}T23:59:59.999+05:30`);
       where.loginAt = { gte: startOfYesterday, lte: endOfYesterday };
     } else if (dateRange === '7DAYS') {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
