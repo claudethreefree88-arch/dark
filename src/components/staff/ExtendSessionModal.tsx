@@ -65,19 +65,16 @@ export function ExtendSessionModal({
     };
   }, []);
 
-  if (!station || !station.activeSession) return null;
-
-  const hourlyRate = station.pricePerHourPaise;
+  const hourlyRate = station?.pricePerHourPaise || 15000;
   const extensionFeePaise = Math.round(hourlyRate * (additionalMinutes / 60));
-
-  const currentEnd = new Date(station.activeSession.scheduledEndAt);
-  const newEnd = new Date(currentEnd.getTime() + additionalMinutes * 60 * 1000);
+  const stationName = station?.name || 'Console';
 
   // Generate dynamic QR fallback if admin has not uploaded a static QR image
+  // Unconditionally called hook to satisfy React Rules of Hooks
   useEffect(() => {
-    if (paymentMethod === 'UPI' && !adminQrUrl) {
+    if (paymentMethod === 'UPI' && !adminQrUrl && station) {
       const amount = (extensionFeePaise / 100).toFixed(2);
-      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiPayeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Extension ${station.name}`)}`;
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiPayeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Extension ${stationName}`)}`;
       QRCode.toDataURL(upiUrl, {
         width: 220,
         margin: 1,
@@ -86,7 +83,7 @@ export function ExtendSessionModal({
         .then((url) => setDynamicQrUrl(url))
         .catch(() => {});
     }
-  }, [paymentMethod, adminQrUrl, upiId, upiPayeeName, extensionFeePaise, station.name]);
+  }, [paymentMethod, adminQrUrl, upiId, upiPayeeName, extensionFeePaise, stationName, station]);
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
@@ -96,6 +93,7 @@ export function ExtendSessionModal({
   };
 
   const handleExtend = async () => {
+    if (!station) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/staff/sessions/extend', {
@@ -125,6 +123,14 @@ export function ExtendSessionModal({
     }
   };
 
+  // Unconditional render guard after all hooks are declared
+  if (!isOpen || !station || !station.activeSession) return null;
+
+  const currentEndRaw = station.activeSession.scheduledEndAt;
+  const currentEnd = currentEndRaw ? new Date(currentEndRaw) : new Date();
+  const validCurrentEnd = !isNaN(currentEnd.getTime()) ? currentEnd : new Date();
+  const newEnd = new Date(validCurrentEnd.getTime() + additionalMinutes * 60 * 1000);
+
   const displayQrCode = adminQrUrl || dynamicQrUrl;
 
   return (
@@ -144,7 +150,7 @@ export function ExtendSessionModal({
           <div className="text-right">
             <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Current End Time</span>
             <p className="font-mono font-bold text-ds-text">
-              {currentEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {validCurrentEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
