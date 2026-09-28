@@ -107,8 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+  const logout = useCallback(async (reason?: 'MANUAL' | 'SYSTEM_INACTIVE') => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'MANUAL' }),
+      });
+    } catch {}
     setUser(null);
   }, []);
 

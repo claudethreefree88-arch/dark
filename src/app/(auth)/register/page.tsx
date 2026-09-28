@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import LoginPage from '../login/page';
+import { LoginView } from '../LoginView';
 
 export default function RegisterPage() {
-  return <LoginPage defaultTab="signup" />;
+  return <LoginView defaultTab="signup" />;
 }

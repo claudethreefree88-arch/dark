@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     // Run them after the response so login is not delayed by two extra DB writes.
     after(async () => {
       try {
-        await Promise.all([
+        const bookkeepingPromises: Promise<any>[] = [
           prisma.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
@@ -105,11 +105,45 @@ export async function POST(request: NextRequest) {
               action: 'LOGIN',
               entityType: 'user',
               entityId: user.id,
+              newValue: { portal: portal || 'staff', method: 'password' },
               ipAddress: ip,
               userAgent: request.headers.get('user-agent') || undefined,
             },
           }),
-        ]);
+        ];
+
+        // Track Staff & Admin working hours / shifts
+        if (user.role === 'STAFF' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+          // Auto-close any prior open shifts left hanging without logout
+          const openShifts = await prisma.staffShift.findMany({
+            where: { userId: user.id, logoutAt: null },
+          });
+          for (const open of openShifts) {
+            const shiftAgeMin = Math.round((Date.now() - new Date(open.loginAt).getTime()) / (60 * 1000));
+            const duration = Math.min(120, Math.max(1, shiftAgeMin));
+            await prisma.staffShift.update({
+              where: { id: open.id },
+              data: {
+                logoutAt: new Date(new Date(open.loginAt).getTime() + duration * 60 * 1000),
+                logoutReason: 'SYSTEM_INACTIVE',
+                durationMinutes: duration,
+              },
+            });
+          }
+
+          bookkeepingPromises.push(
+            prisma.staffShift.create({
+              data: {
+                userId: user.id,
+                loginAt: new Date(),
+                ipAddress: ip,
+                userAgent: request.headers.get('user-agent') || undefined,
+              },
+            })
+          );
+        }
+
+        await Promise.all(bookkeepingPromises);
       } catch (error) {
         console.error('Post-login bookkeeping failed:', error);
       }

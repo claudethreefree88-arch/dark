@@ -145,6 +145,7 @@ model User {
   payments           Payment[]
   gamingSessions     GamingSession[]     @relation("SessionStaff")
   staffActivityLogs  StaffActivityLog[]
+  staffShifts        StaffShift[]
   auditLogs          AuditLog[]
   notifications      Notification[]
   couponRedemptions  CouponRedemption[]
@@ -463,6 +464,28 @@ model StaffActivityLog {
   @@index([createdAt])
   @@index([entityType, entityId])
   @@map("staff_activity_logs")
+}
+
+/// Staff attendance, login/logout shifts, and working hours measurement
+model StaffShift {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  loginAt         DateTime  @default(now()) @map("login_at")
+  logoutAt        DateTime? @map("logout_at")
+  logoutReason    String?   @map("logout_reason") // "MANUAL", "SYSTEM_INACTIVE"
+  durationMinutes Int?      @map("duration_minutes")
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loginAt])
+  @@index([logoutAt])
+  @@map("staff_shifts")
 }
 
 /// System-wide audit trail

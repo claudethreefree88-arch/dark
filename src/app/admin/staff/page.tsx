@@ -32,8 +32,44 @@ import {
   X,
   FileCheck,
   Building,
+  Clock,
+  Calendar,
+  Timer,
+  History,
+  Filter,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+
+interface StaffShiftItem {
+  id: string;
+  userId: string;
+  staffName: string;
+  staffEmail: string;
+  staffRole: string;
+  staffPhone: string;
+  staffAvatar: string | null;
+  dateFormatted: string;
+  loginAt: string;
+  loginTimeFormatted: string;
+  logoutAt: string | null;
+  logoutTimeFormatted: string;
+  isActive: boolean;
+  logoutReason: string;
+  logoutReasonLabel: string;
+  durationMinutes: number;
+  durationFormatted: string;
+  ipAddress: string;
+}
+
+interface ShiftSummary {
+  totalWorkingMinutes: number;
+  totalWorkingHoursFormatted: string;
+  totalWorkingHoursDecimal: number;
+  totalShifts: number;
+  activeShifts: number;
+  manualLogouts: number;
+  systemInactivityLogouts: number;
+}
 
 interface StaffMember {
   id: string;
@@ -99,6 +135,28 @@ export default function AdminStaffPage() {
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
+  // Navigation tab
+  const [activeTab, setActiveTab] = useState<'roster' | 'shifts'>('roster');
+
+  // Shift Logs & Measurement State
+  const [shifts, setShifts] = useState<StaffShiftItem[]>([]);
+  const [shiftSummary, setShiftSummary] = useState<ShiftSummary>({
+    totalWorkingMinutes: 0,
+    totalWorkingHoursFormatted: '0h 0m',
+    totalWorkingHoursDecimal: 0,
+    totalShifts: 0,
+    activeShifts: 0,
+    manualLogouts: 0,
+    systemInactivityLogouts: 0,
+  });
+  const [shiftStaffList, setShiftStaffList] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [loadingShifts, setLoadingShifts] = useState(false);
+  const [selectedStaffFilter, setSelectedStaffFilter] = useState('ALL');
+  const [dateRangeFilter, setDateRangeFilter] = useState('ALL');
+  const [shiftReasonFilter, setShiftReasonFilter] = useState('ALL');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
+
   const loadStaff = async () => {
     setLoading(true);
     try {
@@ -114,9 +172,68 @@ export default function AdminStaffPage() {
     }
   };
 
+  const loadShifts = async () => {
+    setLoadingShifts(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedStaffFilter !== 'ALL') params.append('staffId', selectedStaffFilter);
+      if (dateRangeFilter !== 'ALL') params.append('dateRange', dateRangeFilter);
+      if (shiftReasonFilter !== 'ALL') params.append('reason', shiftReasonFilter);
+      if (dateRangeFilter === 'CUSTOM') {
+        if (customDateFrom) params.append('dateFrom', customDateFrom);
+        if (customDateTo) params.append('dateTo', customDateTo);
+      }
+
+      const res = await fetch(`/api/admin/staff/shifts?${params.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setShifts(json.data.shifts || []);
+        if (json.data.summary) setShiftSummary(json.data.summary);
+        if (json.data.staffMembers) setShiftStaffList(json.data.staffMembers);
+      }
+    } catch {
+      toast.error('Failed to load staff shifts and logs');
+    } finally {
+      setLoadingShifts(false);
+    }
+  };
+
   useEffect(() => {
     loadStaff();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'shifts') {
+      loadShifts();
+    }
+  }, [activeTab, selectedStaffFilter, dateRangeFilter, shiftReasonFilter]);
+
+  const handleExportShiftsCSV = () => {
+    if (shifts.length === 0) {
+      toast.error('No shift records to export');
+      return;
+    }
+    const headers =
+      'Staff Name,Email,Role,Date (IST),Login Time (IST),Logout Time (IST),Status / Reason,Duration Formatted,Duration Minutes,IP Address\n';
+    const rows = shifts
+      .map(
+        (s) =>
+          `"${s.staffName}","${s.staffEmail}","${s.staffRole}","${s.dateFormatted}","${s.loginTimeFormatted}","${s.logoutTimeFormatted}","${s.logoutReasonLabel}","${s.durationFormatted}","${s.durationMinutes}","${s.ipAddress}"`
+      )
+      .join('\n');
+
+    const summaryFooter = `\n"SUMMARY","Total Working Hours: ${shiftSummary.totalWorkingHoursFormatted}","Total Shifts: ${shiftSummary.totalShifts}","Active Shifts: ${shiftSummary.activeShifts}","System Inactivity Logouts: ${shiftSummary.systemInactivityLogouts}","Manual Logouts: ${shiftSummary.manualLogouts}"\n`;
+
+    const blob = new Blob([headers + rows + summaryFooter], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `staff_shifts_and_hours_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Staff shift logs exported to CSV');
+  };
 
   // Quick Password Generator
   const generateRandomPassword = () => {
@@ -371,19 +488,84 @@ export default function AdminStaffPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadStaff} className="border-ds-border hover:border-ds-accent/40">
-            <RotateCw className="w-3.5 h-3.5 mr-1.5 text-ds-accent" />
-            <span>Refresh</span>
-          </Button>
+          {activeTab === 'roster' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadStaff}
+                className="border-ds-border hover:border-ds-accent/40"
+              >
+                <RotateCw className="w-3.5 h-3.5 mr-1.5 text-ds-accent" />
+                <span>Refresh</span>
+              </Button>
 
-          <Button variant="accent" size="sm" onClick={() => setOnboardModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            <span>Onboard Staff</span>
-          </Button>
+              <Button variant="accent" size="sm" onClick={() => setOnboardModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                <span>Onboard Staff</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadShifts}
+                className="border-ds-border hover:border-ds-accent/40"
+              >
+                <RotateCw className="w-3.5 h-3.5 mr-1.5 text-ds-accent" />
+                <span>Refresh</span>
+              </Button>
+
+              <Button
+                variant="accent"
+                size="sm"
+                onClick={handleExportShiftsCSV}
+                className="shadow-lg shadow-ds-accent/20"
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                <span>Export CSV</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-ds-border pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('roster')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold uppercase transition-all ${
+            activeTab === 'roster'
+              ? 'bg-ds-accent text-white shadow-lg shadow-ds-accent/20 border border-ds-accent'
+              : 'bg-ds-surface/60 text-ds-text-dim hover:text-white border border-ds-border'
+          }`}
+        >
+          <UserCog className="w-4 h-4" />
+          <span>Staff Accounts & KYC ({staff.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('shifts')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold uppercase transition-all ${
+            activeTab === 'shifts'
+              ? 'bg-ds-accent text-white shadow-lg shadow-ds-accent/20 border border-ds-accent'
+              : 'bg-ds-surface/60 text-ds-text-dim hover:text-white border border-ds-border'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Shift Logs & Working Hours</span>
+          {shiftSummary.activeShifts > 0 && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'roster' && (
+        <>
+          {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
         {/* Status Filters */}
         <div className="flex items-center gap-2">
@@ -614,6 +796,19 @@ export default function AdminStaffPage() {
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
+                          {/* Quick View Shifts & Hours Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedStaffFilter(s.id);
+                              setActiveTab('shifts');
+                            }}
+                            className="p-1.5 rounded-lg border border-ds-border text-ds-text-dim hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-all"
+                            title="View Shift Logs & Working Hours"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* Toggle Active / Deactivate Button */}
                           {!isSuperAdmin && (
                             <button
@@ -665,6 +860,360 @@ export default function AdminStaffPage() {
           </div>
         )}
       </Card>
+        </>
+      )}
+
+      {activeTab === 'shifts' && (
+        <div className="space-y-6">
+          {/* Top KPI Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* Card 1: Total Working Hours */}
+            <Card
+              glass
+              className="p-4 border-ds-accent/40 bg-gradient-to-br from-ds-accent/10 via-ds-surface/60 to-transparent relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+                  Total Working Hours
+                </span>
+                <Clock className="w-4 h-4 text-ds-accent" />
+              </div>
+              <div className="text-2xl font-heading font-black text-ds-ice mt-2 tracking-tight">
+                {shiftSummary.totalWorkingHoursFormatted}
+              </div>
+              <span className="text-[10px] font-mono text-ds-text-dim block mt-0.5">
+                {shiftSummary.totalWorkingHoursDecimal} decimal hours
+              </span>
+            </Card>
+
+            {/* Card 2: Total Recorded Shifts */}
+            <Card glass className="p-4 border-ds-border bg-ds-surface/40">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+                  Total Shifts
+                </span>
+                <Calendar className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-heading font-black text-ds-text mt-2">
+                {shiftSummary.totalShifts}
+              </div>
+              <span className="text-[10px] font-mono text-ds-text-dim block mt-0.5">
+                Clock-in sessions
+              </span>
+            </Card>
+
+            {/* Card 3: Active Operators Now */}
+            <Card glass className="p-4 border-emerald-500/30 bg-emerald-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">
+                  Active Now
+                </span>
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+              </div>
+              <div className="text-2xl font-heading font-black text-emerald-400 mt-2">
+                {shiftSummary.activeShifts}
+              </div>
+              <span className="text-[10px] font-mono text-ds-text-dim block mt-0.5">
+                On duty right now
+              </span>
+            </Card>
+
+            {/* Card 4: System Inactivity Logouts */}
+            <Card glass className="p-4 border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400">
+                  System 2h Inactive
+                </span>
+                <AlertCircle className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-heading font-black text-amber-300 mt-2">
+                {shiftSummary.systemInactivityLogouts}
+              </div>
+              <span className="text-[10px] font-mono text-amber-400/80 block mt-0.5">
+                Auto-logout by system
+              </span>
+            </Card>
+
+            {/* Card 5: Manual Logouts */}
+            <Card glass className="p-4 border-cyan-500/30 bg-cyan-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400">
+                  Manual Logouts
+                </span>
+                <Power className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-2xl font-heading font-black text-cyan-300 mt-2">
+                {shiftSummary.manualLogouts}
+              </div>
+              <span className="text-[10px] font-mono text-ds-text-dim block mt-0.5">
+                Staff clicked sign out
+              </span>
+            </Card>
+          </div>
+
+          {/* Shifts Filter Toolbar */}
+          <div className="flex flex-col gap-3 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Operator & Reason Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+                  Staff Member:
+                </span>
+                <select
+                  value={selectedStaffFilter}
+                  onChange={(e) => setSelectedStaffFilter(e.target.value)}
+                  className="bg-ds-dark border border-ds-border rounded-xl px-3 py-1.5 text-xs text-ds-text font-mono focus:border-ds-accent focus:outline-none"
+                >
+                  <option value="ALL">All Staff Members ({shiftStaffList.length})</option>
+                  {shiftStaffList.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.role})
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={shiftReasonFilter}
+                  onChange={(e) => setShiftReasonFilter(e.target.value)}
+                  className="bg-ds-dark border border-ds-border rounded-xl px-3 py-1.5 text-xs text-ds-text font-mono focus:border-ds-accent focus:outline-none"
+                >
+                  <option value="ALL">All Shift Statuses</option>
+                  <option value="ACTIVE">🟢 Active Shifts</option>
+                  <option value="MANUAL">Manual Logouts</option>
+                  <option value="SYSTEM_INACTIVE">⚠️ System Inactive Logouts</option>
+                </select>
+              </div>
+
+              {/* Date Range Presets */}
+              <div className="flex flex-wrap items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
+                {(
+                  [
+                    { id: 'ALL', label: 'All Time' },
+                    { id: 'TODAY', label: 'Today' },
+                    { id: 'YESTERDAY', label: 'Yesterday' },
+                    { id: '7DAYS', label: 'Last 7 Days' },
+                    { id: '30DAYS', label: 'Last 30 Days' },
+                    { id: 'CUSTOM', label: 'Custom' },
+                  ] as const
+                ).map((range) => (
+                  <button
+                    key={range.id}
+                    type="button"
+                    onClick={() => setDateRangeFilter(range.id)}
+                    className={`px-2.5 py-1 rounded-lg font-heading font-bold uppercase transition-all ${
+                      dateRangeFilter === range.id
+                        ? 'bg-ds-accent text-white shadow-sm'
+                        : 'text-ds-text-dim hover:text-white'
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Date Pickers if CUSTOM selected */}
+            {dateRangeFilter === 'CUSTOM' && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-ds-border/60">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+                  Date Range:
+                </span>
+                <input
+                  type="date"
+                  value={customDateFrom}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="bg-ds-dark border border-ds-border rounded-xl px-2.5 py-1 text-xs text-ds-text font-mono"
+                />
+                <span className="text-ds-text-dim text-xs">to</span>
+                <input
+                  type="date"
+                  value={customDateTo}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="bg-ds-dark border border-ds-border rounded-xl px-2.5 py-1 text-xs text-ds-text font-mono"
+                />
+                <Button variant="ghost" size="sm" onClick={loadShifts} className="text-xs">
+                  Apply Filter
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Shifts & Hours Table */}
+          <Card glass className="border-ds-border overflow-hidden p-0">
+            {loadingShifts ? (
+              <div className="p-16 text-center text-xs text-ds-text-dim animate-pulse">
+                Loading staff attendance logs and calculating hours...
+              </div>
+            ) : shifts.length === 0 ? (
+              <div className="p-16 text-center text-xs text-ds-text-dim space-y-2">
+                <Clock className="w-8 h-8 text-ds-text-dim mx-auto opacity-50" />
+                <p>No shift records found for the selected criteria.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-ds-dark/80 text-ds-text-dim uppercase text-[10px] font-mono border-b border-ds-border">
+                    <tr>
+                      <th className="py-3.5 px-4 font-semibold">Date (IST)</th>
+                      <th className="py-3.5 px-4 font-semibold">Staff Member</th>
+                      <th className="py-3.5 px-4 font-semibold">Login Time (IST)</th>
+                      <th className="py-3.5 px-4 font-semibold">Logout Time (IST)</th>
+                      <th className="py-3.5 px-4 font-semibold">Status / Logout Reason</th>
+                      <th className="py-3.5 px-4 font-semibold">Working Duration</th>
+                      <th className="py-3.5 px-4 font-semibold">IP Address</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-ds-border/40 font-body">
+                    {shifts.map((s) => (
+                      <tr key={s.id} className="hover:bg-ds-surface/50 transition-colors group">
+                        {/* Date (IST) */}
+                        <td className="py-3.5 px-4 font-mono text-xs font-semibold text-ds-ice whitespace-nowrap">
+                          {s.dateFormatted}
+                        </td>
+
+                        {/* Staff Member */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-ds-accent/20 border border-ds-accent/40 flex items-center justify-center font-heading font-bold text-xs text-ds-ice shrink-0">
+                              {s.staffName[0] || 'S'}
+                            </div>
+                            <div>
+                              <div className="font-heading font-bold text-ds-text text-sm leading-tight flex items-center gap-1.5">
+                                <span>{s.staffName}</span>
+                              </div>
+                              <div className="text-[10px] text-ds-text-dim font-mono">
+                                <span className="text-cyan-400 font-semibold">{s.staffRole}</span> •{' '}
+                                {s.staffEmail}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Login Time (IST) */}
+                        <td className="py-3.5 px-4 font-mono text-xs text-emerald-400 font-semibold whitespace-nowrap">
+                          {s.loginTimeFormatted}
+                        </td>
+
+                        {/* Logout Time (IST) */}
+                        <td className="py-3.5 px-4 font-mono text-xs whitespace-nowrap">
+                          {s.isActive ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <span>Active Now</span>
+                            </span>
+                          ) : (
+                            <span className="text-ds-text">{s.logoutTimeFormatted}</span>
+                          )}
+                        </td>
+
+                        {/* Status / Logout Reason */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {s.isActive ? (
+                            <Badge variant="success" size="sm">
+                              Active Shift
+                            </Badge>
+                          ) : s.logoutReason === 'SYSTEM_INACTIVE' ? (
+                            <div className="flex flex-col gap-0.5">
+                              <Badge
+                                variant="warning"
+                                size="sm"
+                                className="bg-amber-500/20 text-amber-300 border-amber-500/40 inline-flex items-center gap-1"
+                              >
+                                <AlertCircle className="w-3 h-3" />
+                                <span>LOGOUT (SYSTEM_TIMEOUT)</span>
+                              </Badge>
+                              <span className="text-[10px] text-amber-400 font-semibold font-mono">
+                                Logout by system due to inactivity
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <Badge variant="default" size="sm">
+                                LOGOUT (MANUAL)
+                              </Badge>
+                              <span className="text-[10px] text-ds-text-dim font-mono">
+                                Manual logout
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Working Duration */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {s.isActive ? (
+                            <span className="font-mono font-bold text-emerald-400 text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                              {s.durationFormatted} (live)
+                            </span>
+                          ) : (
+                            <span className="font-mono font-bold text-ds-text text-xs bg-ds-surface px-2 py-0.5 rounded border border-ds-border">
+                              {s.durationFormatted}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* IP Address */}
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-ds-text-dim whitespace-nowrap">
+                          {s.ipAddress}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Total Working Hours Session at the end */}
+            <div className="p-4 sm:p-6 bg-gradient-to-r from-ds-surface/95 via-ds-dark/95 to-ds-surface/95 border-t-2 border-ds-accent/40 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center md:text-left">
+                <div className="text-[11px] font-mono uppercase tracking-widest text-ds-text-dim flex items-center justify-center md:justify-start gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-ds-accent" />
+                  <span>Staff Working Hours & Shift Totals</span>
+                </div>
+                <div className="text-xs text-ds-text-muted">
+                  Showing <span className="font-bold text-ds-text">{shifts.length}</span> shifts across{' '}
+                  <span className="font-bold text-ds-text">
+                    {selectedStaffFilter === 'ALL'
+                      ? 'all operators'
+                      : shiftStaffList.find((s) => s.id === selectedStaffFilter)?.name || 'selected operator'}
+                  </span>.
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 bg-ds-dark/80 px-5 py-3 rounded-2xl border border-ds-accent/30 shadow-lg shadow-ds-accent/10">
+                <div className="text-right">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim block">
+                    Total Accumulated Working Hours
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-heading font-black text-ds-ice tracking-tight flex items-baseline justify-end gap-2">
+                    <span>{shiftSummary.totalWorkingHoursFormatted}</span>
+                    <span className="text-xs font-mono font-normal text-ds-text-dim">
+                      ({shiftSummary.totalWorkingHoursDecimal} hrs)
+                    </span>
+                  </div>
+                </div>
+                <div className="h-8 w-[1px] bg-ds-border hidden sm:block" />
+                <div className="text-xs font-mono space-y-0.5 text-left text-ds-text-dim">
+                  <div>
+                    Active: <span className="text-emerald-400 font-bold">{shiftSummary.activeShifts}</span>
+                  </div>
+                  <div>
+                    Manual: <span className="text-cyan-400 font-bold">{shiftSummary.manualLogouts}</span>
+                  </div>
+                  <div>
+                    Inactive 2h:{' '}
+                    <span className="text-amber-400 font-bold">
+                      {shiftSummary.systemInactivityLogouts}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* ─── ONBOARD STAFF MODAL (WITH ADDRESS & AADHAAR CARD UPLOAD) ──────────── */}
       <Modal

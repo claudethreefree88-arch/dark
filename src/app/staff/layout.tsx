@@ -235,9 +235,63 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // ─── 2-HOUR INACTIVITY AUTO-LOGOUT MEASUREMENT ───
+  const INACTIVITY_LIMIT_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+  useEffect(() => {
+    // Record initial active timestamp if not already set
+    const markActivity = () => {
+      try {
+        localStorage.setItem('ds_staff_last_active', String(Date.now()));
+      } catch {}
+    };
+
+    if (!localStorage.getItem('ds_staff_last_active')) {
+      markActivity();
+    }
+
+    // User activity listeners (throttled to at most once every 5 seconds)
+    let lastThrottledTime = 0;
+    const onUserInteraction = () => {
+      const now = Date.now();
+      if (now - lastThrottledTime > 5000) {
+        lastThrottledTime = now;
+        markActivity();
+      }
+    };
+
+    const trackedEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    trackedEvents.forEach((evt) => window.addEventListener(evt, onUserInteraction, { passive: true }));
+
+    // Periodic check every 15 seconds
+    const inactivityInterval = setInterval(async () => {
+      try {
+        const lastActiveTimestamp = Number(localStorage.getItem('ds_staff_last_active')) || Date.now();
+        const inactiveTime = Date.now() - lastActiveTimestamp;
+
+        if (inactiveTime >= INACTIVITY_LIMIT_MS) {
+          // Logged out by system due to 2 hours of inactivity
+          console.warn('[Staff Portal] 2 hours of inactivity reached. Logging out by system.');
+          try {
+            await logout('SYSTEM_INACTIVE');
+          } finally {
+            window.location.href = '/login?portal=staff&reason=inactive';
+          }
+        }
+      } catch (err) {
+        console.error('Inactivity check error:', err);
+      }
+    }, 15000);
+
+    return () => {
+      trackedEvents.forEach((evt) => window.removeEventListener(evt, onUserInteraction));
+      clearInterval(inactivityInterval);
+    };
+  }, [logout]);
+
   const handleLogout = async () => {
     try {
-      await logout();
+      await logout('MANUAL');
     } finally {
       window.location.href = '/login?portal=staff';
     }

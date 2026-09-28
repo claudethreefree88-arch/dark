@@ -107,7 +107,9 @@ export default function AdminAuditLogsPage() {
       case 'PAYMENT':
         return 'accent';
       case 'LOGIN':
-        return 'default';
+        return 'success';
+      case 'LOGOUT':
+        return 'warning';
       default:
         return 'default';
     }
@@ -170,6 +172,7 @@ export default function AdminAuditLogsPage() {
             <option value="STATUS_CHANGE">STATUS_CHANGE</option>
             <option value="PAYMENT">PAYMENT</option>
             <option value="LOGIN">LOGIN</option>
+            <option value="LOGOUT">LOGOUT</option>
           </select>
 
           {/* Entity Filter */}
@@ -236,9 +239,35 @@ export default function AdminAuditLogsPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <Badge variant={getActionBadgeVariant(log.action)} size="sm">
-                        {log.action}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        {log.action === 'LOGOUT' ? (
+                          <>
+                            <Badge
+                              variant={log.newValue?.reason === 'SYSTEM_INACTIVE' ? 'warning' : 'default'}
+                              size="sm"
+                            >
+                              {log.newValue?.reason === 'SYSTEM_INACTIVE'
+                                ? 'LOGOUT (SYSTEM_TIMEOUT)'
+                                : 'LOGOUT (MANUAL)'}
+                            </Badge>
+                            {log.newValue?.description && (
+                              <span
+                                className={`text-[9px] font-mono leading-tight ${
+                                  log.newValue?.reason === 'SYSTEM_INACTIVE'
+                                    ? 'text-amber-400 font-semibold'
+                                    : 'text-ds-text-dim'
+                                }`}
+                              >
+                                {log.newValue.description}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant={getActionBadgeVariant(log.action)} size="sm">
+                            {log.action}
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-ds-ice font-semibold">{log.entityType}</td>
                     <td className="py-3.5 px-4 text-ds-text truncate max-w-[120px]">
@@ -288,6 +317,38 @@ export default function AdminAuditLogsPage() {
                 <span className="text-[10px] text-ds-text block">{selectedLog.entityType}: {selectedLog.entityId}</span>
               </div>
             </div>
+
+            {/* Event Note Banner (e.g. Logout by system due to inactivity) */}
+            {selectedLog.newValue?.description && (
+              <div
+                className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                  selectedLog.newValue?.reason === 'SYSTEM_INACTIVE'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <div>
+                    <span className="font-heading font-bold text-xs uppercase block">
+                      {selectedLog.newValue.description}
+                    </span>
+                    {selectedLog.newValue.durationMinutes !== undefined && (
+                      <span className="text-[10px] opacity-80">
+                        Shift Duration: {Math.floor(selectedLog.newValue.durationMinutes / 60)}h{' '}
+                        {selectedLog.newValue.durationMinutes % 60}m ({selectedLog.newValue.durationMinutes} mins)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Badge
+                  variant={selectedLog.newValue?.reason === 'SYSTEM_INACTIVE' ? 'warning' : 'accent'}
+                  size="sm"
+                >
+                  {selectedLog.newValue?.reason || selectedLog.action}
+                </Badge>
+              </div>
+            )}
 
             {/* Before vs After comparison */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
