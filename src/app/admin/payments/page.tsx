@@ -1,12 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { CreditCard, Search, RotateCw, Banknote, Sparkles, Filter } from 'lucide-react';
+import {
+  CreditCard,
+  Search,
+  RotateCw,
+  Banknote,
+  Sparkles,
+  Globe,
+  Store,
+  UserCheck,
+  Filter,
+  ArrowUpDown,
+  Calendar,
+} from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+
+interface CollectedBy {
+  id?: string;
+  name: string;
+  role: string;
+  isDesk: boolean;
+}
 
 interface Payment {
   id: string;
@@ -17,16 +36,27 @@ interface Payment {
   amountPaise: number;
   method: string;
   status: string;
+  channel: 'ONLINE' | 'DESK';
+  collectedBy: CollectedBy;
   gatewayOrderId: string;
   gatewayPaymentId: string;
   paidAt: string;
   notes?: string;
 }
 
+interface StaffUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [staffList, setStaffList] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [channelFilter, setChannelFilter] = useState<'ALL' | 'ONLINE' | 'DESK'>('ALL');
   const [methodFilter, setMethodFilter] = useState('ALL');
+  const [staffFilter, setStaffFilter] = useState('ALL');
   const [search, setSearch] = useState('');
   const toast = useToast();
 
@@ -36,10 +66,14 @@ export default function AdminPaymentsPage() {
       const res = await fetch('/api/admin/payments');
       const json = await res.json();
       if (json.success && json.data) {
-        setPayments(json.data || []);
+        const list = Array.isArray(json.data) ? json.data : json.data.payments || [];
+        setPayments(list);
+        if (json.data.staffList) {
+          setStaffList(json.data.staffList);
+        }
       }
     } catch {
-      toast.error('Failed to load payments');
+      toast.error('Failed to load payments ledger');
     } finally {
       setLoading(false);
     }
@@ -49,122 +83,420 @@ export default function AdminPaymentsPage() {
     loadPayments();
   }, []);
 
-  const filteredPayments = payments.filter((p) => {
-    const matchesMethod = methodFilter === 'ALL' || p.method === methodFilter;
-    const matchesSearch =
-      !search ||
-      p.bookingRef.toLowerCase().includes(search.toLowerCase()) ||
-      p.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      p.gatewayPaymentId.toLowerCase().includes(search.toLowerCase());
-    return matchesMethod && matchesSearch;
-  });
+  // Compute live ledger summary
+  const summary = useMemo(() => {
+    const totalRevenuePaise = payments
+      .filter((p) => p.status === 'COMPLETED')
+      .reduce((sum, p) => sum + p.amountPaise, 0);
+
+    const onlineRevenuePaise = payments
+      .filter((p) => p.status === 'COMPLETED' && p.channel === 'ONLINE')
+      .reduce((sum, p) => sum + p.amountPaise, 0);
+
+    const deskRevenuePaise = payments
+      .filter((p) => p.status === 'COMPLETED' && p.channel === 'DESK')
+      .reduce((sum, p) => sum + p.amountPaise, 0);
+
+    const onlineCount = payments.filter((p) => p.channel === 'ONLINE').length;
+    const deskCount = payments.filter((p) => p.channel === 'DESK').length;
+
+    return {
+      totalRevenuePaise,
+      onlineRevenuePaise,
+      deskRevenuePaise,
+      totalCount: payments.length,
+      onlineCount,
+      deskCount,
+    };
+  }, [payments]);
+
+  // Extract unique staff names from payments list
+  const uniqueCollectors = useMemo(() => {
+    const names = new Set<string>();
+    payments.forEach((p) => {
+      if (p.channel === 'DESK' && p.collectedBy?.name) {
+        names.add(p.collectedBy.name);
+      }
+    });
+    return Array.from(names);
+  }, [payments]);
+
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => {
+      // Channel Filter: ALL | ONLINE | DESK
+      const matchesChannel =
+        channelFilter === 'ALL' || p.channel === channelFilter;
+
+      // Method Filter: ALL | UPI | CASH | RAZORPAY
+      const matchesMethod =
+        methodFilter === 'ALL' || p.method === methodFilter;
+
+      // Staff Filter: ALL | Specific Staff Name
+      const matchesStaff =
+        staffFilter === 'ALL' ||
+        (staffFilter === 'ONLINE_GATEWAY' && p.channel === 'ONLINE') ||
+        (p.collectedBy?.name && p.collectedBy.name.toLowerCase() === staffFilter.toLowerCase());
+
+      // Search Query
+      const query = search.toLowerCase();
+      const matchesSearch =
+        !search ||
+        p.bookingRef.toLowerCase().includes(query) ||
+        p.customerName.toLowerCase().includes(query) ||
+        (p.customerEmail && p.customerEmail.toLowerCase().includes(query)) ||
+        p.stationName.toLowerCase().includes(query) ||
+        p.gatewayPaymentId.toLowerCase().includes(query) ||
+        (p.notes && p.notes.toLowerCase().includes(query)) ||
+        (p.collectedBy?.name && p.collectedBy.name.toLowerCase().includes(query)) ||
+        p.channel.toLowerCase().includes(query);
+
+      return matchesChannel && matchesMethod && matchesStaff && matchesSearch;
+    });
+  }, [payments, channelFilter, methodFilter, staffFilter, search]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-black uppercase text-ds-text">
-            Financial & Transactions Ledger
+          <h1 className="text-2xl font-heading font-black uppercase text-ds-text tracking-wide flex items-center gap-2.5">
+            <CreditCard className="w-6 h-6 text-ds-accent" />
+            <span>Financial & Payments Ledger</span>
           </h1>
           <p className="text-xs text-ds-text-muted mt-0.5">
-            Audit logs of all online gateway settlements (UPI / Razorpay) and front-desk cash receipts.
+            Comprehensive audit logs of online gateway collections (UPI / Razorpay) and front-desk staff receipts.
           </p>
         </div>
 
-        <Button variant="outline" size="sm" onClick={loadPayments}>
-          <RotateCw className="w-4 h-4 mr-1.5" />
-          <span>Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={loadPayments} className="border-ds-border hover:border-ds-accent/40">
+            <RotateCw className="w-3.5 h-3.5 mr-1.5 text-ds-accent" />
+            <span>Refresh Ledger</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Filter Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
-        {/* Method Tabs */}
-        <div className="flex flex-wrap gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
-          {['ALL', 'UPI', 'CASH', 'RAZORPAY'].map((m) => (
-            <button
-              key={m}
-              onClick={() => setMethodFilter(m)}
-              className={`px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
-                methodFilter === m
-                  ? 'bg-ds-accent text-white shadow-sm'
-                  : 'text-ds-text-dim hover:text-white'
-              }`}
+      {/* KPI Stat Cards: Online vs Desk Breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Ledger Revenue */}
+        <Card glass className="p-4 border-ds-border hover:border-ds-accent/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+              Total Revenue
+            </span>
+            <Banknote className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="mt-2 text-2xl font-heading font-black text-emerald-400">
+            ₹{(summary.totalRevenuePaise / 100).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] font-mono text-ds-text-muted mt-1 block">
+            {summary.totalCount} total transactions settled
+          </span>
+        </Card>
+
+        {/* Online Gateway Payments */}
+        <Card glass className="p-4 border-ds-border hover:border-cyan-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300">
+              Online Payments
+            </span>
+            <Globe className="w-4 h-4 text-cyan-400" />
+          </div>
+          <p className="mt-2 text-2xl font-heading font-black text-cyan-300">
+            ₹{(summary.onlineRevenuePaise / 100).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] font-mono text-ds-text-muted mt-1 block">
+            {summary.onlineCount} online website checkouts
+          </span>
+        </Card>
+
+        {/* Front-Desk Collections */}
+        <Card glass className="p-4 border-ds-border hover:border-amber-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300">
+              Front-Desk Collections
+            </span>
+            <Store className="w-4 h-4 text-amber-400" />
+          </div>
+          <p className="mt-2 text-2xl font-heading font-black text-amber-300">
+            ₹{(summary.deskRevenuePaise / 100).toLocaleString('en-IN')}
+          </p>
+          <span className="text-[11px] font-mono text-ds-text-muted mt-1 block">
+            {summary.deskCount} walk-in & counter cash/UPI
+          </span>
+        </Card>
+
+        {/* Active Staff Collectors */}
+        <Card glass className="p-4 border-ds-border hover:border-purple-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-purple-300">
+              Staff Collectors
+            </span>
+            <UserCheck className="w-4 h-4 text-purple-400" />
+          </div>
+          <p className="mt-2 text-2xl font-heading font-black text-purple-300">
+            {uniqueCollectors.length || staffList.length || 2}
+          </p>
+          <span className="text-[11px] font-mono text-ds-text-muted mt-1 block">
+            Operators actively recording payments
+          </span>
+        </Card>
+      </div>
+
+      {/* Filter Strip & Toolbar */}
+      <div className="flex flex-col gap-3 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Channel Filters (ONLINE vs DESK) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim mr-1 flex items-center gap-1">
+              <Filter className="w-3 h-3" />
+              Source:
+            </span>
+            <div className="flex flex-wrap gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
+              <button
+                type="button"
+                onClick={() => setChannelFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
+                  channelFilter === 'ALL'
+                    ? 'bg-ds-accent text-white shadow-sm'
+                    : 'text-ds-text-dim hover:text-white'
+                }`}
+              >
+                All Sources
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannelFilter('ONLINE')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
+                  channelFilter === 'ONLINE'
+                    ? 'bg-cyan-500 text-white shadow-sm'
+                    : 'text-cyan-400/80 hover:text-cyan-300 hover:bg-ds-surface/50'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Online ({summary.onlineCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannelFilter('DESK')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
+                  channelFilter === 'DESK'
+                    ? 'bg-amber-500 text-black shadow-sm'
+                    : 'text-amber-400/80 hover:text-amber-300 hover:bg-ds-surface/50'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Desk Counter ({summary.deskCount})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Payment Method Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim mr-1">
+              Method:
+            </span>
+            <div className="flex flex-wrap gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
+              {['ALL', 'UPI', 'CASH', 'RAZORPAY'].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMethodFilter(m)}
+                  className={`px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
+                    methodFilter === m
+                      ? 'bg-ds-surface text-ds-ice border border-ds-accent/40 shadow-sm'
+                      : 'text-ds-text-dim hover:text-white'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Second Row: Staff Filter Dropdown & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-ds-border/40">
+          {/* Staff Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-purple-400 shrink-0" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-ds-text-dim">
+              Staff:
+            </span>
+            <select
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl bg-ds-dark border border-ds-border text-xs font-mono text-ds-text focus:outline-none focus:border-ds-accent transition-all cursor-pointer"
             >
-              {m}
-            </button>
-          ))}
-        </div>
+              <option value="ALL">All Staff & Online</option>
+              <option value="ONLINE_GATEWAY">🌐 Online System Only</option>
+              {uniqueCollectors.map((collector) => (
+                <option key={collector} value={collector}>
+                  👤 {collector}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Input
-            placeholder="Search ref, gamer, payment ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="text-xs py-1.5 pl-8 w-56 sm:w-72"
-          />
-          <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-2.5 top-2.5" />
+          {/* Search Bar */}
+          <div className="relative">
+            <Input
+              placeholder="Search ref, gamer, staff collector, gateway ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="text-xs py-1.5 pl-8 w-full sm:w-80"
+            />
+            <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-2.5 top-2.5" />
+          </div>
         </div>
       </div>
 
-      {/* Table Card */}
+      {/* Transactions Table Card */}
       <Card glass className="border-ds-border overflow-hidden">
         {loading ? (
-          <div className="p-16 text-center text-xs text-ds-text-dim">Loading transactions...</div>
+          <div className="p-16 text-center text-xs text-ds-text-dim animate-pulse">
+            Loading verified payment settlements...
+          </div>
         ) : filteredPayments.length === 0 ? (
-          <div className="p-16 text-center text-xs text-ds-text-dim">No transactions found.</div>
+          <div className="p-16 text-center text-xs text-ds-text-dim space-y-2">
+            <CreditCard className="w-8 h-8 text-ds-text-dim mx-auto opacity-50" />
+            <p>No transactions match the selected filters.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setChannelFilter('ALL');
+                setMethodFilter('ALL');
+                setStaffFilter('ALL');
+                setSearch('');
+              }}
+              className="text-xs mt-2"
+            >
+              Reset Filters
+            </Button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-ds-dark/60 text-ds-text-dim uppercase text-[10px] font-mono border-b border-ds-border">
+              <thead className="bg-ds-dark/80 text-ds-text-dim uppercase text-[10px] font-mono border-b border-ds-border">
                 <tr>
-                  <th className="py-3 px-4">Booking Ref</th>
-                  <th className="py-3 px-4">Gamer Details</th>
-                  <th className="py-3 px-4">Station</th>
-                  <th className="py-3 px-4">Amount</th>
-                  <th className="py-3 px-4">Method</th>
-                  <th className="py-3 px-4">Gateway Reference</th>
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4 text-right">Status</th>
+                  <th className="py-3.5 px-4 font-semibold">Booking Ref</th>
+                  <th className="py-3.5 px-4 font-semibold">Gamer Details</th>
+                  <th className="py-3.5 px-4 font-semibold">Channel</th>
+                  <th className="py-3.5 px-4 font-semibold">Amount</th>
+                  <th className="py-3.5 px-4 font-semibold">Method</th>
+                  <th className="py-3.5 px-4 font-semibold">Collected By (Staff)</th>
+                  <th className="py-3.5 px-4 font-semibold">Station</th>
+                  <th className="py-3.5 px-4 font-semibold">Gateway / Desk Reference</th>
+                  <th className="py-3.5 px-4 font-semibold">Timestamp</th>
+                  <th className="py-3.5 px-4 text-right font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ds-border/40">
-                {filteredPayments.map((p) => (
-                  <tr key={p.id} className="hover:bg-ds-surface/40 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-ds-ice">{p.bookingRef}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-heading font-bold text-ds-text">{p.customerName}</div>
-                      <div className="text-[11px] text-ds-text-dim">{p.customerEmail || '—'}</div>
-                    </td>
-                    <td className="py-3.5 px-4 text-ds-text">{p.stationName}</td>
-                    <td className="py-3.5 px-4 font-heading font-black text-emerald-400 text-sm">
-                      ₹{(p.amountPaise / 100).toFixed(0)}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-ds-surface border border-ds-border text-ds-text">
-                        {p.method}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-ds-text-dim max-w-xs truncate">
-                      {p.gatewayPaymentId !== '—' ? p.gatewayPaymentId : p.notes || 'Counter Record'}
-                    </td>
-                    <td className="py-3.5 px-4 text-ds-text-dim font-mono text-[11px]">
-                      {new Date(p.paidAt).toLocaleString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Badge variant={p.status === 'COMPLETED' ? 'success' : 'warning'} size="sm">
-                        {p.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-ds-border/40 font-body">
+                {filteredPayments.map((p) => {
+                  const isOnline = p.channel === 'ONLINE';
+
+                  return (
+                    <tr key={p.id} className="hover:bg-ds-surface/50 transition-colors">
+                      {/* Booking Ref */}
+                      <td className="py-3.5 px-4 font-mono font-bold text-ds-ice whitespace-nowrap">
+                        {p.bookingRef}
+                      </td>
+
+                      {/* Gamer Details */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-heading font-bold text-ds-text leading-tight">
+                          {p.customerName}
+                        </div>
+                        <div className="text-[11px] text-ds-text-dim truncate max-w-[180px]">
+                          {p.customerEmail || 'Walk-in Guest'}
+                        </div>
+                      </td>
+
+                      {/* Source Channel (ONLINE vs DESK) */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {isOnline ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-sm">
+                            <Globe className="w-3 h-3 text-cyan-400" />
+                            <span>ONLINE</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/30 shadow-sm">
+                            <Store className="w-3 h-3 text-amber-400" />
+                            <span>DESK</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Amount */}
+                      <td className="py-3.5 px-4 font-heading font-black text-emerald-400 text-sm whitespace-nowrap">
+                        ₹{(p.amountPaise / 100).toFixed(0)}
+                      </td>
+
+                      {/* Payment Method */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-ds-surface border border-ds-border text-ds-text">
+                          {p.method}
+                        </span>
+                      </td>
+
+                      {/* Collected By (Which Staff Collected) */}
+                      <td className="py-3.5 px-4 min-w-[170px]">
+                        {!isOnline ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-md bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-heading font-bold text-[10px] shrink-0">
+                              {p.collectedBy?.name?.[0] || 'S'}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-heading font-bold text-ds-text truncate text-xs leading-tight">
+                                {p.collectedBy?.name || 'Staff Operator'}
+                              </p>
+                              <span className="text-[9px] font-mono font-semibold uppercase text-emerald-400 block">
+                                {p.collectedBy?.role === 'SUPER_ADMIN'
+                                  ? 'Super Admin'
+                                  : p.collectedBy?.role === 'ADMIN'
+                                  ? 'Admin'
+                                  : 'Staff Operator'}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-ds-text-dim text-xs">
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400/80 shrink-0" />
+                            <span className="font-mono text-[11px]">Online (Self-Service)</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Station */}
+                      <td className="py-3.5 px-4 text-ds-text whitespace-nowrap">{p.stationName}</td>
+
+                      {/* Gateway / Desk Reference */}
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-ds-text-dim max-w-xs truncate">
+                        {p.gatewayPaymentId !== '—'
+                          ? p.gatewayPaymentId
+                          : p.notes || 'Front Counter Record'}
+                      </td>
+
+                      {/* Timestamp */}
+                      <td className="py-3.5 px-4 text-ds-text-dim font-mono text-[11px] whitespace-nowrap">
+                        {new Date(p.paidAt).toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <Badge variant={p.status === 'COMPLETED' ? 'success' : 'warning'} size="sm">
+                          {p.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

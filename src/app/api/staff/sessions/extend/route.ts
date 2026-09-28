@@ -13,7 +13,8 @@ const extendSessionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffSession = await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffName = `${staffSession.firstName} ${staffSession.lastName}`.trim();
     const body = await req.json();
     const data = extendSessionSchema.parse(body);
 
@@ -88,7 +89,8 @@ export async function POST(req: NextRequest) {
               method: data.paymentMethod === 'UPI' ? 'UPI' : 'CASH',
               status: 'COMPLETED',
               paidAt: new Date(),
-              notes: `Session extended +${data.additionalMinutes} mins`,
+              recordedByStaffId: staffSession.userId,
+              notes: `Session extended +${data.additionalMinutes} mins by ${staffName}`,
             },
           });
         }

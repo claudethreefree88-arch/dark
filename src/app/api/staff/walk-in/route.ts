@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
             method: data.paymentMethod === 'UPI' ? 'UPI' : 'CASH',
             status: 'COMPLETED',
             paidAt: now,
+            recordedByStaffId: staffSession?.userId || null,
             notes: `Walk-in desk payment (${data.paymentMethod})${staffName ? ` processed by ${staffName}` : ''}${membershipPlanName ? ` [${membershipPlanName} Discount: ₹${(membershipDiscountPaise / 100).toFixed(0)}]` : ''}`,
           },
         });

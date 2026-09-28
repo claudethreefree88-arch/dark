@@ -14,7 +14,8 @@ const startSessionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffSession = await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffName = `${staffSession.firstName} ${staffSession.lastName}`.trim();
     const body = await req.json();
     const data = startSessionSchema.parse(body);
 
@@ -88,7 +89,8 @@ export async function POST(req: NextRequest) {
               method: 'CASH',
               status: 'COMPLETED',
               paidAt: now,
-              notes: 'Desk walk-in payment',
+              recordedByStaffId: staffSession.userId,
+              notes: `Desk walk-in payment processed by ${staffName}`,
             },
           });
         } else {
