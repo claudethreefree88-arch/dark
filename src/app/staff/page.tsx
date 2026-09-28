@@ -25,6 +25,7 @@ import {
 import { QrScannerModal } from '@/components/staff/QrScannerModal';
 import { WalkInModal } from '@/components/staff/WalkInModal';
 import { ExtendSessionModal } from '@/components/staff/ExtendSessionModal';
+import { EndSessionModal, type EndSessionTarget } from '@/components/staff/EndSessionModal';
 import { useToast } from '@/components/ui/Toast';
 
 interface Station {
@@ -73,6 +74,7 @@ export default function StaffStationGridPage() {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [selectedWalkInStationId, setSelectedWalkInStationId] = useState<string | undefined>(undefined);
   const [extendModalStation, setExtendModalStation] = useState<Station | null>(null);
+  const [endSessionTarget, setEndSessionTarget] = useState<EndSessionTarget | null>(null);
 
   // Live timer tick state
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -105,28 +107,17 @@ export default function StaffStationGridPage() {
     return () => clearInterval(tick);
   }, []);
 
-  const handleEndSession = async (station: Station) => {
+  const handleEndSession = (station: Station) => {
     if (!station.activeSession) return;
-    try {
-      const res = await fetch('/api/staff/sessions/end', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: station.activeSession.id,
-          stationId: station.id,
-          bookingId: station.activeSession.bookingId,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        toast.success(json.data?.message || 'Session ended');
-        loadData();
-      } else {
-        toast.error(json.error?.message || 'Failed to end session');
-      }
-    } catch {
-      toast.error('Error ending session');
-    }
+    setEndSessionTarget({
+      sessionId: station.activeSession.id,
+      stationId: station.id,
+      stationName: station.name,
+      bookingId: station.activeSession.bookingId,
+      customerName: station.activeSession.customerName,
+      bookingRef: station.activeSession.bookingRef,
+      scheduledEndAt: station.activeSession.scheduledEndAt,
+    });
   };
 
   const handleToggleMaintenance = async (station: Station) => {
@@ -574,6 +565,13 @@ export default function StaffStationGridPage() {
         isOpen={!!extendModalStation}
         onClose={() => setExtendModalStation(null)}
         station={extendModalStation}
+        onSuccess={loadData}
+      />
+
+      <EndSessionModal
+        isOpen={!!endSessionTarget}
+        onClose={() => setEndSessionTarget(null)}
+        target={endSessionTarget}
         onSuccess={loadData}
       />
     </div>

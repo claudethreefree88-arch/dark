@@ -29,6 +29,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ExtendSessionModal } from '@/components/staff/ExtendSessionModal';
+import { EndSessionModal, type EndSessionTarget } from '@/components/staff/EndSessionModal';
 import { useToast } from '@/components/ui/Toast';
 
 export default function StaffBookingsSchedulePage() {
@@ -41,6 +42,7 @@ export default function StaffBookingsSchedulePage() {
   // Modal states
   const [selectedBookingForGrid, setSelectedBookingForGrid] = useState<any | null>(null);
   const [extendStation, setExtendStation] = useState<any | null>(null);
+  const [endSessionTarget, setEndSessionTarget] = useState<EndSessionTarget | null>(null);
 
   // Live real-time ticker
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -141,31 +143,16 @@ export default function StaffBookingsSchedulePage() {
     }
   };
 
-  const handleEndSession = async (booking: any) => {
-    if (!confirm(`End session for ${booking.customerName} on ${booking.stationName}?`)) {
-      return;
-    }
-    try {
-      const res = await fetch('/api/staff/sessions/end', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: booking.session?.id,
-          stationId: booking.stationId,
-          bookingId: booking.id,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        toast.success(json.data?.message || 'Session ended. Station marked available.');
-        setSelectedBookingForGrid(null);
-        loadBookings();
-      } else {
-        toast.error(json.error?.message || 'Failed to end session');
-      }
-    } catch {
-      toast.error('Error ending session');
-    }
+  const handleEndSession = (booking: any) => {
+    setEndSessionTarget({
+      sessionId: booking.session?.id,
+      stationId: booking.stationId,
+      stationName: booking.stationName,
+      bookingId: booking.id,
+      customerName: booking.customerName,
+      bookingRef: booking.bookingRef,
+      scheduledEndAt: booking.session?.scheduledEndAt || booking.endTime,
+    });
   };
 
   const openExtendModal = (booking: any) => {
@@ -825,6 +812,18 @@ export default function StaffBookingsSchedulePage() {
         station={extendStation}
         onSuccess={() => {
           setExtendStation(null);
+          setSelectedBookingForGrid(null);
+          loadBookings();
+        }}
+      />
+
+      {/* ─── END SESSION CONFIRMATION MODAL ─── */}
+      <EndSessionModal
+        isOpen={!!endSessionTarget}
+        onClose={() => setEndSessionTarget(null)}
+        target={endSessionTarget}
+        onSuccess={() => {
+          setEndSessionTarget(null);
           setSelectedBookingForGrid(null);
           loadBookings();
         }}
