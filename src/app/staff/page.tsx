@@ -114,6 +114,7 @@ export default function StaffStationGridPage() {
         body: JSON.stringify({
           sessionId: station.activeSession.id,
           stationId: station.id,
+          bookingId: station.activeSession.bookingId,
         }),
       });
       const json = await res.json();

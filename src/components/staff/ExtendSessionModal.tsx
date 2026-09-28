@@ -13,6 +13,7 @@ interface Station {
   pricePerHourPaise: number;
   activeSession?: {
     id: string;
+    bookingId?: string;
     customerName: string;
     bookingRef?: string;
     scheduledEndAt: string;
@@ -54,6 +55,7 @@ export function ExtendSessionModal({
         body: JSON.stringify({
           sessionId: station.activeSession?.id,
           stationId: station.id,
+          bookingId: station.activeSession?.bookingId,
           additionalMinutes,
           paymentMethod,
         }),

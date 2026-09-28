@@ -152,6 +152,7 @@ export default function StaffBookingsSchedulePage() {
         body: JSON.stringify({
           sessionId: booking.session?.id,
           stationId: booking.stationId,
+          bookingId: booking.id,
         }),
       });
       const json = await res.json();
@@ -174,6 +175,7 @@ export default function StaffBookingsSchedulePage() {
       pricePerHourPaise: booking.pricePerHourPaise || 15000,
       activeSession: {
         id: booking.session?.id || `active-${booking.id}`,
+        bookingId: booking.id,
         customerName: booking.customerName,
         bookingRef: booking.bookingRef,
         scheduledEndAt: booking.session?.scheduledEndAt || booking.endTime,
@@ -823,6 +825,7 @@ export default function StaffBookingsSchedulePage() {
         station={extendStation}
         onSuccess={() => {
           setExtendStation(null);
+          setSelectedBookingForGrid(null);
           loadBookings();
         }}
       />

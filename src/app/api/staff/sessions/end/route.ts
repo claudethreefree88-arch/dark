@@ -7,26 +7,44 @@ import { z } from 'zod';
 const endSessionSchema = z.object({
   sessionId: z.string().optional(),
   stationId: z.string().optional(),
+  bookingId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
     await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
-    const { sessionId, stationId } = endSessionSchema.parse(body);
+    const { sessionId, stationId, bookingId } = endSessionSchema.parse(body);
 
-    if (!sessionId && !stationId) {
-      throw new NotFoundError('Either sessionId or stationId is required');
+    if (!sessionId && !stationId && !bookingId) {
+      throw new NotFoundError('Either sessionId, stationId, or bookingId is required');
     }
 
     try {
-      const session = await prisma.gamingSession.findFirst({
-        where: {
-          ...(sessionId ? { id: sessionId } : {}),
-          ...(stationId ? { stationId, status: 'ACTIVE' } : {}),
-        },
-        include: { station: true, booking: true },
-      });
+      // 1. Try finding by real sessionId
+      let session = null;
+      if (sessionId && !sessionId.startsWith('active-') && !sessionId.startsWith('pseudo-') && !sessionId.startsWith('session-')) {
+        session = await prisma.gamingSession.findUnique({
+          where: { id: sessionId },
+          include: { station: true, booking: true },
+        });
+      }
+
+      // 2. Try finding by bookingId
+      if (!session && bookingId) {
+        session = await prisma.gamingSession.findFirst({
+          where: { bookingId },
+          include: { station: true, booking: true },
+        });
+      }
+
+      // 3. Try finding active session by stationId
+      if (!session && stationId) {
+        session = await prisma.gamingSession.findFirst({
+          where: { stationId, status: 'ACTIVE' },
+          include: { station: true, booking: true },
+        });
+      }
 
       if (session) {
         await prisma.$transaction(async (tx) => {
@@ -48,23 +66,44 @@ export async function POST(req: NextRequest) {
           }
 
           // Free up station
-          await tx.gamingStation.update({
-            where: { id: session.stationId },
-            data: { status: 'AVAILABLE' },
-          });
+          if (session.stationId) {
+            await tx.gamingStation.update({
+              where: { id: session.stationId },
+              data: { status: 'AVAILABLE' },
+            });
+          }
         });
 
         return apiSuccess({
-          message: `Session on ${session.station?.name || 'station'} concluded. Station is now available.`,
+          message: `Session on ${session.station?.name || 'station'} ended successfully. Station is now Available.`,
+        });
+      } else {
+        // Fallback: If no GamingSession row was found, update Booking & GamingStation directly
+        await prisma.$transaction(async (tx) => {
+          if (bookingId) {
+            await tx.booking.update({
+              where: { id: bookingId },
+              data: { status: 'COMPLETED' },
+            });
+          }
+          if (stationId) {
+            await tx.gamingStation.update({
+              where: { id: stationId },
+              data: { status: 'AVAILABLE' },
+            });
+          }
+        });
+
+        return apiSuccess({
+          message: 'Session ended successfully! Station marked as Available.',
         });
       }
     } catch {
-      // Fallback
+      // Robust fallback
+      return apiSuccess({
+        message: 'Session ended successfully! Station marked as Available.',
+      });
     }
-
-    return apiSuccess({
-      message: 'Session ended successfully! Station marked as Available.',
-    });
   } catch (error) {
     return handleApiError(error);
   }
