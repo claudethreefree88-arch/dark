@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/session';
+import { getSession, setSessionCookie } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { handleApiError, apiSuccess, AuthError } from '@/lib/errors';
 
@@ -36,6 +36,15 @@ export async function GET() {
     if (user.status !== 'ACTIVE') {
       throw new AuthError('Account is not active');
     }
+
+    // Refresh the session cookie so active users remain logged in seamlessly (sliding expiration)
+    await setSessionCookie({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
 
     return apiSuccess({ user });
   } catch (error) {

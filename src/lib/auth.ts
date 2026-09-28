@@ -45,7 +45,7 @@ function getJwtSecret(): Uint8Array {
 export async function createAccessToken(
   payload: Omit<TokenPayload, 'iat' | 'exp' | 'iss'>
 ): Promise<string> {
-  const expiry = process.env.JWT_ACCESS_EXPIRY || '15m';
+  const expiry = process.env.JWT_ACCESS_EXPIRY || '30d';
 
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
@@ -59,7 +59,7 @@ export async function createAccessToken(
  * Create a signed JWT refresh token (longer-lived).
  */
 export async function createRefreshToken(userId: string): Promise<string> {
-  const expiry = process.env.JWT_REFRESH_EXPIRY || '7d';
+  const expiry = process.env.JWT_REFRESH_EXPIRY || '60d';
 
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: 'HS256' })

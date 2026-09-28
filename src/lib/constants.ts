@@ -10,7 +10,7 @@ export const APP_CURRENCY_SYMBOL = '₹';
 // ─── Auth Constants ─────────────────────────────────────────────────────────
 
 export const AUTH_COOKIE_NAME = 'ds_session';
-export const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+export const AUTH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 export const BCRYPT_ROUNDS = 12;
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;

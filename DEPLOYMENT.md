@@ -37,8 +37,8 @@ DATABASE_URL="mysql://u123456789_dsadmin:DsGaming#Secure2026@127.0.0.1:3306/u123
 
 # JWT Authentication (64-character minimum)
 JWT_SECRET="9f8a3c8e5d2b71a4f06e3d2c1b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a"
-JWT_ACCESS_EXPIRY="15m"
-JWT_REFRESH_EXPIRY="7d"
+JWT_ACCESS_EXPIRY="30d"
+JWT_REFRESH_EXPIRY="60d"
 
 # App URL (Your production domain)
 NEXT_PUBLIC_APP_URL="https://darksyndicate.in"

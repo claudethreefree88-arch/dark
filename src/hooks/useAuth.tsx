@@ -7,6 +7,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import { usePathname } from 'next/navigation';
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
+  const lastRefreshTimeRef = useRef<number>(Date.now());
   const isPublicAuthPage = useMemo(
     () => ['/login', '/register', '/forgot-password', '/reset-password'].includes(pathname),
     [pathname]
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const json = await res.json();
         setUser(json.data.user);
+        lastRefreshTimeRef.current = Date.now();
       } else {
         setUser(null);
       }
@@ -45,6 +48,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     refreshUser();
+
+    // Silently refresh active user session every 1 hour if tab stays open
+    const interval = setInterval(() => {
+      refreshUser();
+    }, 60 * 60 * 1000);
+
+    // Refresh on tab focus if more than 15 minutes have elapsed since last check
+    const handleFocus = () => {
+      if (Date.now() - lastRefreshTimeRef.current > 15 * 60 * 1000) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [isPublicAuthPage, refreshUser]);
 
   const login = useCallback(
