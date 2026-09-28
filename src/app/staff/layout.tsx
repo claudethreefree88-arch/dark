@@ -10,17 +10,177 @@ import {
   Calendar,
   Clock,
   Sparkles,
-  Layers,
   LogOut,
   ChevronRight,
-  ExternalLink,
+  ArrowUpRight,
+  ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
+  X,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const navigation: NavItem[] = [
+  { name: 'Live Station Grid', href: '/staff', icon: Gamepad2 },
+  { name: "Today's Schedule", href: '/staff/bookings', icon: Calendar },
+];
+
+function StaffSidebarNav({
+  pathname,
+  user,
+  onClose,
+  onLogout,
+  isMobile = false,
+}: {
+  pathname: string;
+  user: any;
+  onClose?: () => void;
+  onLogout: () => void;
+  isMobile?: boolean;
+}) {
+  const isAdminUser = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
+  return (
+    <div className="flex flex-col h-full justify-between">
+      <div className="flex flex-col flex-1 overflow-y-auto">
+        {/* Brand Header */}
+        <div className="p-5 border-b border-ds-border flex items-center justify-between">
+          <Link href="/staff" onClick={isMobile ? onClose : undefined} className="flex items-center gap-3 group min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-ds-surface flex items-center justify-center border border-ds-accent/40 shadow-inner shrink-0">
+              <Image src="/logo.svg" alt="Dark Syndicate" width={26} height={26} className="object-contain" />
+            </div>
+            <div className="truncate">
+              <span className="font-heading font-black text-sm uppercase tracking-wider text-ds-text group-hover:text-ds-ice transition-colors block truncate">
+                DARK SYNDICATE
+              </span>
+              <span className="text-[9px] font-mono tracking-widest text-ds-accent uppercase block font-bold truncate">
+                STAFF PORTAL
+              </span>
+            </div>
+          </Link>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-ds-text-dim hover:text-ds-ice hover:bg-ds-surface transition-all shrink-0 ml-1"
+              title={isMobile ? 'Close menu' : 'Collapse sidebar (Ctrl+B)'}
+              aria-label="Close sidebar"
+            >
+              {isMobile ? (
+                <X className="w-4 h-4 text-ds-text-dim hover:text-rose-400" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4 text-ds-accent hover:scale-110 transition-transform" />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="p-4 space-y-1.5 flex-1">
+          <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-ds-text-dim block mb-2">
+            Arena Operations
+          </span>
+          {navigation.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={isMobile ? onClose : undefined}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all ${
+                  isActive
+                    ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/20'
+                    : 'text-ds-text-muted hover:text-white hover:bg-ds-surface/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{item.name}</span>
+                </div>
+                {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-80 shrink-0" />}
+              </Link>
+            );
+          })}
+
+          <div className="pt-4 mt-4 border-t border-ds-border/60 space-y-1.5">
+            <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-ds-text-dim block mb-2">
+              Cross Portals
+            </span>
+            {isAdminUser && (
+              <Link
+                href="/admin"
+                onClick={isMobile ? onClose : undefined}
+                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-amber-400 hover:bg-ds-surface/60 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span className="font-heading font-bold uppercase">Admin Command Center</span>
+                </div>
+                <ArrowUpRight className="w-3.5 h-3.5 opacity-60 shrink-0" />
+              </Link>
+            )}
+
+            <Link
+              href="/"
+              onClick={isMobile ? onClose : undefined}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-ds-text-dim hover:text-white hover:bg-ds-surface/60 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span>Public Arena Website</span>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 opacity-60 shrink-0" />
+            </Link>
+          </div>
+        </nav>
+
+        {/* User Profile Badge & Logout */}
+        <div className="p-4 border-t border-ds-border bg-ds-surface/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-ds-accent/20 border border-ds-accent/40 text-ds-ice flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                {user?.firstName?.[0] || 'S'}
+              </div>
+              <div className="text-left text-xs truncate">
+                <p className="font-heading font-bold text-ds-text leading-tight truncate">
+                  {user?.firstName || 'Staff'} {user?.lastName || 'Operator'}
+                </p>
+                <span className="text-[10px] text-emerald-400 font-mono font-semibold uppercase">
+                  {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : user?.role === 'ADMIN' ? 'Admin' : 'Shift Operator'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onLogout}
+              className="p-1.5 rounded-lg text-ds-text-dim hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all shrink-0 ml-1"
+              title="Sign Out"
+              aria-label="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [timeStr, setTimeStr] = useState<string>('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -38,93 +198,176 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     return () => clearInterval(interval);
   }, []);
 
-  const navLinks = [
-    { href: '/staff', label: 'Live Station Grid', icon: Gamepad2 },
-    { href: '/staff/bookings', label: "Today's Schedule", icon: Calendar },
-  ];
+  // Load saved sidebar state from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ds_staff_sidebar_open');
+      if (saved !== null) {
+        setIsSidebarOpen(saved === 'true');
+      }
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ds_staff_sidebar_open', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
+
+  // Keyboard shortcut: Ctrl + B or Cmd + B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      window.location.href = '/login?portal=staff';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-ds-darker text-ds-text flex flex-col selection:bg-ds-accent selection:text-white">
-      {/* Top Staff Operations Bar */}
-      <header className="sticky top-0 z-40 bg-ds-dark/95 backdrop-blur-md border-b border-ds-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand & Badge */}
+    <div className="min-h-screen bg-ds-darker text-ds-text flex selection:bg-ds-accent selection:text-white">
+      {/* Mobile Drawer Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden animate-fade-in"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile Slide-Over Drawer */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-ds-dark/98 border-r border-ds-border flex flex-col justify-between md:hidden transition-transform duration-300 ease-in-out ${
+          isMobileOpen ? 'translate-x-0 shadow-2xl shadow-cyan-500/10' : '-translate-x-full'
+        }`}
+      >
+        <StaffSidebarNav
+          pathname={pathname}
+          user={user}
+          onClose={() => setIsMobileOpen(false)}
+          onLogout={handleLogout}
+          isMobile={true}
+        />
+      </aside>
+
+      {/* Desktop Collapsible Sidebar */}
+      <aside
+        className={`bg-ds-dark/95 border-r border-ds-border flex flex-col justify-between shrink-0 hidden md:flex sticky top-0 h-screen transition-all duration-300 ease-in-out ${
+          isSidebarOpen
+            ? 'w-64 opacity-100'
+            : 'w-0 opacity-0 pointer-events-none overflow-hidden border-r-0'
+        }`}
+      >
+        <div className="w-64 h-full flex flex-col">
+          <StaffSidebarNav
+            pathname={pathname}
+            user={user}
+            onClose={toggleSidebar}
+            onLogout={handleLogout}
+            isMobile={false}
+          />
+        </div>
+      </aside>
+
+      {/* Main Staff Operations Area */}
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+        {/* Top Header Bar */}
+        <header className="bg-ds-surface/95 backdrop-blur-md border-b border-ds-border px-4 sm:px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-3">
-            <Link href="/staff" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-ds-surface flex items-center justify-center border border-ds-accent/40 shadow-inner">
-                <Image src="/logo.svg" alt="Dark Syndicate" width={22} height={22} className="object-contain" />
-              </div>
-              <div>
-                <span className="font-heading font-black text-sm uppercase tracking-wider text-ds-text group-hover:text-ds-ice transition-colors">
-                  DARK SYNDICATE
-                </span>
-                <span className="text-[9px] font-mono tracking-widest text-ds-accent uppercase block font-bold">
-                  STAFF PORTAL
-                </span>
-              </div>
-            </Link>
+            {/* Mobile Menu Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileOpen(true)}
+              className="md:hidden p-2 rounded-xl bg-ds-surface border border-ds-border hover:border-ds-accent/40 text-ds-text hover:text-ds-ice transition-all"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5 text-ds-accent" />
+            </button>
 
-            <span className="hidden sm:inline-block w-px h-6 bg-ds-border mx-2" />
+            {/* Desktop Sidebar Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ds-surface/80 border border-ds-border hover:border-ds-accent/50 text-ds-text-muted hover:text-ds-ice transition-all text-xs font-mono group shadow-sm"
+              title={isSidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
+              aria-label="Toggle sidebar"
+            >
+              {isSidebarOpen ? (
+                <PanelLeftClose className="w-4 h-4 text-ds-accent group-hover:scale-110 transition-transform" />
+              ) : (
+                <PanelLeftOpen className="w-4 h-4 text-ds-accent group-hover:scale-110 transition-transform" />
+              )}
+              <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text group-hover:text-ds-ice">
+                {isSidebarOpen ? 'Collapse' : 'Expand Sidebar'}
+              </span>
+            </button>
 
-            {/* Live Status indicator */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>ARENA ACTIVE</span>
+            {/* Mobile Brand Title */}
+            <span className="md:hidden font-heading font-black text-xs uppercase tracking-wider text-ds-text">
+              DARK SYNDICATE STAFF
+            </span>
+
+            {/* Live Arena Pulse */}
+            <div className="hidden sm:flex items-center gap-2 pl-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] font-mono text-ds-text-dim">ARENA ACTIVE</span>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex items-center gap-1">
-            {navLinks.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider transition-all ${
-                    isActive
-                      ? 'bg-ds-surface text-ds-ice border border-ds-accent/40 shadow-sm'
-                      : 'text-ds-text-muted hover:text-white hover:bg-ds-surface/50'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{label}</span>
-                </Link>
-              );
-            })}
-
-            <span className="w-px h-5 bg-ds-border mx-1" />
-
-          </nav>
-
-          {/* Right Clock, Notifications & User */}
           <div className="flex items-center gap-3">
-            <NotificationBell role="STAFF" />
-
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-lg bg-ds-surface/60 border border-ds-border text-xs font-mono text-ds-text-dim">
+            {/* Clock */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-surface/60 border border-ds-border text-xs font-mono text-ds-text-dim">
               <Clock className="w-3.5 h-3.5 text-ds-accent" />
               <span>{timeStr || '10:00:00 AM'} IST</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-ds-accent/20 border border-ds-accent/40 flex items-center justify-center font-heading font-bold text-xs text-ds-ice">
-                {user?.firstName?.[0] || 'S'}
-              </div>
-              <div className="hidden lg:block text-left text-xs">
-                <p className="font-heading font-bold leading-tight">
-                  {user?.firstName || 'Staff'} {user?.lastName || 'Operator'}
-                </p>
-                <p className="text-[10px] text-ds-text-dim uppercase font-mono">Shift Operator</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+            <NotificationBell role="STAFF" />
 
-      {/* Main Staff Content */}
-      <main className="flex-1 py-6 sm:py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
-      </main>
+            {/* Quick Switch to Admin Console if permitted */}
+            {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              <Link
+                href="/admin"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-surface border border-amber-500/30 text-xs font-heading font-bold text-amber-300 hover:bg-amber-500/10 transition-all"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Console</span>
+              </Link>
+            )}
+
+            {/* Header Sign Out Button */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-surface/80 border border-ds-border hover:border-rose-500/40 text-ds-text-muted hover:text-rose-400 text-xs font-heading font-bold uppercase transition-all"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Log Out</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Content canvas */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto">{children}</main>
+      </div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  LogOut,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 
@@ -54,11 +55,13 @@ function SidebarNav({
   pathname,
   user,
   onClose,
+  onLogout,
   isMobile = false,
 }: {
   pathname: string;
   user: any;
   onClose?: () => void;
+  onLogout?: () => void;
   isMobile?: boolean;
 }) {
   return (
@@ -168,6 +171,18 @@ function SidebarNav({
                 <span className="text-[10px] text-emerald-400 font-mono font-semibold uppercase">Super Admin</span>
               </div>
             </div>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="p-1.5 rounded-lg text-ds-text-dim hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all shrink-0 ml-1"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -177,7 +192,7 @@ function SidebarNav({
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
@@ -218,6 +233,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      window.location.href = '/login?portal=admin';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ds-darker text-ds-text flex selection:bg-ds-accent selection:text-white">
       {/* Mobile Drawer Backdrop */}
@@ -238,6 +261,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           pathname={pathname}
           user={user}
           onClose={() => setIsMobileOpen(false)}
+          onLogout={handleLogout}
           isMobile={true}
         />
       </aside>
@@ -255,6 +279,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             pathname={pathname}
             user={user}
             onClose={toggleSidebar}
+            onLogout={handleLogout}
             isMobile={false}
           />
         </div>
@@ -314,6 +339,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <MonitorPlay className="w-3.5 h-3.5" />
               <span>Staff Floor View</span>
             </Link>
+
+            {/* Header Sign Out Button */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-surface/80 border border-ds-border hover:border-rose-500/40 text-ds-text-muted hover:text-rose-400 text-xs font-heading font-bold uppercase transition-all"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Log Out</span>
+            </button>
           </div>
         </header>
 
