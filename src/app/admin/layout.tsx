@@ -66,7 +66,7 @@ function SidebarNav({
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Brand Header */}
         <div className="p-5 border-b border-ds-border flex items-center justify-between">
-          <Link href="/admin" onClick={onClose} className="flex items-center gap-3 group min-w-0">
+          <Link href="/admin" onClick={isMobile ? onClose : undefined} className="flex items-center gap-3 group min-w-0">
             <div className="w-9 h-9 rounded-xl bg-ds-surface flex items-center justify-center border border-ds-accent/40 shadow-inner shrink-0">
               <Image src="/logo.svg" alt="Dark Syndicate" width={26} height={26} className="object-contain" />
             </div>
@@ -108,7 +108,7 @@ function SidebarNav({
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={onClose}
+                onClick={isMobile ? onClose : undefined}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all ${
                   isActive
                     ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/20'
@@ -130,7 +130,7 @@ function SidebarNav({
             </span>
             <Link
               href="/staff"
-              onClick={onClose}
+              onClick={isMobile ? onClose : undefined}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-ds-ice hover:bg-ds-surface/60 transition-colors"
             >
               <div className="flex items-center gap-2.5">
@@ -142,7 +142,7 @@ function SidebarNav({
 
             <Link
               href="/"
-              onClick={onClose}
+              onClick={isMobile ? onClose : undefined}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-ds-text-dim hover:text-white hover:bg-ds-surface/60 transition-colors"
             >
               <div className="flex items-center gap-2.5">

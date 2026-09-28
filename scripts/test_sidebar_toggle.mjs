@@ -8,7 +8,7 @@ if (!fs.existsSync(SCREENSHOT_DIR)) {
 }
 
 async function run() {
-  console.log('🧪 Starting Admin Sidebar Toggle Verification...\n');
+  console.log('🧪 Starting Admin Sidebar Navigation & Manual Close Verification...\n');
 
   const browser = await chromium.launch({ headless: true });
 
@@ -19,7 +19,7 @@ async function run() {
     const page = await context.newPage();
 
     // 1. Login as Admin
-    console.log('▶ Logging in as Admin...');
+    console.log('▶ [1] Logging in as Admin...');
     await page.goto('http://localhost:3000/login?portal=admin');
     await page.fill('#login-email', 'admin@darksyndicate.com');
     await page.fill('input[type="password"]', 'Admin@123456');
@@ -28,72 +28,94 @@ async function run() {
       page.click('#login-submit'),
     ]);
 
-    // 2. Go to /admin/customers (matches user screenshot)
-    console.log('▶ Navigating to /admin/customers...');
+    // 2. Go to /admin/customers
+    console.log('▶ [2] Navigating to /admin/customers...');
     await page.goto('http://localhost:3000/admin/customers', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
-    // 3. Screenshot with Sidebar OPEN
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_01_open.png') });
-    console.log('   📸 Captured: sidebar_01_open.png (Sidebar is OPEN)');
+    const isSidebarVisible = async () => {
+      const aside = page.locator('aside.hidden.md\\:flex');
+      const box = await aside.boundingBox();
+      return box && box.width > 50;
+    };
 
-    // 4. Click Collapse button
-    console.log('▶ Clicking Collapse button...');
+    const initialOpen = await isSidebarVisible();
+    console.log(`   Initial sidebar open: ${initialOpen}`);
+    if (!initialOpen) throw new Error('Sidebar should be open initially');
+
+    // 3. Click "Syndicate Passes" in the sidebar
+    console.log('▶ [3] Clicking "Syndicate Passes" option in sidebar...');
+    const passesLink = page.locator('aside.hidden.md\\:flex a:has-text("Syndicate Passes")');
+    await passesLink.click();
+    await page.waitForURL('**/admin/memberships', { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // Verify sidebar is STILL OPEN!
+    const stillOpen1 = await isSidebarVisible();
+    console.log(`   Sidebar remained OPEN after clicking Syndicate Passes: ${stillOpen1}`);
+    if (!stillOpen1) {
+      throw new Error('Sidebar automatically closed after clicking Syndicate Passes! It must remain open.');
+    }
+
+    // 4. Click "Financial Reports" in the sidebar
+    console.log('▶ [4] Clicking "Financial Reports" option in sidebar...');
+    const reportsLink = page.locator('aside.hidden.md\\:flex a:has-text("Financial Reports")');
+    await reportsLink.click();
+    await page.waitForURL('**/admin/reports', { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // Verify sidebar is STILL OPEN!
+    const stillOpen2 = await isSidebarVisible();
+    console.log(`   Sidebar remained OPEN after clicking Financial Reports: ${stillOpen2}`);
+    if (!stillOpen2) {
+      throw new Error('Sidebar automatically closed after clicking Financial Reports! It must remain open.');
+    }
+
+    // 5. Click "Customer Directory" in the sidebar
+    console.log('▶ [5] Clicking "Customer Directory" option in sidebar...');
+    const customersLink = page.locator('aside.hidden.md\\:flex a:has-text("Customer Directory")');
+    await customersLink.click();
+    await page.waitForURL('**/admin/customers', { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    const stillOpen3 = await isSidebarVisible();
+    console.log(`   Sidebar remained OPEN after clicking Customer Directory: ${stillOpen3}`);
+    if (!stillOpen3) {
+      throw new Error('Sidebar automatically closed after clicking Customer Directory! It must remain open.');
+    }
+
+    // 6. Test MANUAL COLLAPSE via header button
+    console.log('▶ [6] Manually clicking "Collapse" button in header...');
     const collapseBtn = page.locator('button[aria-label="Toggle sidebar"]').first();
     await collapseBtn.click();
-    await page.waitForTimeout(600); // Wait for CSS transition
+    await page.waitForTimeout(600);
 
-    // 5. Screenshot with Sidebar CLOSED
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_02_closed.png') });
-    console.log('   📸 Captured: sidebar_02_closed.png (Sidebar is CLOSED & table expanded)');
+    const nowClosed = !(await isSidebarVisible());
+    console.log(`   Sidebar closed MANUALLY: ${nowClosed}`);
+    if (!nowClosed) {
+      throw new Error('Sidebar failed to close when clicking Collapse button');
+    }
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_manual_closed.png') });
 
-    // 6. Click Expand button
-    console.log('▶ Clicking Expand Sidebar button...');
+    // 7. Test MANUAL EXPAND via header button
+    console.log('▶ [7] Manually clicking "Expand Sidebar" button in header...');
     await collapseBtn.click();
     await page.waitForTimeout(600);
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_03_reopened.png') });
-    console.log('   📸 Captured: sidebar_03_reopened.png (Sidebar is REOPENED)');
 
-    // 7. Test Keyboard shortcut Ctrl+B
-    console.log('▶ Testing keyboard shortcut Ctrl+B...');
-    await page.keyboard.press('Control+b');
-    await page.waitForTimeout(600);
-    const expandTextVisible = await page.locator('text=Expand Sidebar').isVisible();
-    console.log(`   Sidebar collapsed via Ctrl+B: ${expandTextVisible}`);
+    const nowReopened = await isSidebarVisible();
+    console.log(`   Sidebar reopened MANUALLY: ${nowReopened}`);
+    if (!nowReopened) {
+      throw new Error('Sidebar failed to reopen when clicking Expand Sidebar button');
+    }
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_manual_reopened.png') });
 
     await context.close();
 
-    // 8. Test Mobile Drawer (390x844)
-    console.log('\n▶ Testing Mobile Drawer on 390x844 viewport...');
-    const mobileContext = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-    });
-    const mobilePage = await mobileContext.newPage();
-    await mobilePage.goto('http://localhost:3000/login?portal=admin');
-    await mobilePage.fill('#login-email', 'admin@darksyndicate.com');
-    await mobilePage.fill('input[type="password"]', 'Admin@123456');
-    await Promise.all([
-      mobilePage.waitForURL('**/admin**', { timeout: 15000 }),
-      mobilePage.click('#login-submit'),
-    ]);
-
-    await mobilePage.goto('http://localhost:3000/admin/customers', { waitUntil: 'networkidle' });
-    await mobilePage.waitForTimeout(500);
-
-    // Click mobile menu button
-    const menuBtn = mobilePage.locator('button[aria-label="Open navigation menu"]');
-    await menuBtn.click();
-    await mobilePage.waitForTimeout(500);
-    await mobilePage.screenshot({ path: path.join(SCREENSHOT_DIR, 'sidebar_04_mobile_drawer.png') });
-    console.log('   📸 Captured: sidebar_04_mobile_drawer.png (Mobile Slide-Over Drawer OPEN)');
-
-    await mobileContext.close();
-
     console.log('\n================================================================');
-    console.log('🎉 ALL SIDEBAR OPEN / CLOSE TOGGLE VERIFICATIONS PASSED 100%!');
+    console.log('🎉 SIDEBAR MANUAL CLOSE & PERSISTENT OPEN VERIFICATIONS PASSED 100%!');
     console.log('================================================================');
   } catch (err) {
-    console.error('❌ Error during sidebar toggle verification:', err);
+    console.error('❌ Error during sidebar verification:', err);
     throw err;
   } finally {
     await browser.close();
