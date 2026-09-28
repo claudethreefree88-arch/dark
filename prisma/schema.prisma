@@ -140,6 +140,7 @@ model User {
 
   // Relations
   customerProfile    CustomerProfile?
+  staffProfile       StaffProfile?
   bookings           Booking[]
   payments           Payment[]
   gamingSessions     GamingSession[]     @relation("SessionStaff")
@@ -172,6 +173,25 @@ model CustomerProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("customer_profiles")
+}
+
+/// Extended profile and KYC identification for staff operators
+model StaffProfile {
+  id                 String    @id @default(uuid())
+  userId             String    @unique @map("user_id")
+  address            String?   @db.Text
+  aadhaarNumber      String?   @map("aadhaar_number")
+  aadhaarDocumentUrl String?   @map("aadhaar_document_url") @db.LongText
+  emergencyContact   String?   @map("emergency_contact")
+  dateOfBirth        DateTime? @map("date_of_birth")
+  joiningDate        DateTime? @default(now()) @map("joining_date")
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staff_profiles")
 }
 
 /// Category of gaming facilities (PS5, Pool, etc.)

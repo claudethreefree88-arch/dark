@@ -11,6 +11,12 @@ const createStaffSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid 10-digit phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  address: z.string().optional().default(''),
+  aadhaarNumber: z.string().optional().default(''),
+  aadhaarDocumentUrl: z.string().optional().default(''),
+  emergencyContact: z.string().optional().default(''),
+  dateOfBirth: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
 });
 
 // ─── GET /api/admin/staff ───────────────────────────────────────────────────
@@ -32,6 +38,17 @@ export async function GET() {
           status: true,
           lastLoginAt: true,
           createdAt: true,
+          staffProfile: {
+            select: {
+              address: true,
+              aadhaarNumber: true,
+              aadhaarDocumentUrl: true,
+              emergencyContact: true,
+              dateOfBirth: true,
+              joiningDate: true,
+              notes: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -49,6 +66,13 @@ export async function GET() {
             status: s.status,
             lastLoginAt: s.lastLoginAt,
             createdAt: s.createdAt,
+            address: s.staffProfile?.address || '',
+            aadhaarNumber: s.staffProfile?.aadhaarNumber || '',
+            aadhaarDocumentUrl: s.staffProfile?.aadhaarDocumentUrl || '',
+            emergencyContact: s.staffProfile?.emergencyContact || '',
+            dateOfBirth: s.staffProfile?.dateOfBirth ? s.staffProfile.dateOfBirth.toISOString().split('T')[0] : '',
+            joiningDate: s.staffProfile?.joiningDate || s.createdAt,
+            notes: s.staffProfile?.notes || '',
           }))
         );
       }
@@ -62,7 +86,7 @@ export async function GET() {
   }
 }
 
-// ─── POST /api/admin/staff (Onboard Staff) ──────────────────────────────────
+// ─── POST /api/admin/staff (Onboard Staff with KYC & Address) ────────────────
 export async function POST(req: NextRequest) {
   try {
     await requireRole('ADMIN', 'SUPER_ADMIN');
@@ -87,14 +111,14 @@ export async function POST(req: NextRequest) {
       });
       if (existingPhone) {
         throw new ConflictError(
-          `Phone number '${cleanPhone}' is already in use by ${existingPhone.firstName} ${existingPhone.lastName}`
+          `Phone number '${cleanPhone}' is already registered to ${existingPhone.firstName} ${existingPhone.lastName}`
         );
       }
     }
 
     const passwordHash = await hashPassword(data.password);
 
-    // Create staff user with role automatically set to STAFF
+    // Create staff user with role automatically set to STAFF + staffProfile
     const newStaff = await prisma.user.create({
       data: {
         firstName: data.firstName.trim(),
@@ -104,6 +128,17 @@ export async function POST(req: NextRequest) {
         passwordHash,
         role: 'STAFF',
         status: 'ACTIVE',
+        staffProfile: {
+          create: {
+            address: data.address?.trim() || null,
+            aadhaarNumber: data.aadhaarNumber?.trim() || null,
+            aadhaarDocumentUrl: data.aadhaarDocumentUrl || null,
+            emergencyContact: data.emergencyContact?.trim() || null,
+            dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+            joiningDate: new Date(),
+            notes: data.notes?.trim() || null,
+          },
+        },
       },
       select: {
         id: true,
@@ -114,6 +149,7 @@ export async function POST(req: NextRequest) {
         role: true,
         status: true,
         createdAt: true,
+        staffProfile: true,
       },
     });
 
@@ -128,6 +164,11 @@ export async function POST(req: NextRequest) {
         role: newStaff.role,
         status: newStaff.status,
         createdAt: newStaff.createdAt,
+        address: newStaff.staffProfile?.address || '',
+        aadhaarNumber: newStaff.staffProfile?.aadhaarNumber || '',
+        aadhaarDocumentUrl: newStaff.staffProfile?.aadhaarDocumentUrl || '',
+        emergencyContact: newStaff.staffProfile?.emergencyContact || '',
+        joiningDate: newStaff.staffProfile?.joiningDate || newStaff.createdAt,
       },
       201
     );
@@ -136,12 +177,24 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── PATCH /api/admin/staff (Update Status / Password / Info) ───────────────
+// ─── PATCH /api/admin/staff (Update Profile / Address / Aadhaar / Password) ───
 export async function PATCH(req: NextRequest) {
   try {
     await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
-    const { id, status, password, firstName, lastName, phone } = body;
+    const {
+      id,
+      status,
+      password,
+      firstName,
+      lastName,
+      phone,
+      address,
+      aadhaarNumber,
+      aadhaarDocumentUrl,
+      emergencyContact,
+      notes,
+    } = body;
 
     if (!id) {
       throw new ValidationError('Staff user ID is required');
@@ -156,20 +209,57 @@ export async function PATCH(req: NextRequest) {
       throw new ValidationError('Cannot deactivate a Super Admin account');
     }
 
-    const updateData: any = {};
+    // 1. Update User basic record
+    const userUpdateData: any = {};
     if (status && ['ACTIVE', 'DEACTIVATED', 'BLOCKED'].includes(status)) {
-      updateData.status = status;
+      userUpdateData.status = status;
     }
     if (password && password.length >= 6) {
-      updateData.passwordHash = await hashPassword(password);
+      userUpdateData.passwordHash = await hashPassword(password);
     }
-    if (firstName) updateData.firstName = firstName.trim();
-    if (lastName !== undefined) updateData.lastName = lastName.trim();
-    if (phone) updateData.phone = phone.trim();
+    if (firstName) userUpdateData.firstName = firstName.trim();
+    if (lastName !== undefined) userUpdateData.lastName = lastName.trim();
+    if (phone) userUpdateData.phone = phone.trim();
 
-    const updated = await prisma.user.update({
+    if (Object.keys(userUpdateData).length > 0) {
+      await prisma.user.update({
+        where: { id },
+        data: userUpdateData,
+      });
+    }
+
+    // 2. Upsert StaffProfile for address, Aadhaar & emergency contact
+    const hasProfileUpdates =
+      address !== undefined ||
+      aadhaarNumber !== undefined ||
+      aadhaarDocumentUrl !== undefined ||
+      emergencyContact !== undefined ||
+      notes !== undefined;
+
+    if (hasProfileUpdates) {
+      await prisma.staffProfile.upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          address: address || null,
+          aadhaarNumber: aadhaarNumber || null,
+          aadhaarDocumentUrl: aadhaarDocumentUrl || null,
+          emergencyContact: emergencyContact || null,
+          notes: notes || null,
+        },
+        update: {
+          ...(address !== undefined ? { address } : {}),
+          ...(aadhaarNumber !== undefined ? { aadhaarNumber } : {}),
+          ...(aadhaarDocumentUrl !== undefined ? { aadhaarDocumentUrl } : {}),
+          ...(emergencyContact !== undefined ? { emergencyContact } : {}),
+          ...(notes !== undefined ? { notes } : {}),
+        },
+      });
+    }
+
+    // Fetch updated user with profile
+    const updated = await prisma.user.findUnique({
       where: { id },
-      data: updateData,
       select: {
         id: true,
         firstName: true,
@@ -180,22 +270,28 @@ export async function PATCH(req: NextRequest) {
         status: true,
         lastLoginAt: true,
         createdAt: true,
+        staffProfile: true,
       },
     });
 
     return apiSuccess({
       message: 'Staff account updated successfully',
       staff: {
-        id: updated.id,
-        name: `${updated.firstName} ${updated.lastName}`.trim(),
-        firstName: updated.firstName,
-        lastName: updated.lastName,
-        email: updated.email,
-        phone: updated.phone || '—',
-        role: updated.role,
-        status: updated.status,
-        lastLoginAt: updated.lastLoginAt,
-        createdAt: updated.createdAt,
+        id: updated?.id,
+        name: `${updated?.firstName} ${updated?.lastName}`.trim(),
+        firstName: updated?.firstName,
+        lastName: updated?.lastName,
+        email: updated?.email,
+        phone: updated?.phone || '—',
+        role: updated?.role,
+        status: updated?.status,
+        lastLoginAt: updated?.lastLoginAt,
+        createdAt: updated?.createdAt,
+        address: updated?.staffProfile?.address || '',
+        aadhaarNumber: updated?.staffProfile?.aadhaarNumber || '',
+        aadhaarDocumentUrl: updated?.staffProfile?.aadhaarDocumentUrl || '',
+        emergencyContact: updated?.staffProfile?.emergencyContact || '',
+        notes: updated?.staffProfile?.notes || '',
       },
     });
   } catch (error) {
@@ -227,7 +323,6 @@ export async function DELETE(req: NextRequest) {
       throw new ValidationError('Cannot delete a Super Admin account');
     }
 
-    // Try hard delete; if dependent records exist, set status to DEACTIVATED
     try {
       await prisma.user.delete({ where: { id } });
       return apiSuccess({
@@ -239,7 +334,7 @@ export async function DELETE(req: NextRequest) {
         data: { status: 'DEACTIVATED' },
       });
       return apiSuccess({
-        message: `Staff account has existing session/audit records and was deactivated`,
+        message: `Staff account has existing session records and was deactivated`,
       });
     }
   } catch (error) {
@@ -259,6 +354,10 @@ function getDemoStaffList() {
       phone: '+91 98400 11223',
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
+      address: 'Dark Syndicate Arena Headquarters, Anna Nagar, Chennai - 600040',
+      aadhaarNumber: '8901 2345 6789',
+      aadhaarDocumentUrl: '',
+      emergencyContact: '+91 98400 99999',
       lastLoginAt: now.toISOString(),
       createdAt: new Date(now.getTime() - 120 * 24 * 3600 * 1000).toISOString(),
     },
@@ -271,6 +370,10 @@ function getDemoStaffList() {
       phone: '+91 97890 44556',
       role: 'STAFF',
       status: 'ACTIVE',
+      address: 'Flat 4B, Cyber Heights, Velachery Main Road, Chennai - 600042',
+      aadhaarNumber: '5642 1098 7654',
+      aadhaarDocumentUrl: '',
+      emergencyContact: '+91 97890 11111',
       lastLoginAt: new Date(now.getTime() - 4 * 3600 * 1000).toISOString(),
       createdAt: new Date(now.getTime() - 40 * 24 * 3600 * 1000).toISOString(),
     },
@@ -283,6 +386,10 @@ function getDemoStaffList() {
       phone: '+91 99400 88776',
       role: 'STAFF',
       status: 'ACTIVE',
+      address: 'No 12, Syndicate Residency, T. Nagar, Chennai - 600017',
+      aadhaarNumber: '9920 4412 8831',
+      aadhaarDocumentUrl: '',
+      emergencyContact: '+91 99400 33221',
       lastLoginAt: new Date(now.getTime() - 24 * 3600 * 1000).toISOString(),
       createdAt: new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString(),
     },
