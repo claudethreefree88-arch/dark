@@ -117,6 +117,7 @@ export default function StaffStationGridPage() {
       customerName: station.activeSession.customerName,
       bookingRef: station.activeSession.bookingRef,
       scheduledEndAt: station.activeSession.scheduledEndAt,
+      pricePerHourPaise: station.pricePerHourPaise,
     });
   };
 
@@ -145,11 +146,13 @@ export default function StaffStationGridPage() {
 
     if (diffMs <= 0) {
       const overdueSec = Math.floor(Math.abs(diffMs) / 1000);
-      const mins = Math.floor(overdueSec / 60);
+      const mins = Math.max(1, Math.floor(overdueSec / 60));
       const secs = overdueSec % 60;
       return {
-        formatted: `+${mins}:${secs.toString().padStart(2, '0')}`,
+        formatted: `${mins}:${secs.toString().padStart(2, '0')}`,
+        overdueMins: mins,
         isOverdue: true,
+        isCriticalEnding: true,
         isEndingSoon: true,
         percentage: 100,
       };
@@ -167,8 +170,10 @@ export default function StaffStationGridPage() {
 
     return {
       formatted,
+      overdueMins: 0,
       isOverdue: false,
-      isEndingSoon: totalSec <= 300, // < 5 mins
+      isCriticalEnding: totalSec <= 300, // <= 5 mins
+      isEndingSoon: totalSec <= 900, // <= 15 mins
       percentage: Math.min(100, Math.max(0, 100 - (diffMs / (120 * 60 * 1000)) * 100)),
     };
   };
@@ -351,6 +356,8 @@ export default function StaffStationGridPage() {
                 className={`p-6 border transition-all flex flex-col justify-between relative overflow-hidden ${
                   countdown?.isOverdue
                     ? 'border-rose-500/80 bg-rose-500/5 shadow-lg shadow-rose-500/10 ring-1 ring-rose-500'
+                    : countdown?.isCriticalEnding
+                    ? 'border-orange-500/80 bg-orange-500/5 shadow-lg shadow-orange-500/10'
                     : countdown?.isEndingSoon
                     ? 'border-amber-400/80 bg-amber-400/5 shadow-lg shadow-amber-400/10'
                     : isOccupied
@@ -370,6 +377,8 @@ export default function StaffStationGridPage() {
                       variant={
                         countdown?.isOverdue
                           ? 'default'
+                          : countdown?.isCriticalEnding
+                          ? 'warning'
                           : countdown?.isEndingSoon
                           ? 'warning'
                           : isOccupied
@@ -379,10 +388,20 @@ export default function StaffStationGridPage() {
                           : 'success'
                       }
                       size="sm"
-                      className="font-mono text-[11px] uppercase tracking-wider"
+                      className={`font-mono text-[11px] uppercase tracking-wider ${
+                        countdown?.isOverdue
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse font-bold'
+                          : countdown?.isCriticalEnding
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold'
+                          : countdown?.isEndingSoon
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : ''
+                      }`}
                     >
                       {countdown?.isOverdue
-                        ? '🚨 OVERDUE'
+                        ? `🔴 EXTRA TIME (+${countdown.overdueMins}m)`
+                        : countdown?.isCriticalEnding
+                        ? '🟠 FINAL 5 MINS'
                         : countdown?.isEndingSoon
                         ? '⏳ ENDING SOON'
                         : isOccupied
@@ -410,17 +429,21 @@ export default function StaffStationGridPage() {
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[9px] uppercase font-mono text-ds-text-dim block">Time Remaining</span>
+                          <span className="text-[9px] uppercase font-mono text-ds-text-dim block">
+                            {countdown.isOverdue ? 'Extra Time Played' : 'Time Remaining'}
+                          </span>
                           <span
                             className={`text-lg font-mono font-black ${
                               countdown.isOverdue
                                 ? 'text-rose-400 animate-pulse'
+                                : countdown.isCriticalEnding
+                                ? 'text-orange-400'
                                 : countdown.isEndingSoon
                                 ? 'text-amber-400'
                                 : 'text-ds-ice'
                             }`}
                           >
-                            {countdown.formatted}
+                            {countdown.isOverdue ? `+${countdown.formatted}` : countdown.formatted}
                           </span>
                         </div>
                       </div>
@@ -431,6 +454,8 @@ export default function StaffStationGridPage() {
                           className={`h-full transition-all duration-1000 ${
                             countdown.isOverdue
                               ? 'bg-rose-500'
+                              : countdown.isCriticalEnding
+                              ? 'bg-orange-500'
                               : countdown.isEndingSoon
                               ? 'bg-amber-400'
                               : 'bg-ds-accent'

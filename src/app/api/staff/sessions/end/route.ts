@@ -8,13 +8,14 @@ const endSessionSchema = z.object({
   sessionId: z.string().optional(),
   stationId: z.string().optional(),
   bookingId: z.string().optional(),
+  extraMinutes: z.number().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
     await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
-    const { sessionId, stationId, bookingId } = endSessionSchema.parse(body);
+    const { sessionId, stationId, bookingId, extraMinutes } = endSessionSchema.parse(body);
 
     if (!sessionId && !stationId && !bookingId) {
       throw new NotFoundError('Either sessionId, stationId, or bookingId is required');
@@ -75,7 +76,10 @@ export async function POST(req: NextRequest) {
         });
 
         return apiSuccess({
-          message: `Session on ${session.station?.name || 'station'} ended successfully. Station is now Available.`,
+          message: extraMinutes && extraMinutes > 0
+            ? `Session on ${session.station?.name || 'station'} ended (${extraMinutes}m extra time recorded). Station is now Available.`
+            : `Session on ${session.station?.name || 'station'} ended successfully. Station is now Available.`,
+          extraMinutes: extraMinutes || 0,
         });
       } else {
         // Fallback: If no GamingSession row was found, update Booking & GamingStation directly
@@ -95,7 +99,10 @@ export async function POST(req: NextRequest) {
         });
 
         return apiSuccess({
-          message: 'Session ended successfully! Station marked as Available.',
+          message: extraMinutes && extraMinutes > 0
+            ? `Session ended (${extraMinutes}m extra time recorded). Station is now Available.`
+            : 'Session ended successfully! Station marked as Available.',
+          extraMinutes: extraMinutes || 0,
         });
       }
     } catch {

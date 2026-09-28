@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/NotificationBell';
+import { SessionExpiryAlertManager } from '@/components/staff/SessionExpiryAlertManager';
 
 interface NavItem {
   name: string;
@@ -421,6 +422,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
         {/* Content canvas */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto">{children}</main>
+
+        {/* Real-time Session Expiry & Extra Time Alerts Popups */}
+        <SessionExpiryAlertManager />
       </div>
     </div>
   );

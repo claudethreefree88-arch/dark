@@ -107,8 +107,10 @@ export default function StaffBookingsSchedulePage() {
       const secs = overdueSec % 60;
       return {
         formatted: `+${mins}:${secs.toString().padStart(2, '0')}`,
+        overdueMins: mins,
         isOverdue: true,
         isEndingSoon: true,
+        isCriticalEnding: true,
         percentage: 100,
       };
     }
@@ -125,8 +127,10 @@ export default function StaffBookingsSchedulePage() {
 
     return {
       formatted,
+      overdueMins: 0,
       isOverdue: false,
-      isEndingSoon: totalSec <= 300, // < 5 mins
+      isEndingSoon: totalSec <= 900, // <= 15 mins
+      isCriticalEnding: totalSec <= 300, // <= 5 mins
       percentage: Math.min(100, Math.max(0, 100 - (diffMs / (120 * 60 * 1000)) * 100)),
     };
   };
@@ -162,6 +166,7 @@ export default function StaffBookingsSchedulePage() {
       customerName: booking.customerName,
       bookingRef: booking.bookingRef,
       scheduledEndAt: booking.session?.scheduledEndAt || booking.endTime,
+      pricePerHourPaise: booking.pricePerHourPaise || 15000,
     });
   };
 
@@ -503,15 +508,21 @@ export default function StaffBookingsSchedulePage() {
                           {isSessionActive && countdown && (
                             <div className="mt-1 flex items-center gap-2">
                               <span
-                                className={`text-[11px] font-bold font-mono tracking-tight ${
+                                className={`text-[11px] font-bold font-mono tracking-tight flex items-center gap-1 ${
                                   countdown.isOverdue
-                                    ? 'text-rose-400'
+                                    ? 'text-rose-400 font-black animate-pulse'
+                                    : countdown.isCriticalEnding
+                                    ? 'text-orange-400 font-black'
                                     : countdown.isEndingSoon
                                     ? 'text-amber-400'
                                     : 'text-ds-ice'
                                 }`}
                               >
-                                ⏱ {countdown.formatted} left
+                                {countdown.isOverdue ? (
+                                  <span>🚨 EXTRA TIME: {countdown.formatted}</span>
+                                ) : (
+                                  <span>⏱ {countdown.formatted} left</span>
+                                )}
                               </span>
                               <span className="text-[10px] text-ds-text-dim">({b.durationMinutes / 60} hr)</span>
                             </div>
@@ -531,6 +542,8 @@ export default function StaffBookingsSchedulePage() {
                             variant={
                               countdown?.isOverdue
                                 ? 'default'
+                                : countdown?.isCriticalEnding
+                                ? 'warning'
                                 : countdown?.isEndingSoon
                                 ? 'warning'
                                 : isSessionActive
@@ -542,10 +555,20 @@ export default function StaffBookingsSchedulePage() {
                                 : 'warning'
                             }
                             size="sm"
-                            className="font-mono text-[10px]"
+                            className={`font-mono text-[10px] ${
+                              countdown?.isOverdue
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse font-bold'
+                                : countdown?.isCriticalEnding
+                                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold'
+                                : countdown?.isEndingSoon
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                : ''
+                            }`}
                           >
                             {countdown?.isOverdue
-                              ? '🚨 OVERDUE'
+                              ? `🔴 EXTRA TIME (+${countdown.overdueMins}m)`
+                              : countdown?.isCriticalEnding
+                              ? '🟠 FINAL 5 MINS'
                               : countdown?.isEndingSoon
                               ? '⏳ ENDING SOON'
                               : isSessionActive
@@ -639,6 +662,8 @@ export default function StaffBookingsSchedulePage() {
                   className={`p-6 rounded-2xl border transition-all relative overflow-hidden bg-ds-surface/90 shadow-2xl ${
                     countdown?.isOverdue
                       ? 'border-rose-500/80 shadow-rose-500/10 ring-1 ring-rose-500'
+                      : countdown?.isCriticalEnding
+                      ? 'border-orange-500/80 shadow-orange-500/10'
                       : countdown?.isEndingSoon
                       ? 'border-amber-400/80 shadow-amber-400/10'
                       : 'border-ds-accent/60 shadow-ds-accent/10'
@@ -653,6 +678,8 @@ export default function StaffBookingsSchedulePage() {
                       variant={
                         countdown?.isOverdue
                           ? 'default'
+                          : countdown?.isCriticalEnding
+                          ? 'warning'
                           : countdown?.isEndingSoon
                           ? 'warning'
                           : isSessionActive
@@ -660,10 +687,20 @@ export default function StaffBookingsSchedulePage() {
                           : 'default'
                       }
                       size="sm"
-                      className="font-mono text-[11px] uppercase tracking-wider"
+                      className={`font-mono text-[11px] uppercase tracking-wider ${
+                        countdown?.isOverdue
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse font-bold'
+                          : countdown?.isCriticalEnding
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold'
+                          : countdown?.isEndingSoon
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : ''
+                      }`}
                     >
                       {countdown?.isOverdue
-                        ? '🚨 OVERDUE'
+                        ? `🔴 EXTRA TIME (+${countdown.overdueMins}m)`
+                        : countdown?.isCriticalEnding
+                        ? '🟠 FINAL 5 MINS'
                         : countdown?.isEndingSoon
                         ? '⏳ ENDING SOON'
                         : isSessionActive
@@ -691,17 +728,21 @@ export default function StaffBookingsSchedulePage() {
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[9px] uppercase font-mono text-ds-text-dim block">Time Remaining</span>
+                          <span className="text-[9px] uppercase font-mono text-ds-text-dim block">
+                            {countdown.isOverdue ? 'Extra Time Played' : 'Time Remaining'}
+                          </span>
                           <span
                             className={`text-xl font-mono font-black tracking-tight ${
                               countdown.isOverdue
                                 ? 'text-rose-400'
+                                : countdown.isCriticalEnding
+                                ? 'text-orange-400 animate-pulse'
                                 : countdown.isEndingSoon
                                 ? 'text-amber-400'
                                 : 'text-ds-ice'
                             }`}
                           >
-                            {countdown.formatted}
+                            {countdown.isOverdue ? `+${countdown.formatted}` : countdown.formatted}
                           </span>
                         </div>
                       </div>
@@ -712,6 +753,8 @@ export default function StaffBookingsSchedulePage() {
                           className={`h-full transition-all duration-1000 ${
                             countdown.isOverdue
                               ? 'bg-rose-500'
+                              : countdown.isCriticalEnding
+                              ? 'bg-orange-500'
                               : countdown.isEndingSoon
                               ? 'bg-amber-400'
                               : 'bg-ds-accent'

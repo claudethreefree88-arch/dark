@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Square, AlertTriangle, Clock, Gamepad2, CheckCircle2, User } from 'lucide-react';
+import { Square, AlertTriangle, AlertCircle, Clock, Gamepad2, CheckCircle2, User } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 export interface EndSessionTarget {
@@ -15,6 +15,7 @@ export interface EndSessionTarget {
   customerName: string;
   bookingRef?: string;
   scheduledEndAt?: string;
+  pricePerHourPaise?: number;
 }
 
 interface EndSessionModalProps {
@@ -45,6 +46,7 @@ export function EndSessionModal({
           sessionId: target.sessionId,
           stationId: target.stationId,
           bookingId: target.bookingId,
+          extraMinutes,
         }),
       });
 
@@ -65,6 +67,17 @@ export function EndSessionModal({
 
   const endDateTime = target.scheduledEndAt ? new Date(target.scheduledEndAt) : null;
   const validEndTime = endDateTime && !isNaN(endDateTime.getTime()) ? endDateTime : null;
+  const now = new Date();
+  const isOverdue = validEndTime ? now.getTime() > validEndTime.getTime() : false;
+  const extraMinutes = isOverdue && validEndTime
+    ? Math.max(1, Math.floor((now.getTime() - validEndTime.getTime()) / (60 * 1000)))
+    : 0;
+  const extraSeconds = isOverdue && validEndTime
+    ? Math.floor((now.getTime() - validEndTime.getTime()) / 1000) % 60
+    : 0;
+  const overtimeCharge = target.pricePerHourPaise && extraMinutes > 0
+    ? Math.max(10, Math.round((extraMinutes / 60) * (target.pricePerHourPaise / 100)))
+    : null;
 
   return (
     <Modal
@@ -89,6 +102,34 @@ export function EndSessionModal({
           </div>
         </div>
 
+        {/* Extra Time / Overtime Alert Banner if Overdue */}
+        {isOverdue && (
+          <div className="p-4 rounded-xl bg-rose-500/15 border-2 border-rose-500/50 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-rose-300 font-heading font-black text-xs uppercase tracking-wider">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Extra Time (Overtime) Detected</span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-black bg-rose-500 text-white shadow-sm">
+                +{extraMinutes}m {extraSeconds.toString().padStart(2, '0')}s EXTRA
+              </span>
+            </div>
+
+            <p className="text-xs text-rose-200/90 leading-relaxed font-body">
+              Scheduled slot ended at <strong className="text-white font-bold">{validEndTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>. The player has played <strong className="text-white font-bold">+{extraMinutes} minutes</strong> beyond their booked slot.
+            </p>
+
+            {overtimeCharge !== null && (
+              <div className="pt-2 border-t border-rose-500/30 flex items-center justify-between font-mono text-xs">
+                <span className="text-rose-300 font-medium">Extra Time Overtime Fee:</span>
+                <span className="text-white font-bold text-sm bg-rose-950/80 px-2.5 py-0.5 rounded border border-rose-500/40">
+                  ₹{overtimeCharge}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Session Dossier Summary */}
         <div className="p-4 rounded-xl bg-ds-dark border border-ds-border space-y-3 text-xs">
           <div className="flex items-center justify-between pb-2 border-b border-ds-border/60">
@@ -111,7 +152,7 @@ export function EndSessionModal({
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pb-2 border-b border-ds-border/60">
             <div className="flex items-center gap-2 text-ds-text-muted">
               <Clock className="w-4 h-4 text-amber-400" />
               <span>Scheduled End Time</span>
@@ -121,6 +162,29 @@ export function EndSessionModal({
                 ? validEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : 'Active Now'}
             </span>
+          </div>
+
+          <div className="flex items-center justify-between pb-2 border-b border-ds-border/60">
+            <div className="flex items-center gap-2 text-ds-text-muted">
+              <Clock className="w-4 h-4 text-ds-ice" />
+              <span>Conclude Time (Now)</span>
+            </div>
+            <span className="font-mono text-ds-text font-bold">
+              {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-ds-text-muted">Extra Time Status</span>
+            {isOverdue ? (
+              <span className="font-mono font-black text-rose-400 text-xs">
+                +{extraMinutes} mins (Overtime)
+              </span>
+            ) : (
+              <span className="font-mono text-emerald-400 text-xs font-semibold">
+                None (On Schedule)
+              </span>
+            )}
           </div>
 
           {target.bookingRef && (
