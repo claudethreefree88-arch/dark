@@ -2,7 +2,7 @@ import { jwtVerify } from 'jose';
 import { NextResponse, type NextRequest } from 'next/server';
 import { AUTH_COOKIE_NAME } from './lib/constants';
 
-const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/facilities', '/pricing', '/booking', '/contact'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/facilities', '/pricing', '/booking', '/contact', '/membership'];
 const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 const STAFF_ROLES = ['STAFF'];

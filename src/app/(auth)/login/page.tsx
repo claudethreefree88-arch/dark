@@ -3,54 +3,106 @@
 import React, { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, UserRound } from 'lucide-react';
-import { loginSchema, type LoginInput } from '@/validators/auth.schema';
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  UserRound,
+  User,
+  Phone,
+  Shield,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react';
+import {
+  loginSchema,
+  registerSchema,
+  type LoginInput,
+  type RegisterInput,
+} from '@/validators/auth.schema';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 
-function LoginContent() {
+interface LoginPageProps {
+  defaultTab?: 'signin' | 'signup';
+}
+
+function LoginContent({ defaultTab }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { login, register: authRegister } = useAuth();
   const searchParams = useSearchParams();
   const portalParam = searchParams.get('portal');
+  const tabParam = searchParams.get('tab');
+  const redirectParam = searchParams.get('redirect');
+
   const portal = portalParam === 'admin' || portalParam === 'staff' ? portalParam : 'player';
-  const portalDetails = {
-    player: { title: 'Sign In', subtitle: 'Sign in to manage your bookings, passes, and game time.', destination: searchParams.get('redirect') || '/account', icon: UserRound },
-    admin: { title: 'Sign In to Admin Portal', subtitle: 'Secure access to operations, payments, and reporting.', destination: '/admin', icon: ShieldCheck },
-    staff: { title: 'Sign In to Staff Portal', subtitle: 'Secure access to live stations and today’s bookings.', destination: '/staff', icon: ShieldCheck },
-  }[portal];
-  const PortalIcon = portalDetails.icon;
+
+  // Initialize active tab from prop, query parameter, or default to signin
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(() => {
+    if (portal !== 'player') return 'signin';
+    if (tabParam === 'signup' || tabParam === 'register') return 'signup';
+    if (defaultTab === 'signup') return 'signup';
+    return 'signin';
+  });
+
   const toast = useToast();
 
+  const portalDetails = {
+    player: {
+      title: activeTab === 'signin' ? 'Sign In' : 'Create Account',
+      subtitle:
+        activeTab === 'signin'
+          ? 'Sign in to manage your bookings, passes, and game time.'
+          : 'Create your gamer account to book stations and activate passes.',
+      destination: redirectParam || '/account',
+      icon: activeTab === 'signin' ? UserRound : Sparkles,
+    },
+    admin: {
+      title: 'Sign In to Admin Portal',
+      subtitle: 'Secure access to operations, payments, and reporting.',
+      destination: '/admin',
+      icon: ShieldCheck,
+    },
+    staff: {
+      title: 'Sign In to Staff Portal',
+      subtitle: 'Secure access to live stations and today’s bookings.',
+      destination: '/staff',
+      icon: ShieldCheck,
+    },
+  }[portal];
+  const PortalIcon = portalDetails.icon;
+
+  // ─── Sign In Form ──────────────────────────────────────────────────────────
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
+    register: registerLogin,
+    handleSubmit: handleLoginSubmit,
+    formState: { errors: loginErrors, isSubmitting: isLoginSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = async (data: LoginInput) => {
+  const onLoginSubmit = async (data: LoginInput) => {
     try {
       const loggedInUser = await login(data.email, data.password, portal);
       toast.success('Welcome back!', 'You have been logged in successfully.');
-      
-      const redirectParam = searchParams.get('redirect');
+
       if (redirectParam) {
-        router.push(redirectParam);
+        window.location.href = redirectParam;
       } else if (loggedInUser?.role && ['SUPER_ADMIN', 'ADMIN'].includes(loggedInUser.role)) {
-        router.push('/admin');
+        window.location.href = '/admin';
       } else if (loggedInUser?.role === 'STAFF') {
-        router.push('/staff');
+        window.location.href = '/staff';
       } else {
-        router.push('/account');
+        window.location.href = '/account';
       }
     } catch (error) {
       toast.error(
@@ -60,8 +112,43 @@ function LoginContent() {
     }
   };
 
+  // ─── Create Account Form ───────────────────────────────────────────────────
+  const {
+    register: registerSignUp,
+    handleSubmit: handleSignUpSubmit,
+    formState: { errors: signUpErrors, isSubmitting: isSignUpSubmitting },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const onSignUpSubmit = async (data: RegisterInput) => {
+    try {
+      await authRegister(data);
+      toast.success(
+        'Account created successfully!',
+        'Welcome to Dark Syndicate Gaming World.'
+      );
+
+      // Redirect user to original target (e.g. /membership) or /account
+      window.location.href = redirectParam || '/account';
+    } catch (error) {
+      toast.error(
+        'Registration failed',
+        error instanceof Error ? error.message : 'Something went wrong while creating your account'
+      );
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 gradient-bg py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 gradient-bg py-8 sm:py-12 pb-20 sm:pb-12">
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-ds-primary/5 rounded-full blur-[120px]" />
@@ -87,79 +174,238 @@ function LoginContent() {
           <h1 className="text-3xl font-heading font-extrabold text-ds-text tracking-wider">
             DARK <span className="gradient-text">SYNDICATE</span>
           </h1>
-          <div className="mt-2 inline-flex items-center gap-2 text-ds-text-muted font-body text-sm">
-            <PortalIcon className="w-4 h-4 text-ds-accent" />
+          <div className="mt-2 inline-flex items-center gap-2 text-ds-text-muted font-body text-sm px-2">
+            <PortalIcon className="w-4 h-4 text-ds-accent shrink-0" />
             <span>{portalDetails.subtitle}</span>
           </div>
         </div>
 
-        {/* Login Form */}
-        <div className="glass-strong rounded-2xl p-8 shadow-elevated">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            <Input
-              {...register('email')}
-              label="Email Address"
-              type="email"
-              placeholder="you@example.com"
-              error={errors.email?.message}
-              icon={<Mail className="w-4 h-4" />}
-              autoComplete="email"
-              id="login-email"
-            />
-
-            <Input
-              {...register('password')}
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              error={errors.password?.message}
-              icon={<Lock className="w-4 h-4" />}
-              autoComplete="current-password"
-              id="login-password"
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="hover:text-ds-text transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              }
-            />
-
-            <div className="flex items-center justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-xs text-ds-accent hover:text-ds-accent-hover transition-colors font-medium"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            <Button
-              type="submit"
-              isLoading={isSubmitting}
-              fullWidth
-              size="lg"
-              className="mt-2"
-              id="login-submit"
-            >
-              {portalDetails.title}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-xs text-ds-text-muted">
-              Don&apos;t have an account?{' '}
-              <Link
-                href="/register"
-                className="text-ds-accent hover:text-ds-accent-hover transition-colors font-semibold"
-              >
-                Create Account
-              </Link>
-            </p>
+        {/* Redirect Context Banner (e.g. from /membership) */}
+        {redirectParam?.includes('membership') && (
+          <div className="p-3 rounded-xl bg-ds-accent/15 border border-ds-accent/40 text-center text-xs text-ds-ice font-semibold shadow-glow-sm">
+            🎟️ {activeTab === 'signup' ? 'Create your gamer account' : 'Sign in'} to activate your Dark Syndicate Pass!
           </div>
+        )}
+
+        {/* Auth Card */}
+        <div className="glass-strong rounded-2xl p-6 sm:p-8 shadow-elevated">
+          {/* Tab Switcher for Player Portal */}
+          {portal === 'player' && (
+            <div className="grid grid-cols-2 p-1 bg-ds-dark/90 rounded-xl border border-ds-border mb-6 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setActiveTab('signin')}
+                className={`py-2.5 text-xs font-heading font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  activeTab === 'signin'
+                    ? 'bg-ds-primary text-white shadow-glow border border-blue-500/50'
+                    : 'text-ds-text-muted hover:text-ds-text hover:bg-ds-surface/40'
+                }`}
+              >
+                <UserRound className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('signup')}
+                className={`py-2.5 text-xs font-heading font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  activeTab === 'signup'
+                    ? 'bg-gradient-to-r from-ds-accent to-cyan-500 text-white shadow-glow border border-cyan-400/50'
+                    : 'text-ds-text-muted hover:text-ds-text hover:bg-ds-surface/40'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Create Account</span>
+              </button>
+            </div>
+          )}
+
+          {/* ────────────────── SIGN IN TAB ────────────────── */}
+          {activeTab === 'signin' ? (
+            <form onSubmit={handleLoginSubmit(onLoginSubmit)} className="space-y-4" noValidate>
+              <Input
+                {...registerLogin('email')}
+                label="Email Address"
+                type="email"
+                placeholder="you@example.com"
+                error={loginErrors.email?.message}
+                icon={<Mail className="w-4 h-4" />}
+                autoComplete="email"
+                id="login-email"
+              />
+
+              <Input
+                {...registerLogin('password')}
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                error={loginErrors.password?.message}
+                icon={<Lock className="w-4 h-4" />}
+                autoComplete="current-password"
+                id="login-password"
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="hover:text-ds-text transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
+              />
+
+              <div className="flex items-center justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-ds-accent hover:text-ds-accent-hover transition-colors font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                isLoading={isLoginSubmitting}
+                fullWidth
+                size="lg"
+                className="mt-2"
+                id="login-submit"
+              >
+                {portalDetails.title}
+              </Button>
+
+              {portal === 'player' && (
+                <div className="mt-4 pt-3 border-t border-ds-border/60 text-center">
+                  <p className="text-xs text-ds-text-muted">
+                    New player?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('signup')}
+                      className="text-ds-accent hover:text-ds-accent-hover transition-colors font-bold underline"
+                    >
+                      Create your free account
+                    </button>
+                  </p>
+                </div>
+              )}
+            </form>
+          ) : (
+            /* ────────────────── CREATE ACCOUNT TAB ────────────────── */
+            <form onSubmit={handleSignUpSubmit(onSignUpSubmit)} className="space-y-3.5" noValidate>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  {...registerSignUp('firstName')}
+                  label="First Name"
+                  type="text"
+                  placeholder="First name"
+                  error={signUpErrors.firstName?.message}
+                  icon={<User className="w-4 h-4" />}
+                  autoComplete="given-name"
+                  id="register-first-name"
+                />
+                <Input
+                  {...registerSignUp('lastName')}
+                  label="Last Name"
+                  type="text"
+                  placeholder="Last name"
+                  error={signUpErrors.lastName?.message}
+                  autoComplete="family-name"
+                  id="register-last-name"
+                />
+              </div>
+
+              <Input
+                {...registerSignUp('email')}
+                label="Email Address"
+                type="email"
+                placeholder="you@example.com"
+                error={signUpErrors.email?.message}
+                icon={<Mail className="w-4 h-4" />}
+                autoComplete="email"
+                id="register-email"
+              />
+
+              <Input
+                {...registerSignUp('phone')}
+                label="Phone Number"
+                type="tel"
+                placeholder="+91 9876543210"
+                error={signUpErrors.phone?.message}
+                icon={<Phone className="w-4 h-4" />}
+                hint="Optional — for pass & booking confirmations"
+                autoComplete="tel"
+                id="register-phone"
+              />
+
+              <Input
+                {...registerSignUp('password')}
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                error={signUpErrors.password?.message}
+                icon={<Lock className="w-4 h-4" />}
+                autoComplete="new-password"
+                id="register-password"
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="hover:text-ds-text transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
+              />
+
+              <Input
+                {...registerSignUp('confirmPassword')}
+                label="Confirm Password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Re-enter password"
+                error={signUpErrors.confirmPassword?.message}
+                icon={<Shield className="w-4 h-4" />}
+                autoComplete="new-password"
+                id="register-confirm-password"
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="hover:text-ds-text transition-colors"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
+              />
+
+              <Button
+                type="submit"
+                isLoading={isSignUpSubmitting}
+                fullWidth
+                size="lg"
+                variant="accent"
+                className="mt-3 font-heading font-bold"
+                id="register-submit"
+              >
+                <span>Create Account & Continue</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+
+              <div className="mt-4 pt-3 border-t border-ds-border/60 text-center">
+                <p className="text-xs text-ds-text-muted">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('signin')}
+                    className="text-ds-accent hover:text-ds-accent-hover transition-colors font-bold underline"
+                  >
+                    Sign in here
+                  </button>
+                </p>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Footer */}
@@ -171,7 +417,7 @@ function LoginContent() {
   );
 }
 
-export default function LoginPage() {
+export default function LoginPage({ defaultTab = 'signin' }: LoginPageProps) {
   return (
     <Suspense
       fallback={
@@ -180,7 +426,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginContent />
+      <LoginContent defaultTab={defaultTab} />
     </Suspense>
   );
 }

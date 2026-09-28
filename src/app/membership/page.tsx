@@ -115,7 +115,30 @@ export default function MembershipPlansPage() {
             Receive free bonus gaming hours, priority reservations, and exclusive tournament entry privileges.
           </p>
 
-          {user && (
+          {!user ? (
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="inline-flex items-center gap-2 p-2.5 px-4 rounded-xl bg-ds-surface/70 border border-ds-accent/40 text-xs text-ds-text-muted shadow-glow-sm">
+                <Sparkles className="w-4 h-4 text-ds-accent shrink-0" />
+                <span>
+                  New to Dark Syndicate?{' '}
+                  <Link
+                    href="/login?tab=signup&redirect=/membership"
+                    className="text-ds-accent font-bold hover:underline"
+                  >
+                    Create a free gamer account
+                  </Link>{' '}
+                  or{' '}
+                  <Link
+                    href="/login?tab=signin&redirect=/membership"
+                    className="text-ds-ice font-bold hover:underline"
+                  >
+                    Sign In
+                  </Link>{' '}
+                  to activate your pass instantly.
+                </span>
+              </div>
+            </div>
+          ) : (
             <div className="pt-2">
               <Link
                 href="/account/membership"
@@ -242,13 +265,13 @@ export default function MembershipPlansPage() {
                       className="w-full font-heading font-bold tracking-wider"
                       onClick={() => {
                         if (!user) {
-                          window.location.href = '/login?redirect=/membership';
+                          window.location.href = '/login?tab=signup&redirect=/membership';
                           return;
                         }
                         setSelectedPlan(plan);
                       }}
                     >
-                      <span>{user ? `Join ${plan.name}` : 'Sign In to Join'}</span>
+                      <span>{user ? `Join ${plan.name}` : `Get ${plan.name}`}</span>
                       <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
                   </div>

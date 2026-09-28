@@ -9,8 +9,15 @@ export function MobileBottomBar() {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
 
-  // Hide on admin or staff backends
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/staff')) {
+  // Hide on admin or staff backends and authentication pages
+  if (
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/staff') ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password'
+  ) {
     return null;
   }
 
