@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -35,9 +35,11 @@ import { useToast } from '@/components/ui/Toast';
 export default function StaffBookingsSchedulePage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const hasLoadedOnce = useRef(false);
 
   // Modal states
   const [selectedBookingForGrid, setSelectedBookingForGrid] = useState<any | null>(null);
@@ -65,24 +67,32 @@ export default function StaffBookingsSchedulePage() {
     }
   }, []);
 
-  const loadBookings = async () => {
-    setLoading(true);
+  const loadBookings = async (silent = false) => {
+    if (!silent && !hasLoadedOnce.current) {
+      setLoading(true);
+    } else if (!silent) {
+      setRefreshing(true);
+    }
     try {
       const res = await fetch('/api/admin/bookings');
       const json = await res.json();
       if (json.success && json.data) {
         setBookings(json.data || []);
+        hasLoadedOnce.current = true;
       }
     } catch {
-      toast.error('Failed to load schedule');
+      if (!silent) toast.error('Failed to load schedule');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadBookings();
-    const interval = setInterval(loadBookings, 15000); // Polling every 15s
+    loadBookings(false);
+    const interval = setInterval(() => {
+      loadBookings(true); // Silent background polling — zero UI flicker/unmounting
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -134,7 +144,7 @@ export default function StaffBookingsSchedulePage() {
       const json = await res.json();
       if (json.success) {
         toast.success(`Check-in confirmed for ${booking.customerName}!`);
-        loadBookings();
+        loadBookings(true);
       } else {
         toast.error(json.error?.message || 'Check-in failed');
       }
@@ -212,9 +222,15 @@ export default function StaffBookingsSchedulePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadBookings} title="Refresh schedule">
-            <RotateCw className="w-4 h-4 mr-1.5" />
-            <span>Refresh</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadBookings(false)}
+            disabled={refreshing}
+            title="Refresh schedule"
+          >
+            <RotateCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin text-ds-accent' : ''}`} />
+            <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
           </Button>
           <Link href="/staff">
             <Button variant="accent" size="sm" className="flex items-center gap-1.5">
@@ -364,9 +380,9 @@ export default function StaffBookingsSchedulePage() {
                         <div className="text-right">
                           <span className="text-[9px] uppercase font-mono text-ds-text-dim block">Time Remaining</span>
                           <span
-                            className={`text-lg font-mono font-black ${
+                            className={`text-lg font-mono font-black tracking-tight ${
                               countdown.isOverdue
-                                ? 'text-rose-400 animate-pulse'
+                                ? 'text-rose-400'
                                 : countdown.isEndingSoon
                                 ? 'text-amber-400'
                                 : 'text-ds-ice'
@@ -487,9 +503,9 @@ export default function StaffBookingsSchedulePage() {
                           {isSessionActive && countdown && (
                             <div className="mt-1 flex items-center gap-2">
                               <span
-                                className={`text-[11px] font-bold ${
+                                className={`text-[11px] font-bold font-mono tracking-tight ${
                                   countdown.isOverdue
-                                    ? 'text-rose-400 animate-pulse'
+                                    ? 'text-rose-400'
                                     : countdown.isEndingSoon
                                     ? 'text-amber-400'
                                     : 'text-ds-ice'
@@ -684,9 +700,9 @@ export default function StaffBookingsSchedulePage() {
                         <div className="text-right">
                           <span className="text-[9px] uppercase font-mono text-ds-text-dim block">Time Remaining</span>
                           <span
-                            className={`text-xl font-mono font-black ${
+                            className={`text-xl font-mono font-black tracking-tight ${
                               countdown.isOverdue
-                                ? 'text-rose-400 animate-pulse'
+                                ? 'text-rose-400'
                                 : countdown.isEndingSoon
                                 ? 'text-amber-400'
                                 : 'text-ds-ice'
@@ -813,7 +829,7 @@ export default function StaffBookingsSchedulePage() {
         onSuccess={() => {
           setExtendStation(null);
           setSelectedBookingForGrid(null);
-          loadBookings();
+          loadBookings(true);
         }}
       />
 
@@ -825,7 +841,7 @@ export default function StaffBookingsSchedulePage() {
         onSuccess={() => {
           setEndSessionTarget(null);
           setSelectedBookingForGrid(null);
-          loadBookings();
+          loadBookings(true);
         }}
       />
     </div>
