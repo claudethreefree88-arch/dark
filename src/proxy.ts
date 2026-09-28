@@ -5,7 +5,7 @@ import { AUTH_COOKIE_NAME } from './lib/constants';
 const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/facilities', '/pricing', '/booking', '/contact', '/membership'];
 const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'];
-const STAFF_ROLES = ['STAFF'];
+const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'STAFF'];
 
 async function getRole(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -30,6 +30,9 @@ function rejectRequest(request: NextRequest, portal: 'admin' | 'staff' | 'player
 
   const loginUrl = new URL('/login', request.url);
   loginUrl.searchParams.set('portal', portal);
+  if (request.nextUrl.pathname && !['/admin/login', '/staff/login'].includes(request.nextUrl.pathname)) {
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname);
+  }
   if (status === 403) loginUrl.searchParams.set('error', 'access');
   return NextResponse.redirect(loginUrl);
 }
@@ -47,6 +50,10 @@ export async function proxy(request: NextRequest) {
 
   if (pathname.startsWith('/api/admin') || pathname.startsWith('/admin')) {
     if (!role) return rejectRequest(request, 'admin', 401);
+    // Allow staff to view bookings schedule
+    if (pathname === '/api/admin/bookings' && role === 'STAFF') {
+      return NextResponse.next();
+    }
     if (!ADMIN_ROLES.includes(role)) return rejectRequest(request, 'admin', 403);
     return NextResponse.next();
   }

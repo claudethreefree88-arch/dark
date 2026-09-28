@@ -37,13 +37,26 @@ interface LoginPageProps {
 function LoginContent({ defaultTab }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { login, register: authRegister } = useAuth();
+  const { user, login, register: authRegister } = useAuth();
   const searchParams = useSearchParams();
   const portalParam = searchParams.get('portal');
   const tabParam = searchParams.get('tab');
   const redirectParam = searchParams.get('redirect');
+  const errorParam = searchParams.get('error');
 
   const portal = portalParam === 'admin' || portalParam === 'staff' ? portalParam : 'player';
+
+  // If user is already authenticated with the required portal role, auto-redirect
+  React.useEffect(() => {
+    if (!user) return;
+    if (portal === 'admin' && ['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+      window.location.href = redirectParam || '/admin';
+    } else if (portal === 'staff' && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role)) {
+      window.location.href = redirectParam || '/staff';
+    } else if (portal === 'player' && user.role === 'CUSTOMER' && !errorParam) {
+      window.location.href = redirectParam || '/account';
+    }
+  }, [user, portal, redirectParam, errorParam]);
 
   // Initialize active tab from prop, query parameter, or default to signin
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(() => {
@@ -179,6 +192,23 @@ function LoginContent({ defaultTab }: LoginPageProps) {
             <span>{portalDetails.subtitle}</span>
           </div>
         </div>
+
+        {/* Access Denied Warning */}
+        {errorParam === 'access' && (
+          <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-center text-xs text-rose-300 font-semibold shadow-glow-sm">
+            ⚠️ Access Denied: You need {portal === 'admin' ? 'Administrator' : 'Staff'} authorization to access that area. Please sign in with an authorized account.
+          </div>
+        )}
+
+        {/* Existing Session Alert for wrong portal */}
+        {user && (
+          (portal === 'admin' && !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) ||
+          (portal === 'staff' && !['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role))
+        ) && (
+          <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-center text-xs text-amber-300 font-medium">
+            Currently logged in as <strong>{user.firstName} {user.lastName}</strong> ({user.role}). Sign in with an authorized {portal} account to continue.
+          </div>
+        )}
 
         {/* Redirect Context Banner (e.g. from /membership) */}
         {redirectParam?.includes('membership') && (

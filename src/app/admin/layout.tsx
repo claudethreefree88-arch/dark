@@ -36,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Station Inventory', href: '/admin/stations', icon: Gamepad2 },
     { name: 'All Bookings', href: '/admin/bookings', icon: Calendar },
     { name: 'Customer Directory', href: '/admin/customers', icon: Users },
+    { name: 'Syndicate Passes', href: '/admin/memberships', icon: Sparkles },
     { name: 'Promo Coupons', href: '/admin/coupons', icon: Tag },
     { name: 'Payments Ledger', href: '/admin/payments', icon: CreditCard },
     { name: 'Website CMS & Venue', href: '/admin/cms', icon: Globe },
