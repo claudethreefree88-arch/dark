@@ -31,12 +31,16 @@ import {
 import { ExtendSessionModal } from '@/components/staff/ExtendSessionModal';
 import { EndSessionModal, type EndSessionTarget } from '@/components/staff/EndSessionModal';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function StaffBookingsSchedulePage() {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateScope, setDateScope] = useState<'TODAY' | 'ALL'>('TODAY');
+  const [staffScope, setStaffScope] = useState<'ALL' | 'MINE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const hasLoadedOnce = useRef(false);
@@ -185,8 +189,38 @@ export default function StaffBookingsSchedulePage() {
     });
   };
 
+  const getIsToday = (b: any) => {
+    const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+    const startIST = b.startTime
+      ? new Date(b.startTime).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+    const dateIST = b.date
+      ? new Date(b.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+    return startIST === todayIST || dateIST === todayIST;
+  };
+
+  const getIsMine = (b: any) => {
+    if (!user) return true;
+    const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+    const staffName = (b.staffName || '').toLowerCase();
+    return b.session?.staff?.id === user.id || (b.isWalkIn && staffName && staffName.includes(userName));
+  };
+
   const filteredBookings = bookings.filter((b) => {
     const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
+
+    // 1. Date Scope: TODAY by default
+    if (dateScope === 'TODAY' && !getIsToday(b)) {
+      return false;
+    }
+
+    // 2. Staff Scope: All Arena vs My Walk-ins
+    if (staffScope === 'MINE' && !getIsMine(b)) {
+      return false;
+    }
+
+    // 3. Status Tabs
     const matchesStatus =
       statusFilter === 'ALL' ||
       (statusFilter === 'ACTIVE' && isSessionActive) ||
@@ -202,9 +236,12 @@ export default function StaffBookingsSchedulePage() {
     return matchesStatus && matchesSearch;
   });
 
-  const activeInSessionCount = bookings.filter(
-    (b) => b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN'
-  ).length;
+  const activeInSessionCount = bookings.filter((b) => {
+    const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
+    if (dateScope === 'TODAY' && !getIsToday(b)) return false;
+    if (staffScope === 'MINE' && !getIsMine(b)) return false;
+    return isSessionActive;
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -247,27 +284,85 @@ export default function StaffBookingsSchedulePage() {
       </div>
 
       {/* Filter & View Switcher Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
-        {/* Status Tabs */}
-        <div className="flex flex-wrap items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
-          {[
-            { id: 'ALL', label: 'All Today' },
-            { id: 'ACTIVE', label: `In Session / Checked In (${activeInSessionCount})` },
-            { id: 'UPCOMING', label: 'Upcoming' },
-            { id: 'COMPLETED', label: 'Completed' },
-          ].map((tab) => (
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
+        {/* Left Side: Status Tabs + Date Scope + Staff Scope */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Status Tabs */}
+          <div className="flex flex-wrap items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
+            {[
+              { id: 'ALL', label: dateScope === 'TODAY' ? 'All Today' : 'All Bookings' },
+              { id: 'ACTIVE', label: `In Session / Checked In (${activeInSessionCount})` },
+              { id: 'UPCOMING', label: 'Upcoming' },
+              { id: 'COMPLETED', label: 'Completed' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
+                  statusFilter === tab.id
+                    ? 'bg-ds-accent text-white shadow-sm'
+                    : 'text-ds-text-dim hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Date Scope Filter */}
+          <div className="flex items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
             <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-lg font-heading font-bold uppercase transition-all ${
-                statusFilter === tab.id
-                  ? 'bg-ds-accent text-white shadow-sm'
+              onClick={() => setDateScope('TODAY')}
+              className={`px-2.5 py-1.5 rounded-lg font-heading font-bold uppercase text-[11px] transition-all flex items-center gap-1 ${
+                dateScope === 'TODAY'
+                  ? 'bg-ds-surface text-ds-ice border border-ds-ice/30 shadow-sm'
                   : 'text-ds-text-dim hover:text-white'
               }`}
+              title="Only show reservations and sessions scheduled for today"
             >
-              {tab.label}
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Today Only</span>
             </button>
-          ))}
+            <button
+              onClick={() => setDateScope('ALL')}
+              className={`px-2.5 py-1.5 rounded-lg font-heading font-bold uppercase text-[11px] transition-all flex items-center gap-1 ${
+                dateScope === 'ALL'
+                  ? 'bg-ds-surface text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-ds-text-dim hover:text-white'
+              }`}
+              title="Show all historical bookings from previous days"
+            >
+              <span>All History</span>
+            </button>
+          </div>
+
+          {/* Staff Scope Filter */}
+          <div className="flex items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
+            <button
+              onClick={() => setStaffScope('ALL')}
+              className={`px-2.5 py-1.5 rounded-lg font-heading font-bold uppercase text-[11px] transition-all flex items-center gap-1 ${
+                staffScope === 'ALL'
+                  ? 'bg-ds-surface text-ds-accent border border-ds-accent/30 shadow-sm'
+                  : 'text-ds-text-dim hover:text-white'
+              }`}
+              title="Show all bookings across all stations on the arena floor"
+            >
+              <Gamepad2 className="w-3.5 h-3.5" />
+              <span>All Arena</span>
+            </button>
+            <button
+              onClick={() => setStaffScope('MINE')}
+              className={`px-2.5 py-1.5 rounded-lg font-heading font-bold uppercase text-[11px] transition-all flex items-center gap-1 ${
+                staffScope === 'MINE'
+                  ? 'bg-ds-surface text-emerald-300 border border-emerald-500/30 shadow-sm'
+                  : 'text-ds-text-dim hover:text-white'
+              }`}
+              title="Show only bookings handled by you"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>My Walk-ins</span>
+            </button>
+          </div>
         </div>
 
         {/* Search & Grid/Table Toggle */}
@@ -501,6 +596,15 @@ export default function StaffBookingsSchedulePage() {
                         <td className="py-3.5 px-4 font-mono text-ds-text">
                           <div className="flex items-center gap-1.5">
                             <span>
+                              {dateScope === 'ALL' && !getIsToday(b) && (
+                                <span className="mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] text-amber-300 font-bold font-mono">
+                                  {new Date(b.startTime || b.date).toLocaleDateString('en-US', {
+                                    timeZone: 'Asia/Kolkata',
+                                    day: '2-digit',
+                                    month: 'short',
+                                  })}
+                                </span>
+                              )}
                               {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
                               {new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
