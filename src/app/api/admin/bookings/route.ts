@@ -101,6 +101,29 @@ export async function GET(req: NextRequest) {
           paymentStatus: booking.payments[0]?.status || 'UNPAID',
           paymentMethod: booking.payments[0]?.method || null,
           createdAt: booking.createdAt,
+          stationSpecs:
+            (booking.station?.metadata as any)?.specs || 'Ultra-low latency 4K 120Hz display',
+          stationCapacity:
+            (booking.station?.metadata as any)?.capacity || (booking.station?.stationType === 'PS5' ? 2 : 4),
+          stationType: booking.station?.stationType || 'PS5',
+          pricePerHourPaise: booking.station?.pricePerHourPaise || 15000,
+          session: booking.session
+            ? {
+                id: booking.session.id,
+                status: booking.session.status,
+                startedAt: booking.session.startedAt,
+                scheduledEndAt: booking.session.scheduledEndAt,
+                extensionMinutes: booking.session.extensionMinutes,
+              }
+            : booking.status === 'IN_PROGRESS' || booking.status === 'CHECKED_IN'
+            ? {
+                id: `active-${booking.id}`,
+                status: 'ACTIVE',
+                startedAt: booking.startTime,
+                scheduledEndAt: booking.endTime,
+                extensionMinutes: 0,
+              }
+            : null,
         };
       })
     );

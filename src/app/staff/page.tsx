@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -181,12 +182,15 @@ export default function StaffStationGridPage() {
   };
 
   const filteredStations = stations.filter((st) => {
+    // In-session consoles are removed from this grid and managed in Today's Schedule (In-Session column)
+    const isOccupied = st.status === 'OCCUPIED' || Boolean(st.activeSession);
+    if (isOccupied) return false;
+
     const matchesCategory = filterType === 'ALL' || st.stationType === filterType;
     const matchesSearch =
       !searchQuery ||
       st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      st.activeSession?.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      st.activeSession?.bookingRef?.toLowerCase().includes(searchQuery.toLowerCase());
+      st.facilityName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -202,13 +206,20 @@ export default function StaffStationGridPage() {
           </div>
         </Card>
 
-        <Card glass className="p-4 border-ds-border">
-          <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Active In-Session</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-heading font-black text-ds-ice">{stats.occupiedCount}</span>
-            <span className="text-xs text-ds-text-dim">Playing Now</span>
-          </div>
-        </Card>
+        <Link href="/staff/bookings?tab=ACTIVE" className="block group">
+          <Card glass className="p-4 border-ds-border hover:border-ds-ice/60 hover:bg-ds-surface/70 transition-all cursor-pointer">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Active In-Session</span>
+              <span className="text-[9px] font-mono text-ds-ice group-hover:underline flex items-center gap-1">
+                View Schedule →
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-heading font-black text-ds-ice">{stats.occupiedCount}</span>
+              <span className="text-xs text-ds-text-dim">Playing Now</span>
+            </div>
+          </Card>
+        </Link>
 
         <Card glass className="p-4 border-ds-border">
           <span className="text-[10px] uppercase font-mono text-ds-text-dim block">In Maintenance</span>
@@ -253,6 +264,18 @@ export default function StaffStationGridPage() {
             <UserPlus className="w-4 h-4" />
             <span>Desk Walk-in</span>
           </Button>
+
+          <Link href="/staff/bookings?tab=ACTIVE">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 text-xs text-ds-ice border-ds-ice/30 hover:border-ds-ice hover:bg-ds-ice/10"
+              title="View all active in-session consoles in Schedule"
+            >
+              <Gamepad2 className="w-3.5 h-3.5" />
+              <span>In-Session ({stats.occupiedCount})</span>
+            </Button>
+          </Link>
 
           <Button variant="outline" size="sm" onClick={loadData} title="Refresh Live State">
             <RotateCw className="w-4 h-4" />
@@ -300,8 +323,27 @@ export default function StaffStationGridPage() {
           <p className="text-xs text-ds-text-muted">Loading live station matrix...</p>
         </div>
       ) : filteredStations.length === 0 ? (
-        <div className="p-12 text-center bg-ds-surface/30 rounded-2xl border border-dashed border-ds-border text-ds-text-dim">
-          No stations match the search filter.
+        <div className="p-12 text-center bg-ds-surface/30 rounded-2xl border border-dashed border-ds-border text-ds-text-dim space-y-3">
+          <Gamepad2 className="w-8 h-8 text-ds-ice/60 mx-auto" />
+          <h4 className="text-base font-heading font-bold text-ds-text">
+            {stats.occupiedCount > 0
+              ? `All Gaming Stations Are In-Session (${stats.occupiedCount} active)`
+              : 'No available stations found'}
+          </h4>
+          <p className="text-xs text-ds-text-muted max-w-md mx-auto">
+            {stats.occupiedCount > 0
+              ? 'Active in-session consoles are tracked in the Arena Schedule where you can view live countdowns, extend duration, or end sessions.'
+              : 'Try clearing your search query or selecting a different category tab.'}
+          </p>
+          {stats.occupiedCount > 0 && (
+            <div className="pt-2">
+              <Link href="/staff/bookings?tab=ACTIVE">
+                <Button variant="accent" size="sm">
+                  <span>View In-Session Schedule ({stats.occupiedCount}) →</span>
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
