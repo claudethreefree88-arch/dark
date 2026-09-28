@@ -25,6 +25,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
+  Edit2,
+  Edit3,
+  Percent,
+  Check,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -43,6 +47,7 @@ interface Membership {
   expiresAt: string;
   paymentMethod: string;
   createdAt: string;
+  notes?: string | null;
   plan?: {
     id: string;
     name: string;
@@ -70,6 +75,9 @@ interface MembershipPlan {
   durationDays: number;
   discountPercent: number;
   freeHours: number;
+  perks?: string[] | any;
+  badgeColor?: string;
+  isActive?: boolean;
 }
 
 interface CustomerOption {
@@ -97,28 +105,72 @@ export default function AdminMembershipsPage() {
   const [submittingGrant, setSubmittingGrant] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+  // Edit Plan Modal State
+  const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
+  const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
+  const [planForm, setPlanForm] = useState({
+    name: '',
+    tier: 'SILVER',
+    priceRupees: 499,
+    discountPercent: 10,
+    durationDays: 30,
+    freeHours: 0,
+    description: '',
+    perksText: '',
+    isActive: true,
+  });
+  const [savingPlan, setSavingPlan] = useState(false);
+
+  // Edit Customer Membership Modal State
+  const [editingMembership, setEditingMembership] = useState<Membership | null>(null);
+  const [isEditMembershipOpen, setIsEditMembershipOpen] = useState(false);
+  const [membershipForm, setMembershipForm] = useState({
+    status: 'ACTIVE' as 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
+    expiresAt: '',
+    notes: '',
+  });
+  const [savingMembership, setSavingMembership] = useState(false);
+
   const toast = useToast();
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [memRes, plansRes, custRes] = await Promise.all([
+      const [memRes, custRes] = await Promise.all([
         fetch('/api/admin/memberships'),
-        fetch('/api/membership/plans'),
         fetch('/api/admin/customers'),
       ]);
 
+      // Try fetching plans from admin endpoint first, then public endpoint fallback
+      let plansData: MembershipPlan[] = [];
+      try {
+        const adminPlansRes = await fetch('/api/admin/memberships/plans');
+        const adminPlansJson = await adminPlansRes.json();
+        if (adminPlansJson.success && adminPlansJson.data?.plans) {
+          plansData = adminPlansJson.data.plans;
+        }
+      } catch {
+        // Fallback to public
+      }
+
+      if (plansData.length === 0) {
+        const publicPlansRes = await fetch('/api/membership/plans');
+        const publicPlansJson = await publicPlansRes.json();
+        if (publicPlansJson.success && publicPlansJson.data?.plans) {
+          plansData = publicPlansJson.data.plans;
+        }
+      }
+
       const memJson = await memRes.json();
-      const plansJson = await plansRes.json();
       const custJson = await custRes.json();
 
       if (memJson.success && memJson.data?.memberships) {
         setMemberships(memJson.data.memberships);
       }
-      if (plansJson.success && plansJson.data?.plans) {
-        setPlans(plansJson.data.plans);
-        if (plansJson.data.plans.length > 0 && !selectedPlanId) {
-          setSelectedPlanId(plansJson.data.plans[0].id);
+      if (plansData.length > 0) {
+        setPlans(plansData);
+        if (!selectedPlanId) {
+          setSelectedPlanId(plansData[0].id);
         }
       }
       if (custJson.success && custJson.data) {
@@ -174,6 +226,138 @@ export default function AdminMembershipsPage() {
       toast.error('Network error during pass allocation');
     } finally {
       setSubmittingGrant(false);
+    }
+  };
+
+  // Plan Edit Handlers
+  const handleOpenEditPlan = (plan: MembershipPlan) => {
+    setEditingPlan(plan);
+    const perks = Array.isArray(plan.perks)
+      ? plan.perks.join('\n')
+      : typeof plan.perks === 'string'
+      ? plan.perks
+      : '';
+
+    setPlanForm({
+      name: plan.name,
+      tier: plan.tier || 'SILVER',
+      priceRupees: Math.round(plan.pricePaise / 100),
+      discountPercent: plan.discountPercent,
+      durationDays: plan.durationDays,
+      freeHours: plan.freeHours || 0,
+      description: plan.description || '',
+      perksText: perks,
+      isActive: plan.isActive !== undefined ? plan.isActive : true,
+    });
+    setIsEditPlanOpen(true);
+  };
+
+  const handleSavePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+
+    if (!planForm.name.trim()) {
+      toast.error('Plan name is required');
+      return;
+    }
+    if (planForm.priceRupees < 0) {
+      toast.error('Price cannot be negative');
+      return;
+    }
+
+    setSavingPlan(true);
+    try {
+      const perks = planForm.perksText
+        .split('\n')
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      const res = await fetch(`/api/admin/memberships/plans/${editingPlan.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: planForm.name.trim(),
+          tier: planForm.tier,
+          pricePaise: Math.round(Number(planForm.priceRupees) * 100),
+          discountPercent: Number(planForm.discountPercent),
+          durationDays: Number(planForm.durationDays),
+          freeHours: Number(planForm.freeHours),
+          description: planForm.description.trim(),
+          perks,
+          isActive: planForm.isActive,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.data.message || 'Plan updated successfully!');
+        setIsEditPlanOpen(false);
+        setEditingPlan(null);
+        loadData();
+      } else {
+        toast.error(json.error?.message || 'Failed to update plan');
+      }
+    } catch {
+      toast.error('Network error while updating plan');
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
+  // Membership Row Edit Handlers
+  const handleOpenEditMembership = (m: Membership) => {
+    setEditingMembership(m);
+    const expDate = new Date(m.expiresAt);
+    const dateStr = !isNaN(expDate.getTime()) ? expDate.toISOString().slice(0, 10) : '';
+
+    setMembershipForm({
+      status: m.status,
+      expiresAt: dateStr,
+      notes: m.notes || '',
+    });
+    setIsEditMembershipOpen(true);
+  };
+
+  const handleQuickExtend = (days: number) => {
+    const base = membershipForm.expiresAt ? new Date(membershipForm.expiresAt) : new Date();
+    base.setDate(base.getDate() + days);
+    setMembershipForm((prev) => ({
+      ...prev,
+      expiresAt: base.toISOString().slice(0, 10),
+    }));
+  };
+
+  const handleSaveMembership = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMembership) return;
+
+    setSavingMembership(true);
+    try {
+      const res = await fetch(`/api/admin/memberships/${editingMembership.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: membershipForm.status,
+          expiresAt: membershipForm.expiresAt
+            ? new Date(`${membershipForm.expiresAt}T23:59:59.999Z`).toISOString()
+            : undefined,
+          notes: membershipForm.notes,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Membership updated successfully!');
+        setIsEditMembershipOpen(false);
+        setEditingMembership(null);
+        loadData();
+      } else {
+        toast.error(json.error?.message || 'Failed to update membership');
+      }
+    } catch {
+      toast.error('Network error while updating membership');
+    } finally {
+      setSavingMembership(false);
     }
   };
 
@@ -233,7 +417,7 @@ export default function AdminMembershipsPage() {
             Dark Syndicate Passes
           </h1>
           <p className="text-xs text-ds-text-muted mt-1">
-            Manage player memberships, monitor active privileges, and issue manual passes.
+            Manage player memberships, configure pass plans, and grant privileges.
           </p>
         </div>
 
@@ -297,27 +481,105 @@ export default function AdminMembershipsPage() {
       </div>
 
       {/* Plan Configuration Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {plans.map((p) => (
-          <Card key={p.id} variant="default" className="p-4 border-ds-border">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono uppercase tracking-widest text-ds-text-dim">
-                {p.tier} TIER
-              </span>
-              <Badge variant={p.tier === 'VIP' ? 'accent' : p.tier === 'GOLD' ? 'warning' : 'default'} size="sm">
-                {p.discountPercent}% OFF
-              </Badge>
-            </div>
-            <h3 className="font-heading font-bold text-sm text-ds-text mt-1">{p.name}</h3>
-            <p className="text-xs text-ds-text-muted mt-1 line-clamp-2">{p.description}</p>
-            <div className="mt-3 pt-3 border-t border-ds-border/60 flex items-baseline justify-between">
-              <span className="text-lg font-heading font-black text-ds-text">
-                ₹{(p.pricePaise / 100).toLocaleString('en-IN')}
-              </span>
-              <span className="text-[10px] font-mono text-ds-text-dim">{p.durationDays} Days Validity</span>
-            </div>
-          </Card>
-        ))}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-mono uppercase tracking-widest text-ds-text-dim font-bold flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-ds-accent" />
+            <span>Syndicate Membership Plans ({plans.length})</span>
+          </h2>
+          <span className="text-[11px] text-ds-text-dim">
+            Click &quot;Edit Plan&quot; to configure pricing, discounts, and benefits
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {plans.map((p) => {
+            const isVip = p.tier === 'VIP';
+            const isGold = p.tier === 'GOLD';
+
+            return (
+              <Card
+                key={p.id}
+                variant="default"
+                className={`p-4 border transition-all flex flex-col justify-between ${
+                  isVip
+                    ? 'border-ds-accent/30 bg-ds-dark/60 hover:border-ds-accent'
+                    : isGold
+                    ? 'border-amber-500/30 bg-ds-dark/60 hover:border-amber-400'
+                    : 'border-ds-border bg-ds-dark/60 hover:border-slate-500'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-mono uppercase tracking-widest font-bold ${
+                          isVip ? 'text-ds-ice' : isGold ? 'text-amber-400' : 'text-slate-300'
+                        }`}
+                      >
+                        {p.tier} TIER
+                      </span>
+                      {p.isActive === false && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        variant={isVip ? 'accent' : isGold ? 'warning' : 'default'}
+                        size="sm"
+                      >
+                        {p.discountPercent}% OFF
+                      </Badge>
+                      <button
+                        onClick={() => handleOpenEditPlan(p)}
+                        className="p-1 rounded text-ds-text-dim hover:text-ds-accent hover:bg-ds-surface transition-colors"
+                        title={`Edit ${p.name}`}
+                        aria-label={`Edit ${p.name}`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 className="font-heading font-bold text-sm text-ds-text mt-1.5">{p.name}</h3>
+                  <p className="text-xs text-ds-text-muted mt-1 line-clamp-2 min-h-[32px]">
+                    {p.description || 'No description provided.'}
+                  </p>
+
+                  <div className="mt-3 pt-3 border-t border-ds-border/60 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-xl font-heading font-black text-ds-text">
+                        ₹{(p.pricePaise / 100).toLocaleString('en-IN')}
+                      </span>
+                      {p.freeHours > 0 && (
+                        <span className="text-[10px] text-emerald-400 font-mono ml-2">
+                          +{p.freeHours} hrs free
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-ds-text-dim">
+                      {p.durationDays} Days Validity
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-ds-border/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenEditPlan(p)}
+                    className="w-full text-xs h-8 border-ds-border/70 hover:border-ds-accent hover:text-ds-accent font-heading font-bold flex items-center justify-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-ds-accent" />
+                    <span>Edit Plan</span>
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -476,23 +738,36 @@ export default function AdminMembershipsPage() {
                       </td>
 
                       <td className="p-4 text-right">
-                        {m.status === 'ACTIVE' && (
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-rose-400 border-rose-500/30 hover:bg-rose-500/10 text-[10px] h-7 px-2"
-                            disabled={cancellingId === m.id}
-                            onClick={() =>
-                              handleCancelMembership(
-                                m.id,
-                                `${m.user.firstName} ${m.user.lastName}`.trim()
-                              )
-                            }
+                            className="border-ds-border hover:border-ds-accent text-ds-text hover:text-ds-accent text-[10px] h-7 px-2"
+                            onClick={() => handleOpenEditMembership(m)}
+                            title="Edit Gamer Membership"
                           >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            <span>Revoke</span>
+                            <Edit2 className="w-3 h-3 mr-1" />
+                            <span>Edit</span>
                           </Button>
-                        )}
+
+                          {m.status === 'ACTIVE' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-rose-400 border-rose-500/30 hover:bg-rose-500/10 text-[10px] h-7 px-2"
+                              disabled={cancellingId === m.id}
+                              onClick={() =>
+                                handleCancelMembership(
+                                  m.id,
+                                  `${m.user.firstName} ${m.user.lastName}`.trim()
+                                )
+                              }
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              <span>Revoke</span>
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -502,6 +777,286 @@ export default function AdminMembershipsPage() {
           </div>
         )}
       </Card>
+
+      {/* Edit Membership Plan Modal */}
+      <Modal
+        isOpen={isEditPlanOpen}
+        onClose={() => {
+          setIsEditPlanOpen(false);
+          setEditingPlan(null);
+        }}
+        title={`Edit Plan: ${editingPlan?.name || 'Membership Plan'}`}
+        size="lg"
+      >
+        <form onSubmit={handleSavePlan} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Plan Name
+              </label>
+              <Input
+                value={planForm.name}
+                onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                placeholder="e.g. Gold Syndicate Pass"
+                required
+                className="text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Tier Level
+              </label>
+              <select
+                value={planForm.tier}
+                onChange={(e) => setPlanForm({ ...planForm, tier: e.target.value })}
+                className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2.5 text-xs text-ds-text focus:outline-none focus:border-ds-accent"
+              >
+                <option value="SILVER">SILVER</option>
+                <option value="GOLD">GOLD</option>
+                <option value="VIP">VIP</option>
+                <option value="STANDARD">STANDARD</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Price (₹ INR)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={planForm.priceRupees}
+                onChange={(e) => setPlanForm({ ...planForm, priceRupees: Number(e.target.value) })}
+                required
+                className="text-xs font-mono"
+              />
+              <span className="text-[10px] text-ds-text-dim">
+                = {(planForm.priceRupees * 100).toLocaleString('en-IN')} paise
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Discount (%)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={planForm.discountPercent}
+                onChange={(e) => setPlanForm({ ...planForm, discountPercent: Number(e.target.value) })}
+                required
+                className="text-xs font-mono"
+              />
+              <span className="text-[10px] text-ds-text-dim">Hourly discount</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Validity (Days)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                value={planForm.durationDays}
+                onChange={(e) => setPlanForm({ ...planForm, durationDays: Number(e.target.value) })}
+                required
+                className="text-xs font-mono"
+              />
+              <span className="text-[10px] text-ds-text-dim">Standard 30 days</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Bonus Free Hrs
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={planForm.freeHours}
+                onChange={(e) => setPlanForm({ ...planForm, freeHours: Number(e.target.value) })}
+                className="text-xs font-mono"
+              />
+              <span className="text-[10px] text-ds-text-dim">Monthly free hours</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+              Plan Description
+            </label>
+            <textarea
+              value={planForm.description}
+              onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+              rows={2}
+              placeholder="Short description shown on membership card..."
+              className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text focus:outline-none focus:border-ds-accent resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Perks & Benefits List
+              </label>
+              <span className="text-[10px] font-mono text-ds-text-dim">One perk per line</span>
+            </div>
+            <textarea
+              value={planForm.perksText}
+              onChange={(e) => setPlanForm({ ...planForm, perksText: e.target.value })}
+              rows={4}
+              placeholder="e.g.&#10;20% OFF all gaming sessions&#10;2 FREE bonus gaming hours every month&#10;Complimentary energy drink"
+              className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text focus:outline-none focus:border-ds-accent resize-none font-mono"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={planForm.isActive}
+                onChange={(e) => setPlanForm({ ...planForm, isActive: e.target.checked })}
+                className="w-4 h-4 rounded border-ds-border bg-ds-dark text-ds-accent focus:ring-0 focus:ring-offset-0 cursor-pointer"
+              />
+              <span className="text-xs text-ds-text font-heading font-semibold">
+                Plan is Active & Available for Gamer Purchase
+              </span>
+            </label>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditPlanOpen(false);
+                  setEditingPlan(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="accent" size="sm" isLoading={savingPlan}>
+                <Check className="w-3.5 h-3.5 mr-1" />
+                <span>Save Plan Changes</span>
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Gamer Membership Modal */}
+      <Modal
+        isOpen={isEditMembershipOpen}
+        onClose={() => {
+          setIsEditMembershipOpen(false);
+          setEditingMembership(null);
+        }}
+        title={`Edit Membership: ${editingMembership?.user.firstName} ${editingMembership?.user.lastName}`}
+      >
+        <form onSubmit={handleSaveMembership} className="space-y-4">
+          <div className="p-3 rounded-xl bg-ds-dark/60 border border-ds-border space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ds-text-dim">Pass Plan:</span>
+              <span className="font-heading font-bold text-ds-text">
+                {editingMembership?.planNameSnapshot} ({editingMembership?.tierSnapshot})
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ds-text-dim">Gamer Email:</span>
+              <span className="font-mono text-ds-text-muted">{editingMembership?.user.email}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ds-text-dim">Hourly Discount:</span>
+              <span className="text-emerald-400 font-bold">{editingMembership?.discountPercent}% OFF</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+              Membership Status
+            </label>
+            <select
+              value={membershipForm.status}
+              onChange={(e) =>
+                setMembershipForm({
+                  ...membershipForm,
+                  status: e.target.value as 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
+                })
+              }
+              className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text focus:outline-none focus:border-ds-accent"
+            >
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="EXPIRED">EXPIRED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Expiration Date
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuickExtend(7)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ds-surface hover:bg-ds-accent/20 text-ds-text hover:text-ds-accent transition-colors"
+                >
+                  +7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickExtend(30)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ds-surface hover:bg-ds-accent/20 text-ds-text hover:text-ds-accent transition-colors"
+                >
+                  +30 Days
+                </button>
+              </div>
+            </div>
+            <Input
+              type="date"
+              value={membershipForm.expiresAt}
+              onChange={(e) => setMembershipForm({ ...membershipForm, expiresAt: e.target.value })}
+              className="text-xs font-mono"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+              Admin Notes
+            </label>
+            <textarea
+              value={membershipForm.notes}
+              onChange={(e) => setMembershipForm({ ...membershipForm, notes: e.target.value })}
+              rows={2}
+              placeholder="e.g. Extended courtesy pass, VIP member promo"
+              className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text focus:outline-none focus:border-ds-accent resize-none"
+            />
+          </div>
+
+          <div className="pt-4 flex items-center justify-end gap-2 border-t border-ds-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsEditMembershipOpen(false);
+                setEditingMembership(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="accent" size="sm" isLoading={savingMembership}>
+              <Check className="w-3.5 h-3.5 mr-1" />
+              <span>Update Membership</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Issue Syndicate Pass Modal */}
       <Modal
