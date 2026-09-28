@@ -23,6 +23,7 @@ import {
   Clock,
   MapPin,
   Phone,
+  QrCode,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -197,6 +198,8 @@ export default function AdminCmsPage() {
           ? 'hours'
           : key.startsWith('social')
           ? 'social'
+          : key.startsWith('counter_upi')
+          ? 'payment'
           : 'contact',
       }));
 
@@ -593,6 +596,104 @@ export default function AdminCmsPage() {
                       setSettings({ ...settings, social_discord: e.target.value })
                     }
                   />
+                </div>
+              </div>
+            </Card>
+
+            {/* Front-Desk Counter UPI & QR Standee Setup */}
+            <Card variant="glass" className="p-6 space-y-4 md:col-span-2 border-ds-accent/30 bg-ds-surface/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-ds-accent" />
+                  <h3 className="font-heading font-bold text-sm text-ds-text uppercase">
+                    Front-Desk Counter UPI & QR Standee
+                  </h3>
+                </div>
+                <Badge variant="accent" size="sm" className="font-mono text-[10px]">
+                  Staff Walk-in & Extension
+                </Badge>
+              </div>
+              <p className="text-xs text-ds-text-dim">
+                Upload your arena&apos;s official UPI QR code standee image or set your VPA ID. When staff selects &quot;UPI / QR&quot; during walk-ins or session extensions, this QR code will be shown directly on screen for customers to scan and pay.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs pt-1">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-ds-text-dim block mb-1">Counter UPI ID (VPA)</label>
+                    <Input
+                      placeholder="e.g. darksyndicate@icici"
+                      value={settings.counter_upi_id || ''}
+                      onChange={(e) => setSettings({ ...settings, counter_upi_id: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-ds-text-dim block mb-1">Payee Business / Account Name</label>
+                    <Input
+                      placeholder="e.g. Dark Syndicate Gaming World"
+                      value={settings.counter_upi_name || ''}
+                      onChange={(e) => setSettings({ ...settings, counter_upi_name: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-ds-text-dim block mb-1">QR Code Image URL (Optional)</label>
+                    <Input
+                      placeholder="https://.../upi-qr.png or upload below"
+                      value={settings.counter_upi_qr_url || ''}
+                      onChange={(e) => setSettings({ ...settings, counter_upi_qr_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* QR Upload & Live Preview Box */}
+                <div className="space-y-2">
+                  <label className="text-ds-text-dim block">Upload Official Standee QR Image</label>
+                  <div className="border border-dashed border-ds-border rounded-xl p-4 bg-ds-dark/60 text-center flex flex-col items-center justify-center min-h-[170px]">
+                    {settings.counter_upi_qr_url ? (
+                      <div className="space-y-2 flex flex-col items-center">
+                        <div className="w-36 h-36 bg-white p-2 rounded-xl shadow-lg border border-ds-border flex items-center justify-center overflow-hidden">
+                          <img
+                            src={settings.counter_upi_qr_url}
+                            alt="Counter UPI QR Code"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, counter_upi_qr_url: '' })}
+                          className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold"
+                        >
+                          Remove / Replace QR
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center gap-2 p-2">
+                        <div className="w-10 h-10 rounded-xl bg-ds-surface flex items-center justify-center border border-ds-accent/40 text-ds-accent">
+                          <QrCode className="w-5 h-5" />
+                        </div>
+                        <span className="text-xs font-heading font-bold text-ds-text">Click to Upload Standee QR</span>
+                        <span className="text-[10px] text-ds-text-dim">Supports PNG, JPG, WEBP (Max 5MB)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                const result = event.target?.result as string;
+                                setSettings({ ...settings, counter_upi_qr_url: result });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
               </div>
             </Card>

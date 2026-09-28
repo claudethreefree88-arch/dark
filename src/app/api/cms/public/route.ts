@@ -86,7 +86,14 @@ export async function GET() {
         operating_hours_weekdays: '10:00 AM - 11:30 PM',
         operating_hours_weekends: '09:30 AM - 01:00 AM',
         contact_whatsapp: '+91 98765 43210',
+        counter_upi_id: 'darksyndicate@icici',
+        counter_upi_name: 'Dark Syndicate Gaming World',
+        counter_upi_qr_url: '',
       };
+    } else {
+      if (!settingsMap.counter_upi_id) settingsMap.counter_upi_id = 'darksyndicate@icici';
+      if (!settingsMap.counter_upi_name) settingsMap.counter_upi_name = 'Dark Syndicate Gaming World';
+      if (!settingsMap.counter_upi_qr_url) settingsMap.counter_upi_qr_url = '';
     }
 
     return apiSuccess(

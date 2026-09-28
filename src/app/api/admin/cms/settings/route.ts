@@ -156,5 +156,29 @@ function getDefaultSettings() {
       label: 'Discord Community Invite',
       dataType: 'string',
     },
+    {
+      id: 'set-11',
+      key: 'counter_upi_id',
+      value: 'darksyndicate@icici',
+      group: 'payment',
+      label: 'Counter UPI ID (VPA)',
+      dataType: 'string',
+    },
+    {
+      id: 'set-12',
+      key: 'counter_upi_name',
+      value: 'Dark Syndicate Gaming Arena',
+      group: 'payment',
+      label: 'Counter Payee Account Name',
+      dataType: 'string',
+    },
+    {
+      id: 'set-13',
+      key: 'counter_upi_qr_url',
+      value: '',
+      group: 'payment',
+      label: 'Counter Standee UPI QR Image',
+      dataType: 'string',
+    },
   ];
 }
