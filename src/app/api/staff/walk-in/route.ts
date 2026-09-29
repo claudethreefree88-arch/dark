@@ -11,6 +11,7 @@ const walkInSchema = z.object({
   durationMinutes: z.number().int().min(30).default(60),
   customerName: z.string().min(2, 'Customer name is required'),
   customerPhone: z.string().min(10, 'Valid phone number is required'),
+  customerEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'OTHER']).default('CASH'),
   gameTitle: z.string().optional(),
   notes: z.string().optional(),
@@ -66,16 +67,24 @@ export async function POST(req: NextRequest) {
       const subtotalPaise = Math.round(hourlyRate * (data.durationMinutes / 60));
 
       const result = await prisma.$transaction(async (tx) => {
-        // Resolve registered customer by phone or fallback to dedicated guest user
+        // Resolve registered customer by email/phone or fallback to dedicated guest user
         const phoneDigits = data.customerPhone.replace(/\D/g, '').slice(-10);
-        const registeredUser = phoneDigits.length >= 10
-          ? await tx.user.findFirst({
-              where: {
-                role: 'CUSTOMER',
-                phone: { contains: phoneDigits },
-              },
-            })
-          : null;
+        const cleanEmail = data.customerEmail?.trim().toLowerCase() || null;
+        let registeredUser = null;
+
+        if (cleanEmail) {
+          registeredUser = await tx.user.findUnique({
+            where: { email: cleanEmail },
+          });
+        }
+        if (!registeredUser && phoneDigits.length >= 10) {
+          registeredUser = await tx.user.findFirst({
+            where: {
+              role: 'CUSTOMER',
+              phone: { contains: phoneDigits },
+            },
+          });
+        }
 
         let user = registeredUser;
         if (!user) {
@@ -131,6 +140,7 @@ export async function POST(req: NextRequest) {
             customerPhone: data.customerPhone,
             notes:
               (data.gameTitle ? `Game: ${data.gameTitle}. ` : '') +
+              (cleanEmail ? `Email: ${cleanEmail}. ` : '') +
               (data.notes ||
                 (staffName
                   ? `Walk-in registered by ${staffName}${membershipPlanName ? ` [${membershipPlanName}]` : ''}`
