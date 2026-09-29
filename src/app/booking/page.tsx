@@ -74,6 +74,35 @@ function BookingContent() {
   // Wizard Step (1: Station, 2: Date & Time, 3: Gamer Info, 4: Payment)
   const [currentStep, setCurrentStep] = useState<number>(preselectedStationId ? 2 : 1);
 
+  const goToStep = (step: number) => {
+    setCurrentStep(step);
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        const el = document.getElementById('booking-stepper-header') || document.getElementById('booking-step-container');
+        if (el) {
+          const navOffset = 90;
+          const y = el.getBoundingClientRect().top + window.pageYOffset - navOffset;
+          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 50);
+    }
+  };
+
+  // Ensure scroll is restored to top on step transitions
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('booking-stepper-header') || document.getElementById('booking-step-container');
+      if (el) {
+        const navOffset = 90;
+        const y = el.getBoundingClientRect().top + window.pageYOffset - navOffset;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
+    }
+  }, [currentStep]);
+
+
   // Stations State
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -303,19 +332,19 @@ function BookingContent() {
   const handleConfirmBooking = async () => {
     if (!selectedStation) {
       toast.error('Please select a gaming station');
-      setCurrentStep(1);
+      goToStep(1);
       return;
     }
 
     if (!selectedSlot) {
       toast.error('Please pick an available time slot');
-      setCurrentStep(2);
+      goToStep(2);
       return;
     }
 
     if (!customerName || !customerPhone) {
       toast.error('Please provide your name and WhatsApp phone number');
-      setCurrentStep(3);
+      goToStep(3);
       return;
     }
 
@@ -436,7 +465,7 @@ function BookingContent() {
           </div>
 
           {/* Stepper Progress Bar */}
-          <div className="max-w-4xl mx-auto mb-12">
+          <div id="booking-stepper-header" className="max-w-4xl mx-auto mb-12">
             <div className="grid grid-cols-4 gap-2 sm:gap-4 relative">
               {[
                 { step: 1, title: 'Arena & Station', icon: Gamepad2 },
@@ -452,7 +481,7 @@ function BookingContent() {
                     key={step}
                     onClick={() => {
                       if (step < currentStep || (step === 2 && selectedStation)) {
-                        setCurrentStep(step);
+                        goToStep(step);
                       }
                     }}
                     className={`flex flex-col items-center text-center p-2 sm:p-3 rounded-xl transition-all duration-200 border ${
@@ -487,12 +516,12 @@ function BookingContent() {
           </div>
 
           {/* Wizard Step Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div id="booking-step-container" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Main Form / Stepper Canvas */}
-            <div className="lg:col-span-8 space-y-8">
+            <div className="lg:col-span-8 space-y-8 min-h-[640px]">
               {/* STEP 1: ARENA ZONE & STATION SELECTION */}
               {currentStep === 1 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
                   {/* ─── STAGE 1: ONLY SHOW ARENA ZONE IMAGE CARDS INITIALLY ─── */}
                   {!selectedZone ? (
                     <div className="space-y-6">
@@ -820,7 +849,7 @@ function BookingContent() {
                           <Button
                             variant="accent"
                             onClick={() => {
-                              if (selectedStation) setCurrentStep(2);
+                              if (selectedStation) goToStep(2);
                               else toast.error('Please select a station or table to continue');
                             }}
                             disabled={!selectedStation}
@@ -838,7 +867,7 @@ function BookingContent() {
 
               {/* STEP 2: DATE, DURATION & TIME SLOT */}
               {currentStep === 2 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-8">
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-8 min-h-[600px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-ds-border pb-4">
                     <div>
                       <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
@@ -849,7 +878,7 @@ function BookingContent() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setCurrentStep(1)}
+                      onClick={() => goToStep(1)}
                       className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                     >
                       Change Station
@@ -1100,7 +1129,7 @@ function BookingContent() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentStep(1)}
+                      onClick={() => goToStep(1)}
                       className="w-full sm:w-auto"
                     >
                       <ArrowLeft className="w-4 h-4 mr-1.5" />
@@ -1117,7 +1146,7 @@ function BookingContent() {
                       <Button
                         variant="accent"
                         onClick={() => {
-                          if (selectedSlot) setCurrentStep(3);
+                          if (selectedSlot) goToStep(3);
                           else toast.error('Please pick an available time slot');
                         }}
                         disabled={!selectedSlot}
@@ -1133,7 +1162,7 @@ function BookingContent() {
 
               {/* STEP 3: GAMER DETAILS */}
               {currentStep === 3 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
                       3. Player Information
@@ -1230,7 +1259,7 @@ function BookingContent() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentStep(2)}
+                      onClick={() => goToStep(2)}
                       className="w-full sm:w-auto"
                     >
                       <ArrowLeft className="w-4 h-4 mr-1.5" />
@@ -1244,7 +1273,7 @@ function BookingContent() {
                           toast.error('Please enter your full name and phone number');
                           return;
                         }
-                        setCurrentStep(4);
+                        goToStep(4);
                       }}
                       className="w-full sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
                     >
@@ -1257,7 +1286,7 @@ function BookingContent() {
 
               {/* STEP 4: REVIEW & PAYMENT SELECTION */}
               {currentStep === 4 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
                       4. Review & Confirm Booking
@@ -1336,7 +1365,7 @@ function BookingContent() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentStep(3)}
+                      onClick={() => goToStep(3)}
                       disabled={submitting}
                       className="w-full sm:w-auto"
                     >
