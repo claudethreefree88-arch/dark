@@ -59,6 +59,7 @@ interface Station {
     startedAt: string;
     scheduledEndAt: string;
     extensionMinutes?: number;
+    gameTitle?: string | null;
   } | null;
   upcomingBookings?: Array<{
     id: string;
@@ -136,6 +137,7 @@ export default function StaffStationGridPage() {
       bookingRef: station.activeSession.bookingRef,
       scheduledEndAt: station.activeSession.scheduledEndAt,
       pricePerHourPaise: station.pricePerHourPaise,
+      gameTitle: station.activeSession.gameTitle || null,
     });
   };
 
@@ -445,6 +447,12 @@ export default function StaffStationGridPage() {
                           <span className="text-sm font-heading font-bold text-ds-text">
                             {station.activeSession.customerName}
                           </span>
+                          {station.activeSession.gameTitle && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-heading font-bold text-ds-ice bg-ds-accent/15 border border-ds-accent/30 px-2 py-0.5 rounded mt-1">
+                              <Gamepad2 className="w-3 h-3 text-ds-accent" />
+                              <span>Playing: {station.activeSession.gameTitle}</span>
+                            </span>
+                          )}
                         </div>
                         <div className="text-right">
                           <span className="text-[9px] uppercase font-mono text-ds-text-dim block">

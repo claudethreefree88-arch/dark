@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
                   startedAt: activeSession.startedAt,
                   scheduledEndAt: activeSession.scheduledEndAt,
                   extensionMinutes: activeSession.extensionMinutes,
+                  gameTitle: activeSession.notes || (activeSession.booking?.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) || null,
                 }
               : null,
             upcomingBookings: st.bookings.map((b) => ({

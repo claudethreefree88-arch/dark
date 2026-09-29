@@ -171,6 +171,7 @@ export default function StaffBookingsSchedulePage() {
       bookingRef: booking.bookingRef,
       scheduledEndAt: booking.session?.scheduledEndAt || booking.endTime,
       pricePerHourPaise: booking.pricePerHourPaise || 15000,
+      gameTitle: booking.gameTitle || booking.session?.gameTitle || null,
     });
   };
 
@@ -185,6 +186,7 @@ export default function StaffBookingsSchedulePage() {
         customerName: booking.customerName,
         bookingRef: booking.bookingRef,
         scheduledEndAt: booking.session?.scheduledEndAt || booking.endTime,
+        gameTitle: booking.gameTitle || booking.session?.gameTitle || null,
       },
     });
   };
@@ -476,6 +478,12 @@ export default function StaffBookingsSchedulePage() {
                           <span className="text-sm font-heading font-bold text-ds-text">
                             {b.customerName}
                           </span>
+                          {(b.gameTitle || b.session?.gameTitle) && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-heading font-bold text-ds-ice bg-ds-accent/15 border border-ds-accent/30 px-2 py-0.5 rounded mt-1">
+                              <Gamepad2 className="w-3 h-3 text-ds-accent" />
+                              <span>Playing: {b.gameTitle || b.session?.gameTitle}</span>
+                            </span>
+                          )}
                         </div>
                         <div className="text-right">
                           <span className="text-[9px] uppercase font-mono text-ds-text-dim block">Time Remaining</span>
@@ -592,6 +600,12 @@ export default function StaffBookingsSchedulePage() {
                         <td className="py-3.5 px-4">
                           <div className="font-heading font-semibold text-ds-text">{b.stationName}</div>
                           <div className="text-[10px] text-ds-accent">{b.facilityName}</div>
+                          {(b.gameTitle || b.session?.gameTitle) && (
+                            <div className="flex items-center gap-1 text-[11px] text-ds-ice font-heading mt-0.5">
+                              <Gamepad2 className="w-3 h-3 text-ds-accent shrink-0" />
+                              <span className="truncate max-w-[140px]">{b.gameTitle || b.session?.gameTitle}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 font-mono text-ds-text">
                           <div className="flex items-center gap-1.5">
@@ -918,6 +932,15 @@ export default function StaffBookingsSchedulePage() {
 
                 {/* Additional Dossier Information */}
                 <div className="p-4 rounded-xl bg-ds-dark/60 border border-ds-border space-y-2 text-xs">
+                  {(b.gameTitle || b.session?.gameTitle) && (
+                    <div className="flex justify-between items-center pb-1.5 border-b border-ds-border/60">
+                      <span className="text-ds-text-dim">Game Playing:</span>
+                      <span className="font-bold text-ds-ice flex items-center gap-1.5 font-heading">
+                        <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
+                        <span>{b.gameTitle || b.session?.gameTitle}</span>
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-ds-text-dim">Player Contact:</span>
                     <span className="font-mono text-ds-text">{b.customerPhone || b.customerEmail || '—'}</span>

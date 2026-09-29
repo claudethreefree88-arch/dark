@@ -12,6 +12,7 @@ const walkInSchema = z.object({
   customerName: z.string().min(2, 'Customer name is required'),
   customerPhone: z.string().min(10, 'Valid phone number is required'),
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'OTHER']).default('CASH'),
+  gameTitle: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -129,10 +130,11 @@ export async function POST(req: NextRequest) {
             customerName: data.customerName,
             customerPhone: data.customerPhone,
             notes:
-              data.notes ||
-              (staffName
-                ? `Walk-in registered by ${staffName}${membershipPlanName ? ` [${membershipPlanName}]` : ''}`
-                : 'Front desk walk-in check-in'),
+              (data.gameTitle ? `Game: ${data.gameTitle}. ` : '') +
+              (data.notes ||
+                (staffName
+                  ? `Walk-in registered by ${staffName}${membershipPlanName ? ` [${membershipPlanName}]` : ''}`
+                  : 'Front desk walk-in check-in')),
           },
         });
 
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
             status: 'ACTIVE',
             startedAt: now,
             scheduledEndAt,
+            notes: data.gameTitle || data.notes || null,
           },
         });
 

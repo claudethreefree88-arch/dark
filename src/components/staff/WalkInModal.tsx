@@ -9,6 +9,15 @@ import { Gamepad2, Banknote, UserPlus, CreditCard, Sparkles, QrCode, Copy, Check
 import QRCode from 'qrcode';
 import { useToast } from '@/components/ui/Toast';
 
+interface StationGame {
+  id: string;
+  title: string;
+  genre: string | null;
+  coverImage: string | null;
+  maxPlayers: number;
+  isFeatured?: boolean;
+}
+
 interface Station {
   id: string;
   name: string;
@@ -16,6 +25,7 @@ interface Station {
   facilityName: string;
   pricePerHourPaise: number;
   status: string;
+  games?: StationGame[];
 }
 
 interface WalkInModalProps {
@@ -38,12 +48,27 @@ export function WalkInModal({
     stations.find((s) => s.id === preselectedStationId) || availableStations[0] || stations[0];
 
   const [selectedStationId, setSelectedStationId] = useState<string>(initialStation?.id || '');
+  const [selectedGameTitle, setSelectedGameTitle] = useState<string>('');
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD'>('CASH');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const toast = useToast();
+
+  // Synchronize preselected station when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const target =
+        stations.find((s) => s.id === preselectedStationId) ||
+        stations.find((s) => s.status === 'AVAILABLE') ||
+        stations[0];
+      if (target) {
+        setSelectedStationId(target.id);
+      }
+      setSelectedGameTitle('');
+    }
+  }, [isOpen, preselectedStationId, stations]);
 
   // Admin QR & UPI Details
   const [adminQrUrl, setAdminQrUrl] = useState<string>('');
@@ -121,6 +146,7 @@ export function WalkInModal({
           customerName,
           customerPhone,
           paymentMethod,
+          gameTitle: selectedGameTitle.trim() || undefined,
         }),
       });
 
@@ -149,7 +175,10 @@ export function WalkInModal({
           <label className="text-xs font-semibold text-ds-text-muted uppercase">Select Gaming Station</label>
           <select
             value={selectedStationId}
-            onChange={(e) => setSelectedStationId(e.target.value)}
+            onChange={(e) => {
+              setSelectedStationId(e.target.value);
+              setSelectedGameTitle('');
+            }}
             className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2.5 text-xs text-ds-text font-mono font-bold focus:border-ds-accent"
           >
             {stations.map((st) => (
@@ -158,6 +187,111 @@ export function WalkInModal({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Game Selection (Optional) */}
+        <div className="space-y-2.5 p-3.5 rounded-xl bg-ds-surface/50 border border-ds-border">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text flex items-center gap-1.5">
+              <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
+              <span>Select Game To Play</span>
+              <span className="text-[10px] text-ds-text-dim normal-case font-normal">(optional)</span>
+            </label>
+            {selectedGameTitle && (
+              <button
+                type="button"
+                onClick={() => setSelectedGameTitle('')}
+                className="text-[10px] font-mono text-rose-400 hover:underline"
+              >
+                Clear choice
+              </button>
+            )}
+          </div>
+
+          {selectedStation?.games && selectedStation.games.length > 0 ? (
+            <div className="space-y-2.5">
+              {/* Dropdown for installed titles */}
+              <select
+                value={selectedGameTitle}
+                onChange={(e) => setSelectedGameTitle(e.target.value)}
+                className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text font-heading font-semibold focus:border-ds-accent"
+              >
+                <option value="">-- Choose Installed Game (or leave open) --</option>
+                {selectedStation.games.map((g) => (
+                  <option key={g.id} value={g.title}>
+                    🎮 {g.title} {g.genre ? `• ${g.genre}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              {/* Quick 1-click pills for faster touch/mouse selection */}
+              <div>
+                <span className="text-[10px] uppercase font-mono text-ds-text-dim block mb-1.5">
+                  Installed on this {selectedStation.stationType || 'console'} ({selectedStation.games.length}):
+                </span>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                  {selectedStation.games.map((g) => {
+                    const isSelected = selectedGameTitle.toLowerCase() === g.title.toLowerCase();
+                    return (
+                      <button
+                        type="button"
+                        key={g.id}
+                        onClick={() => setSelectedGameTitle(isSelected ? '' : g.title)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
+                            : 'bg-ds-dark/90 border-ds-border text-ds-text-muted hover:text-white hover:border-ds-border/80'
+                        }`}
+                      >
+                        <Gamepad2 className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-ds-accent'}`} />
+                        <span>{g.title}</span>
+                        {g.genre && (
+                          <span
+                            className={`text-[9px] font-mono uppercase px-1 py-0.2 rounded ${
+                              isSelected ? 'bg-black/30 text-white' : 'bg-ds-surface text-ds-text-dim'
+                            }`}
+                          >
+                            {g.genre}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Game text input for unlisted titles */}
+              <div className="pt-0.5">
+                <input
+                  type="text"
+                  placeholder="Or type custom game title (e.g. Call of Duty, Mortal Kombat)..."
+                  value={selectedGameTitle}
+                  onChange={(e) => setSelectedGameTitle(e.target.value)}
+                  className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text placeholder:text-ds-text-dim focus:border-ds-accent focus:outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-ds-text-dim">
+                No catalog games tagged to this console yet. You can manually enter what the player wants:
+              </p>
+              <input
+                type="text"
+                placeholder="e.g. Tekken 8, Mortal Kombat 1, EA Sports FC 24..."
+                value={selectedGameTitle}
+                onChange={(e) => setSelectedGameTitle(e.target.value)}
+                className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text font-heading placeholder:text-ds-text-dim focus:border-ds-accent focus:outline-none"
+              />
+            </div>
+          )}
+
+          {selectedGameTitle && (
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg">
+              <Check className="w-3.5 h-3.5 shrink-0" />
+              <span>Session Game: <strong className="text-white font-semibold">{selectedGameTitle}</strong></span>
+            </div>
+          )}
         </div>
 
         {/* Duration Selection */}

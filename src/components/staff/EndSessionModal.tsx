@@ -16,6 +16,7 @@ export interface EndSessionTarget {
   bookingRef?: string;
   scheduledEndAt?: string;
   pricePerHourPaise?: number;
+  gameTitle?: string | null;
 }
 
 interface EndSessionModalProps {
@@ -151,6 +152,18 @@ export function EndSessionModal({
               {target.stationName}
             </Badge>
           </div>
+
+          {target.gameTitle && (
+            <div className="flex items-center justify-between pb-2 border-b border-ds-border/60">
+              <div className="flex items-center gap-2 text-ds-text-muted">
+                <Gamepad2 className="w-4 h-4 text-ds-accent" />
+                <span>Game Playing</span>
+              </div>
+              <span className="font-heading font-bold text-ds-ice text-xs">
+                {target.gameTitle}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pb-2 border-b border-ds-border/60">
             <div className="flex items-center gap-2 text-ds-text-muted">

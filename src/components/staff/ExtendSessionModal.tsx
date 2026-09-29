@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, Banknote, Sparkles, CreditCard, AlertCircle, QrCode, Copy, Check } from 'lucide-react';
+import { Clock, Banknote, Sparkles, CreditCard, AlertCircle, QrCode, Copy, Check, Gamepad2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useToast } from '@/components/ui/Toast';
 
@@ -18,6 +18,7 @@ interface Station {
     customerName: string;
     bookingRef?: string;
     scheduledEndAt: string;
+    gameTitle?: string | null;
   } | null;
 }
 
@@ -146,6 +147,12 @@ export function ExtendSessionModal({
             <p className="text-ds-ice font-mono text-[11px] mt-0.5">
               Ref: {station.activeSession.bookingRef || 'Direct Session'}
             </p>
+            {station.activeSession.gameTitle && (
+              <p className="text-ds-accent font-heading font-semibold text-[11px] flex items-center gap-1 mt-0.5">
+                <Gamepad2 className="w-3 h-3" />
+                <span>Playing: {station.activeSession.gameTitle}</span>
+              </p>
+            )}
           </div>
           <div className="text-right">
             <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Current End Time</span>

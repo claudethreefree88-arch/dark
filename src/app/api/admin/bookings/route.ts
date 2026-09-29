@@ -79,6 +79,11 @@ export async function GET(req: NextRequest) {
           }
         }
 
+        const gameTitle =
+          booking.session?.notes ||
+          (booking.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
+          null;
+
         return {
           id: booking.id,
           bookingRef: booking.bookingRef,
@@ -101,6 +106,8 @@ export async function GET(req: NextRequest) {
           paymentStatus: booking.payments[0]?.status || 'UNPAID',
           paymentMethod: booking.payments[0]?.method || null,
           createdAt: booking.createdAt,
+          gameTitle,
+          notes: booking.notes,
           stationSpecs:
             (booking.station?.metadata as any)?.specs || 'Ultra-low latency 4K 120Hz display',
           stationCapacity:
@@ -114,6 +121,7 @@ export async function GET(req: NextRequest) {
                 startedAt: booking.session.startedAt,
                 scheduledEndAt: booking.session.scheduledEndAt,
                 extensionMinutes: booking.session.extensionMinutes,
+                gameTitle,
               }
             : booking.status === 'IN_PROGRESS' || booking.status === 'CHECKED_IN'
             ? {
@@ -122,6 +130,7 @@ export async function GET(req: NextRequest) {
                 startedAt: booking.startTime,
                 scheduledEndAt: booking.endTime,
                 extensionMinutes: 0,
+                gameTitle,
               }
             : null,
         };
