@@ -680,6 +680,35 @@ function BookingContent() {
                         </div>
                       </div>
 
+                      {/* Top Navigation Bar */}
+                      <div className="flex justify-between items-center py-3 border-y border-ds-border/60">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedZone(null);
+                            setSelectedStation(null);
+                          }}
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                          <span>Change Arena</span>
+                        </Button>
+
+                        <Button
+                          variant="accent"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedStation) setCurrentStep(2);
+                            else toast.error('Please select a station or table to continue');
+                          }}
+                          disabled={!selectedStation}
+                          className="px-5"
+                        >
+                          <span>Continue to Date & Slot</span>
+                          <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </div>
+
                       {/* Stations Grid for Selected Zone */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {stations
@@ -795,33 +824,6 @@ function BookingContent() {
                             );
                           })}
                       </div>
-
-                      {/* Bottom Navigation */}
-                      <div className="flex justify-between items-center pt-4 border-t border-ds-border">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedZone(null);
-                            setSelectedStation(null);
-                          }}
-                        >
-                          <ArrowLeft className="w-4 h-4 mr-1.5" />
-                          <span>Change Arena</span>
-                        </Button>
-
-                        <Button
-                          variant="accent"
-                          onClick={() => {
-                            if (selectedStation) setCurrentStep(2);
-                            else toast.error('Please select a station or table to continue');
-                          }}
-                          disabled={!selectedStation}
-                          className="px-6"
-                        >
-                          <span>Continue to Date & Slot</span>
-                          <ArrowRight className="w-4 h-4 ml-1.5" />
-                        </Button>
-                      </div>
                     </div>
                   )}
                 </Card>
@@ -830,21 +832,36 @@ function BookingContent() {
               {/* STEP 2: DATE, DURATION & TIME SLOT */}
               {currentStep === 2 && (
                 <Card glass className="p-6 sm:p-8 border-ds-border space-y-8">
-                  <div className="flex items-center justify-between border-b border-ds-border pb-4">
-                    <div>
-                      <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                        2. Pick Date & Session Duration
-                      </h2>
-                      <p className="text-xs text-ds-text-muted mt-0.5">
-                        Selected: <span className="text-ds-ice font-semibold">{selectedStation?.name}</span>
-                      </p>
+                  <div className="flex flex-col gap-3 border-b border-ds-border pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
+                          2. Pick Date & Session Duration
+                        </h2>
+                        <p className="text-xs text-ds-text-muted mt-0.5">
+                          Selected: <span className="text-ds-ice font-semibold">{selectedStation?.name}</span>
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setCurrentStep(1)}
-                      className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold"
-                    >
-                      Change Station
-                    </button>
+                    <div className="flex justify-between items-center py-2 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                      <Button variant="outline" size="sm" onClick={() => setCurrentStep(1)}>
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                        Back
+                      </Button>
+                      <Button
+                        variant="accent"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedSlot) setCurrentStep(3);
+                          else toast.error('Please pick an available time slot');
+                        }}
+                        disabled={!selectedSlot}
+                        className="px-5"
+                      >
+                        <span>Proceed to Gamer Info</span>
+                        <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* 1. Date Selector Carousel */}
@@ -1087,37 +1104,42 @@ function BookingContent() {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center pt-6 border-t border-ds-border">
-                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      Back
-                    </Button>
-                    <Button
-                      variant="accent"
-                      onClick={() => {
-                        if (selectedSlot) setCurrentStep(3);
-                        else toast.error('Please pick an available time slot');
-                      }}
-                      disabled={!selectedSlot}
-                      className="px-6"
-                    >
-                      <span>Proceed to Gamer Info</span>
-                      <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Button>
-                  </div>
                 </Card>
               )}
 
               {/* STEP 3: GAMER DETAILS */}
               {currentStep === 3 && (
                 <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
-                  <div className="border-b border-ds-border pb-4">
-                    <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                      3. Player Information
-                    </h2>
-                    <p className="text-xs text-ds-text-muted mt-0.5">
-                      Your digital check-in pass and QR code will be registered under these details.
-                    </p>
+                  <div className="flex flex-col gap-3 border-b border-ds-border pb-4">
+                    <div>
+                      <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
+                        3. Player Information
+                      </h2>
+                      <p className="text-xs text-ds-text-muted mt-0.5">
+                        Your digital check-in pass and QR code will be registered under these details.
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center py-2 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                      <Button variant="outline" size="sm" onClick={() => setCurrentStep(2)}>
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                        Back
+                      </Button>
+                      <Button
+                        variant="accent"
+                        size="sm"
+                        onClick={() => {
+                          if (!customerName || !customerPhone) {
+                            toast.error('Please enter your full name and phone number');
+                            return;
+                          }
+                          setCurrentStep(4);
+                        }}
+                        className="px-5"
+                      >
+                        <span>Proceed to Checkout</span>
+                        <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
+                    </div>
                   </div>
 
                   {isAuthenticated ? (
@@ -1203,39 +1225,46 @@ function BookingContent() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center pt-6 border-t border-ds-border">
-                    <Button variant="outline" onClick={() => setCurrentStep(2)}>
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      Back
-                    </Button>
-                    <Button
-                      variant="accent"
-                      onClick={() => {
-                        if (!customerName || !customerPhone) {
-                          toast.error('Please enter your full name and phone number');
-                          return;
-                        }
-                        setCurrentStep(4);
-                      }}
-                      className="px-6"
-                    >
-                      <span>Proceed to Checkout</span>
-                      <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Button>
-                  </div>
                 </Card>
               )}
 
               {/* STEP 4: REVIEW & PAYMENT SELECTION */}
               {currentStep === 4 && (
                 <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
-                  <div className="border-b border-ds-border pb-4">
-                    <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                      4. Review & Confirm Booking
-                    </h2>
-                    <p className="text-xs text-ds-text-muted mt-0.5">
-                      Choose your payment preference and finalize your spot.
-                    </p>
+                  <div className="flex flex-col gap-3 border-b border-ds-border pb-4">
+                    <div>
+                      <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
+                        4. Review & Confirm Booking
+                      </h2>
+                      <p className="text-xs text-ds-text-muted mt-0.5">
+                        Choose your payment preference and finalize your spot.
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center py-2 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                      <Button variant="outline" size="sm" onClick={() => setCurrentStep(3)} disabled={submitting}>
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                        Back
+                      </Button>
+                      <Button
+                        variant="accent"
+                        size="sm"
+                        onClick={handleConfirmBooking}
+                        disabled={submitting}
+                        className="px-5 shadow-lg shadow-ds-accent/25"
+                      >
+                        {submitting ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Issuing Pass...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span>{paymentOption === 'ONLINE' ? 'Pay & Confirm' : 'Reserve & Pay at Desk'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Payment Method Cards */}
@@ -1303,30 +1332,6 @@ function BookingContent() {
                     </ul>
                   </div>
 
-                  <div className="flex justify-between items-center pt-6 border-t border-ds-border">
-                    <Button variant="outline" onClick={() => setCurrentStep(3)} disabled={submitting}>
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      Back
-                    </Button>
-                    <Button
-                      variant="accent"
-                      onClick={handleConfirmBooking}
-                      disabled={submitting}
-                      className="px-8 py-3 text-base shadow-lg shadow-ds-accent/25"
-                    >
-                      {submitting ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Issuing Your Pass...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span>{paymentOption === 'ONLINE' ? 'Pay & Confirm Pass' : 'Reserve & Pay at Desk'}</span>
-                          <ArrowRight className="w-5 h-5" />
-                        </div>
-                      )}
-                    </Button>
-                  </div>
                 </Card>
               )}
             </div>
