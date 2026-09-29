@@ -698,82 +698,98 @@ function BookingContent() {
                                     toast.error(`${station.name} is currently occupied`);
                                   }
                                 }}
-                                className={`p-5 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                                className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
                                   isSelected
-                                    ? 'bg-ds-surface border-ds-accent shadow-lg shadow-ds-accent/15 ring-2 ring-ds-accent'
+                                    ? 'bg-ds-surface border-ds-accent shadow-lg shadow-ds-accent/20 ring-2 ring-ds-accent'
                                     : isAvailable
                                     ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
                                     : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
                                 }`}
                               >
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent">
-                                      {station.facilityName}
-                                    </span>
-                                    <Badge
-                                      variant={isAvailable ? 'success' : 'warning'}
-                                      size="sm"
-                                    >
-                                      {isAvailable ? '🟢 Ready' : '🟡 In Use'}
-                                    </Badge>
-                                  </div>
-
-                                  <div>
-                                    <h3 className="text-lg font-heading font-bold text-ds-text">{station.name}</h3>
-                                    <p className="text-xs text-ds-text-muted line-clamp-2 mt-1">{station.specs}</p>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1 text-xs text-ds-text-dim pt-2 border-t border-ds-border/40">
-                                    <div className="flex items-center justify-between">
+                                <div>
+                                  {/* Station Image Banner */}
+                                  <div className="relative w-full h-36 bg-ds-dark overflow-hidden">
+                                    <Image
+                                      src={station.stationType === 'PS5' ? '/ps5-station.jpg' : '/snooker-table.jpg'}
+                                      alt={station.name}
+                                      fill
+                                      sizes="(max-width: 768px) 100vw, 33vw"
+                                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-transparent to-black/50" />
+                                    <div className="absolute top-2.5 left-2.5">
+                                      <Badge
+                                        variant={isAvailable ? 'success' : 'warning'}
+                                        size="sm"
+                                        className="backdrop-blur-md shadow-md"
+                                      >
+                                        {isAvailable ? '🟢 Ready' : '🟡 In Use'}
+                                      </Badge>
+                                    </div>
+                                    <div className="absolute bottom-2 left-2.5 flex items-center gap-1 text-[10px] text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10 font-mono">
                                       <span>{station.capacity} Max Players</span>
-                                      <span className="text-ds-ice font-bold">
-                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr (Table)'}
+                                    </div>
+                                  </div>
+
+                                  <div className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent">
+                                        {station.facilityName}
+                                      </span>
+                                      <span className="text-ds-ice font-bold text-xs">
+                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr'}
                                       </span>
                                     </div>
-                                    <p className="text-[11px] text-ds-text-muted">
-                                      {station.stationType === 'PS5'
-                                        ? 'Single: ₹150 · Duo: ₹200 · Squad (3-4): ₹250'
-                                        : '3-4 players included · +₹50/extra player'}
-                                    </p>
-                                  </div>
 
-                                  {/* Available Games on Station (Consoles only) */}
-                                  {station.games && station.games.length > 0 && (
-                                    <div className="pt-2 border-t border-ds-border/40 space-y-1">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
-                                          <Gamepad2 className="w-3 h-3 text-ds-accent" />
-                                          <span>Installed Games ({station.games.length}):</span>
-                                        </span>
-                                      </div>
-                                      <div className="flex flex-wrap gap-1">
-                                        {station.games.slice(0, 3).map((g: string, i: number) => (
-                                          <span
-                                            key={i}
-                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
-                                          >
-                                            {g}
-                                          </span>
-                                        ))}
-                                        {station.games.length > 3 && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
-                                            +{station.games.length - 3} more
-                                          </span>
-                                        )}
-                                      </div>
+                                    <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
+                                      {station.name}
+                                    </h3>
+
+                                    <div className="text-[11px] text-ds-text-dim px-2.5 py-1.5 rounded-lg bg-ds-dark/60 border border-ds-border/40">
+                                      {station.stationType === 'PS5'
+                                        ? 'Single: ₹150 · Duo: ₹200 · Squad: ₹250'
+                                        : '3-4 players included · +₹50/extra player'}
                                     </div>
-                                  )}
+
+                                    {/* Available Games on Station (Consoles only) */}
+                                    {station.games && station.games.length > 0 && (
+                                      <div className="pt-2 border-t border-ds-border/40 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
+                                            <Gamepad2 className="w-3 h-3 text-ds-accent" />
+                                            <span>Installed Games ({station.games.length}):</span>
+                                          </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {station.games.slice(0, 3).map((g: string, i: number) => (
+                                            <span
+                                              key={i}
+                                              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
+                                            >
+                                              {g}
+                                            </span>
+                                          ))}
+                                          {station.games.length > 3 && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
+                                              +{station.games.length - 3} more
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
 
-                                <div className="mt-4 pt-3 flex justify-end border-t border-ds-border/30">
-                                  <span
-                                    className={`text-xs font-semibold inline-flex items-center gap-1 ${
-                                      isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
-                                    }`}
-                                  >
-                                    {isSelected ? 'Selected ✓' : 'Click to Select'}
-                                  </span>
+                                <div className="p-4 pt-0">
+                                  <div className="pt-3 flex justify-end border-t border-ds-border/30">
+                                    <span
+                                      className={`text-xs font-semibold inline-flex items-center gap-1 ${
+                                        isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
+                                      }`}
+                                    >
+                                      {isSelected ? 'Selected ✓' : 'Click to Select'}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             );

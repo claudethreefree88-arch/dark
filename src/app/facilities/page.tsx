@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Gamepad2,
   Sparkles,
@@ -150,109 +151,131 @@ export default function FacilitiesPage() {
                 key={station.id}
                 hover
                 glass
-                className="p-6 flex flex-col justify-between border-ds-border hover:border-ds-accent/50 transition-all relative group"
+                className="overflow-hidden flex flex-col justify-between border-ds-border hover:border-ds-accent/50 transition-all relative group p-0"
               >
-                <div className="space-y-4">
-                  {/* Status & Price Pill */}
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant={
-                        station.status === 'AVAILABLE'
-                          ? 'success'
-                          : station.status === 'OCCUPIED'
-                          ? 'warning'
-                          : 'default'
-                      }
-                      size="sm"
-                    >
-                      {station.status === 'AVAILABLE' ? '🟢 Available' : '🟡 In Session'}
-                    </Badge>
-                    <div className="text-right">
-                      <span className="text-xl font-heading font-extrabold text-ds-ice">
-                        {station.stationType === 'PS5' ? 'From ₹150' : '₹250'}
+                <div>
+                  {/* Top Image Banner */}
+                  <div className="relative w-full h-52 bg-ds-dark overflow-hidden">
+                    <Image
+                      src={station.stationType === 'PS5' ? '/ps5-station.jpg' : '/snooker-table.jpg'}
+                      alt={station.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-black/20 to-black/60" />
+
+                    {/* Floating Badges */}
+                    <div className="absolute top-3 left-3">
+                      <Badge
+                        variant={
+                          station.status === 'AVAILABLE'
+                            ? 'success'
+                            : station.status === 'OCCUPIED'
+                            ? 'warning'
+                            : 'default'
+                        }
+                        size="sm"
+                        className="backdrop-blur-md shadow-md"
+                      >
+                        {station.status === 'AVAILABLE' ? '🟢 Available' : '🟡 In Session'}
+                      </Badge>
+                    </div>
+
+                    <div className="absolute top-3 right-3">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-heading font-bold uppercase tracking-wider bg-black/75 backdrop-blur-md border border-white/20 text-ds-ice shadow-sm">
+                        {station.stationType === 'PS5' ? 'PlayStation 5' : 'Snooker Table'}
                       </span>
-                      <span className="text-xs text-ds-text-dim"> / hour</span>
-                      <p className="text-[10px] text-ds-text-muted">
-                        {station.stationType === 'PS5'
-                          ? '1P: ₹150 · 2P: ₹200 · 3-4P: ₹250'
-                          : '3-4 players · +₹50/extra person'}
-                      </p>
+                    </div>
+
+                    {/* Bottom image overlay specs info: Capacity & Hourly */}
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white/90">
+                      <span className="flex items-center gap-1.5 bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 font-medium">
+                        <Users className="w-3.5 h-3.5 text-ds-accent" />
+                        <span>{station.capacity} Player{station.capacity > 1 ? 's' : ''} Max</span>
+                      </span>
+                      <span className="flex items-center gap-1 bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-ds-accent" />
+                        <span>Hourly Booking</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Station Title */}
-                  <div>
-                    <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent">
-                      {station.facilityName}
-                    </span>
-                    <h3 className="text-xl font-heading font-bold text-ds-text group-hover:text-ds-ice transition-colors mt-0.5">
-                      {station.name}
-                    </h3>
-                  </div>
-
-                  {/* Specs */}
-                  <div className="p-3 rounded-lg bg-ds-dark/60 border border-ds-border/60 text-xs text-ds-text-muted space-y-1.5">
-                    <p className="font-semibold text-ds-text">Hardware & Setup:</p>
-                    <p className="leading-relaxed">{station.specs}</p>
-                  </div>
-
-                  {/* Features / Details */}
-                  <div className="flex items-center gap-4 text-xs text-ds-text-dim">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-ds-accent" />
-                      {station.capacity} Player{station.capacity > 1 ? 's' : ''} Capacity
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-ds-accent" />
-                      Hourly or Passes
-                    </span>
-                  </div>
-
-                  {/* Installed Games on this station */}
-                  {station.games && station.games.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-ds-border/40">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
-                          <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
-                          <span>Installed Games ({station.games.length}):</span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setViewingStationGames(station)}
-                          className="text-[10px] font-mono text-ds-ice hover:text-ds-accent underline"
-                        >
-                          View All →
-                        </button>
+                  {/* Card Details Body */}
+                  <div className="p-5 sm:p-6 space-y-4">
+                    {/* Station Title & Price */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent block">
+                          {station.facilityName}
+                        </span>
+                        <h3 className="text-xl font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors mt-0.5">
+                          {station.name}
+                        </h3>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {station.games.slice(0, 4).map((game) => (
-                          <span
-                            key={game}
-                            className="px-2 py-0.5 rounded text-[10px] font-medium bg-ds-surface/80 border border-ds-border/60 text-ds-text"
-                          >
-                            {game}
-                          </span>
-                        ))}
-                        {station.games.length > 4 && (
+                      <div className="text-right shrink-0">
+                        <span className="text-2xl font-heading font-black text-ds-ice">
+                          {station.stationType === 'PS5' ? 'From ₹150' : '₹250'}
+                        </span>
+                        <span className="text-xs text-ds-text-dim"> / hr</span>
+                      </div>
+                    </div>
+
+                    {/* Rate Tier Strip */}
+                    <div className="px-3.5 py-2 rounded-xl bg-ds-dark/70 border border-ds-border/60 text-xs flex items-center justify-between text-ds-text-muted">
+                      <span className="font-mono text-[11px] text-ds-text font-medium">
+                        {station.stationType === 'PS5'
+                          ? '1P: ₹150 · 2P: ₹200 · 3-4P: ₹250'
+                          : '3-4 players included · +₹50/extra person'}
+                      </span>
+                    </div>
+
+                    {/* Installed Games on this station */}
+                    {station.games && station.games.length > 0 && (
+                      <div className="space-y-2 pt-1 border-t border-ds-border/40">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1.5">
+                            <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
+                            <span>Installed Games ({station.games.length}):</span>
+                          </p>
                           <button
                             type="button"
                             onClick={() => setViewingStationGames(station)}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/15 border border-ds-accent/40 text-ds-ice hover:bg-ds-accent/25 transition-colors"
+                            className="text-[11px] font-mono font-medium text-ds-ice hover:text-ds-accent underline cursor-pointer"
                           >
-                            +{station.games.length - 4} more
+                            View All →
                           </button>
-                        )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {station.games.slice(0, 4).map((game) => (
+                            <span
+                              key={game}
+                              className="px-2 py-0.5 rounded text-[10px] font-medium bg-ds-dark border border-ds-border/70 text-ds-text"
+                            >
+                              {game}
+                            </span>
+                          ))}
+                          {station.games.length > 4 && (
+                            <button
+                              type="button"
+                              onClick={() => setViewingStationGames(station)}
+                              className="px-2 py-0.5 rounded text-[10px] font-mono bg-ds-accent/15 border border-ds-accent/40 text-ds-ice hover:bg-ds-accent/25 transition-colors cursor-pointer"
+                            >
+                              +{station.games.length - 4} more
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Card Action */}
-                <div className="pt-6 mt-4 border-t border-ds-border/60">
+                <div className="p-5 sm:p-6 pt-0">
                   <Link href={`/booking?stationId=${station.id}`} className="block w-full">
                     <Button
                       variant={station.status === 'AVAILABLE' ? 'accent' : 'secondary'}
-                      className="w-full justify-center"
+                      className="w-full justify-center py-2.5 font-heading font-bold uppercase tracking-wider text-xs"
                     >
                       <span>Book This Station</span>
                       <ArrowRight className="w-4 h-4 ml-1.5" />
