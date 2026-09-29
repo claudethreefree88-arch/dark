@@ -316,6 +316,13 @@ export function Navbar() {
                   <Calendar className="w-4 h-4 text-ds-ice" />
                   <span>My Bookings</span>
                 </Link>
+                <Link
+                  href="/account/membership"
+                  className="flex items-center gap-2 px-3 py-2 text-ds-text font-medium rounded-lg hover:bg-ds-border/40"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>My Syndicate Pass</span>
+                </Link>
                 {['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
                   <Link
                     href="/admin"

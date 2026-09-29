@@ -33,6 +33,7 @@ import {
   ChevronUp,
   Banknote,
   QrCode,
+  Crown,
 } from 'lucide-react';
 
 interface Station {
@@ -158,6 +159,32 @@ function BookingContent() {
     }
   }, [user]);
 
+  // Fetch active user membership (if logged in)
+  const [activeMembership, setActiveMembership] = useState<{
+    planNameSnapshot: string;
+    tierSnapshot: string;
+    discountPercent: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setActiveMembership(null);
+      return;
+    }
+    async function loadUserMembership() {
+      try {
+        const res = await fetch('/api/customer/membership');
+        const json = await res.json();
+        if (json.success && json.data?.activeMembership) {
+          setActiveMembership(json.data.activeMembership);
+        }
+      } catch (err) {
+        console.error('Failed to load user membership:', err);
+      }
+    }
+    loadUserMembership();
+  }, [user]);
+
   // Fetch stations on mount
   useEffect(() => {
     async function loadStations() {
@@ -268,7 +295,14 @@ function BookingContent() {
   // Coupon discount
   const couponDiscountPaise = appliedCoupon ? appliedCoupon.discountPaise : 0;
 
-  const totalDiscountPaise = multiHourDiscountPaise + couponDiscountPaise;
+  // Active Syndicate Member discount
+  const membershipDiscountPercent = activeMembership?.discountPercent || 0;
+  const membershipDiscountPaise =
+    selectedStation && membershipDiscountPercent > 0
+      ? Math.round((subtotalPaise * membershipDiscountPercent) / 100)
+      : 0;
+
+  const totalDiscountPaise = multiHourDiscountPaise + couponDiscountPaise + membershipDiscountPaise;
   const finalPricePaise = selectedStation ? Math.max(0, subtotalPaise - totalDiscountPaise) : 0;
 
   // Handle Coupon Apply
@@ -1637,10 +1671,32 @@ function BookingContent() {
                     </div>
                   )}
 
+                  {membershipDiscountPaise > 0 && (
+                    <div className="flex justify-between text-ds-cyan font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Crown className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
+                        {activeMembership?.planNameSnapshot || 'Member Pass'} ({membershipDiscountPercent}% off)
+                      </span>
+                      <span className="font-mono">-₹{(membershipDiscountPaise / 100).toFixed(0)}</span>
+                    </div>
+                  )}
+
                   {couponDiscountPaise > 0 && (
                     <div className="flex justify-between text-emerald-400">
                       <span>Coupon Discount</span>
                       <span>-₹{(couponDiscountPaise / 100).toFixed(0)}</span>
+                    </div>
+                  )}
+
+                  {!activeMembership && (
+                    <div className="py-2 px-2.5 rounded-lg bg-ds-dark/40 border border-ds-border/50 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5 text-ds-text-dim">
+                        <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>Save up to 30% every hour</span>
+                      </div>
+                      <Link href="/membership" className="text-ds-cyan hover:underline font-semibold">
+                        Get Pass →
+                      </Link>
                     </div>
                   )}
 
@@ -1840,10 +1896,30 @@ function BookingContent() {
                         <span className="font-mono">-₹{(multiHourDiscountPaise / 100).toFixed(0)}</span>
                       </div>
                     )}
+                    {membershipDiscountPaise > 0 && (
+                      <div className="flex justify-between text-ds-cyan">
+                        <span className="flex items-center gap-1">
+                          <Crown className="w-3 h-3 text-ds-cyan shrink-0" />
+                          {activeMembership?.planNameSnapshot || 'Member Pass'} ({membershipDiscountPercent}%)
+                        </span>
+                        <span className="font-mono font-medium">-₹{(membershipDiscountPaise / 100).toFixed(0)}</span>
+                      </div>
+                    )}
                     {couponDiscountPaise > 0 && (
                       <div className="flex justify-between text-emerald-400">
                         <span>Coupon Discount</span>
                         <span className="font-mono">-₹{(couponDiscountPaise / 100).toFixed(0)}</span>
+                      </div>
+                    )}
+                    {!activeMembership && (
+                      <div className="flex items-center justify-between pt-1 border-t border-ds-border/30 text-[10px]">
+                        <span className="text-ds-text-dim flex items-center gap-1">
+                          <Crown className="w-3 h-3 text-amber-400" />
+                          Save 10–30% with Syndicate Pass
+                        </span>
+                        <Link href="/membership" className="text-ds-cyan font-bold underline">
+                          Explore Passes
+                        </Link>
                       </div>
                     )}
                     <div className="flex justify-between text-ds-text-dim text-[10px] pt-1 border-t border-ds-border/40">
