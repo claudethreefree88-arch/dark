@@ -99,6 +99,20 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-ds-accent);
 }
 
+/* ─── Scrollbar Utilities ─────────────────────────────────────────────────── */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
+
 /* ─── Selection ─────────────────────────────────────────────────────────── */
 
 ::selection {

@@ -425,7 +425,7 @@ export function SessionExpiryAlertManager() {
             {/* Multiple Stations Navigator Tabs (if multiple alerts) */}
             {alerts.length > 1 && (
               <div className="flex items-center justify-between gap-2 pt-3 pb-1 border-b border-white/10">
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                   {alerts.map((a, idx) => (
                     <button
                       key={a.id}

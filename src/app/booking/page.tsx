@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition, Suspense } from 'react';
+import React, { useState, useEffect, useTransition, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -28,6 +28,7 @@ import {
   Zap,
   Info,
   ChevronRight,
+  ChevronLeft,
   Banknote,
   QrCode,
 } from 'lucide-react';
@@ -83,6 +84,14 @@ function BookingContent() {
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [playerCount, setPlayerCount] = useState<number>(1);
+  const dateScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollDates = (direction: 'left' | 'right') => {
+    if (dateScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -260 : 260;
+      dateScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Slots State
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -822,27 +831,78 @@ function BookingContent() {
                     </button>
                   </div>
 
-                  {/* 1. Date Selector Scroll */}
+                  {/* 1. Date Selector Carousel */}
                   <div className="space-y-3">
-                    <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-                      Select Date (Next 14 Days)
-                    </label>
-                    <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim flex items-center gap-1.5">
+                          <CalendarIcon className="w-3.5 h-3.5 text-ds-accent" />
+                          <span>Select Date (Next 14 Days)</span>
+                        </label>
+                        {selectedDate && (
+                          <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[11px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/25">
+                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Navigation Chevrons */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => scrollDates('left')}
+                          className="w-7 h-7 rounded-lg border border-ds-border bg-ds-surface/80 hover:bg-ds-surface hover:border-ds-accent/60 text-ds-text-dim hover:text-ds-ice flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+                          title="Previous dates"
+                          aria-label="Previous dates"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollDates('right')}
+                          className="w-7 h-7 rounded-lg border border-ds-border bg-ds-surface/80 hover:bg-ds-surface hover:border-ds-accent/60 text-ds-text-dim hover:text-ds-ice flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+                          title="Next dates"
+                          aria-label="Next dates"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      ref={dateScrollRef}
+                      onWheel={(e) => {
+                        if (e.deltaY !== 0 && dateScrollRef.current) {
+                          e.currentTarget.scrollLeft += e.deltaY;
+                        }
+                      }}
+                      className="flex gap-2.5 overflow-x-auto py-1.5 scroll-smooth no-scrollbar select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
                       {dateList.map((item) => {
                         const isSelected = selectedDate === item.dateStr;
                         return (
                           <button
                             key={item.dateStr}
+                            type="button"
                             onClick={() => setSelectedDate(item.dateStr)}
-                            className={`flex-shrink-0 w-20 py-3 rounded-xl flex flex-col items-center justify-center transition-all border ${
+                            className={`flex-shrink-0 w-20 py-3 rounded-xl flex flex-col items-center justify-center transition-all border cursor-pointer ${
                               isSelected
-                                ? 'bg-ds-accent text-white border-ds-accent shadow-md shadow-ds-accent/20 scale-105'
-                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:border-ds-accent/40 hover:text-white'
+                                ? 'bg-ds-accent text-white border-ds-accent shadow-lg shadow-ds-accent/25 scale-[1.03] ring-2 ring-ds-accent/40 font-bold'
+                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:border-ds-accent/40 hover:text-white hover:bg-ds-surface'
                             }`}
                           >
-                            <span className="text-[10px] font-bold uppercase">{item.dayName}</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-white' : 'text-ds-text-dim'}`}>
+                              {item.dayName}
+                            </span>
                             <span className="text-xl font-heading font-extrabold my-0.5">{item.dayNum}</span>
-                            <span className="text-[10px] uppercase opacity-80">{item.month}</span>
+                            <span className={`text-[10px] uppercase font-semibold ${isSelected ? 'text-white/90' : 'text-ds-text-muted'}`}>
+                              {item.month}
+                            </span>
                           </button>
                         );
                       })}
