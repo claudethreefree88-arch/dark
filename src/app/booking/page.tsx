@@ -448,25 +448,25 @@ function BookingContent() {
     <div className="min-h-screen bg-ds-darker text-ds-text flex flex-col selection:bg-ds-accent selection:text-white">
       <Navbar />
 
-      <main className="flex-1 pt-32 sm:pt-36 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 pt-24 sm:pt-32 pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           {/* Header Banner */}
-          <div className="text-center max-w-3xl mx-auto mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/10 border border-ds-accent/30 text-ds-ice mb-3">
+          <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-10 px-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/10 border border-ds-accent/30 text-ds-ice mb-2 sm:mb-3">
               <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
               <span>Real-Time Reservation Engine</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-heading font-black tracking-tight uppercase text-ds-text">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-heading font-black tracking-tight uppercase text-ds-text">
               Book Your <span className="text-ds-ice">Gaming Session</span>
             </h1>
-            <p className="mt-3 text-ds-text-muted text-sm sm:text-base">
+            <p className="mt-2 sm:mt-3 text-ds-text-muted text-xs sm:text-sm md:text-base leading-relaxed">
               Reserve your PS5 Pro arena or Championship Pool table in 4 simple steps. Instant confirmation & QR check-in pass.
             </p>
           </div>
 
           {/* Stepper Progress Bar */}
-          <div id="booking-stepper-header" className="max-w-4xl mx-auto mb-12">
-            <div className="grid grid-cols-4 gap-2 sm:gap-4 relative">
+          <div id="booking-stepper-header" className="max-w-4xl mx-auto mb-8 sm:mb-12">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-3 md:gap-4 relative">
               {[
                 { step: 1, title: 'Arena & Station', icon: Gamepad2 },
                 { step: 2, title: 'Date & Slot', icon: CalendarIcon },
@@ -484,16 +484,16 @@ function BookingContent() {
                         goToStep(step);
                       }
                     }}
-                    className={`flex flex-col items-center text-center p-2 sm:p-3 rounded-xl transition-all duration-200 border ${
+                    className={`flex flex-col items-center text-center p-1.5 sm:p-3 rounded-xl transition-all duration-200 border cursor-pointer ${
                       isActive
-                        ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-lg shadow-ds-accent/10'
+                        ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-lg shadow-ds-accent/10 ring-1 ring-ds-accent/40'
                         : isCompleted
-                        ? 'bg-ds-surface/50 border-emerald-500/50 text-emerald-400 cursor-pointer hover:border-emerald-400'
-                        : 'bg-ds-surface/20 border-ds-border text-ds-text-dim cursor-not-allowed'
+                        ? 'bg-ds-surface/50 border-emerald-500/50 text-emerald-400 hover:border-emerald-400'
+                        : 'bg-ds-surface/20 border-ds-border text-ds-text-dim cursor-not-allowed opacity-75'
                     }`}
                   >
                     <div
-                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-1.5 transition-all ${
+                      className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-1 sm:mb-1.5 transition-all ${
                         isActive
                           ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/30'
                           : isCompleted
@@ -501,12 +501,12 @@ function BookingContent() {
                           : 'bg-ds-border/40 text-ds-text-dim'
                       }`}
                     >
-                      {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                      {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-5 sm:h-5" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
                     </div>
-                    <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider">
+                    <span className="text-[9px] sm:text-xs font-heading font-bold uppercase tracking-wider">
                       Step {step}
                     </span>
-                    <span className="text-xs sm:text-sm font-medium hidden sm:inline truncate max-w-[120px]">
+                    <span className="text-[11px] sm:text-xs md:text-sm font-medium hidden sm:inline truncate max-w-[90px] sm:max-w-[120px]">
                       {title}
                     </span>
                   </button>
@@ -826,7 +826,7 @@ function BookingContent() {
                       </div>
 
                       {/* Bottom Navigation */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-5 border-t border-ds-border mt-2">
+                      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-5 border-t border-ds-border mt-2">
                         <Button
                           variant="outline"
                           onClick={() => {
@@ -839,9 +839,9 @@ function BookingContent() {
                           <span>Change Arena</span>
                         </Button>
 
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                           {selectedStation && (
-                            <div className="text-right hidden sm:block">
+                            <div className="text-left sm:text-right">
                               <span className="text-[10px] text-ds-text-dim uppercase font-mono block">Selected</span>
                               <span className="text-xs font-bold text-ds-ice font-heading">{selectedStation.name}</span>
                             </div>
@@ -853,7 +853,7 @@ function BookingContent() {
                               else toast.error('Please select a station or table to continue');
                             }}
                             disabled={!selectedStation}
-                            className="w-full sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
+                            className="flex-1 sm:flex-initial sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
                           >
                             <span>Continue to Date & Slot</span>
                             <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -867,7 +867,7 @@ function BookingContent() {
 
               {/* STEP 2: DATE, DURATION & TIME SLOT */}
               {currentStep === 2 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-8 min-h-[600px] flex flex-col justify-between">
+                <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 sm:space-y-8 min-h-[580px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-ds-border pb-4">
                     <div>
                       <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
@@ -1072,13 +1072,13 @@ function BookingContent() {
                       </label>
 
                       {/* Period Filter Tabs */}
-                      <div className="flex gap-1 bg-ds-surface p-1 rounded-lg border border-ds-border text-[11px]">
+                      <div className="flex gap-1 bg-ds-surface p-1 rounded-lg border border-ds-border text-[11px] overflow-x-auto no-scrollbar max-w-full">
                         {['ALL', 'MORNING', 'AFTERNOON', 'EVENING', 'NIGHT'].map((p) => (
                           <button
                             key={p}
                             onClick={() => setSlotPeriod(p)}
-                            className={`px-2.5 py-1 rounded font-semibold transition-all uppercase ${
-                              slotPeriod === p ? 'bg-ds-accent text-white' : 'text-ds-text-muted hover:text-white'
+                            className={`px-2.5 py-1 rounded font-semibold transition-all uppercase whitespace-nowrap ${
+                              slotPeriod === p ? 'bg-ds-accent text-white shadow-sm' : 'text-ds-text-muted hover:text-white'
                             }`}
                           >
                             {p}
@@ -1097,7 +1097,7 @@ function BookingContent() {
                         No available slots for the selected period. Please try a different date or period.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
                         {filteredSlots.map((slot) => {
                           const isSelected = selectedSlot?.time === slot.time;
 
@@ -1106,11 +1106,11 @@ function BookingContent() {
                               key={slot.time}
                               disabled={!slot.available}
                               onClick={() => setSelectedSlot(slot)}
-                              className={`p-3 rounded-xl border text-center transition-all ${
+                              className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                                 isSelected
                                   ? 'bg-ds-accent text-white border-ds-accent shadow-lg shadow-ds-accent/20 ring-2 ring-white/20'
                                   : slot.available
-                                  ? 'bg-ds-surface border-ds-border text-ds-text hover:border-ds-accent/60 hover:text-ds-ice'
+                                  ? 'bg-ds-surface border-ds-border text-ds-text hover:border-ds-accent/60 hover:text-ds-ice active:scale-95'
                                   : 'bg-ds-dark/40 border-ds-border/40 text-ds-text-dim opacity-40 cursor-not-allowed line-through'
                               }`}
                             >
@@ -1126,7 +1126,7 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
+                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
                       onClick={() => goToStep(1)}
@@ -1136,9 +1136,9 @@ function BookingContent() {
                       <span>Back to Stations</span>
                     </Button>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                       {selectedSlot && (
-                        <div className="text-right hidden sm:block">
+                        <div className="text-left sm:text-right">
                           <span className="text-[10px] text-ds-text-dim uppercase font-mono block">Selected Time</span>
                           <span className="text-xs font-bold text-ds-ice font-heading">{selectedSlot.label}</span>
                         </div>
@@ -1150,7 +1150,7 @@ function BookingContent() {
                           else toast.error('Please pick an available time slot');
                         }}
                         disabled={!selectedSlot}
-                        className="w-full sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
+                        className="flex-1 sm:flex-initial sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
                       >
                         <span>Proceed to Gamer Info</span>
                         <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -1162,7 +1162,7 @@ function BookingContent() {
 
               {/* STEP 3: GAMER DETAILS */}
               {currentStep === 3 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
+                <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 min-h-[580px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
                       3. Player Information
@@ -1256,7 +1256,7 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
+                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
                       onClick={() => goToStep(2)}
@@ -1286,7 +1286,7 @@ function BookingContent() {
 
               {/* STEP 4: REVIEW & PAYMENT SELECTION */}
               {currentStep === 4 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
+                <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 min-h-[580px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
                       4. Review & Confirm Booking
@@ -1301,10 +1301,10 @@ function BookingContent() {
                     <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
                       Select Payment Mode
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div
                         onClick={() => setPaymentOption('ONLINE')}
-                        className={`p-5 rounded-xl border cursor-pointer transition-all ${
+                        className={`p-4 sm:p-5 rounded-xl border cursor-pointer transition-all ${
                           paymentOption === 'ONLINE'
                             ? 'bg-ds-surface border-ds-accent ring-1 ring-ds-accent shadow-lg shadow-ds-accent/10'
                             : 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40'
@@ -1326,7 +1326,7 @@ function BookingContent() {
 
                       <div
                         onClick={() => setPaymentOption('COUNTER')}
-                        className={`p-5 rounded-xl border cursor-pointer transition-all ${
+                        className={`p-4 sm:p-5 rounded-xl border cursor-pointer transition-all ${
                           paymentOption === 'COUNTER'
                             ? 'bg-ds-surface border-emerald-500 ring-1 ring-emerald-500 shadow-lg shadow-emerald-500/10'
                             : 'bg-ds-surface/50 border-ds-border hover:border-emerald-500/40'
@@ -1348,8 +1348,36 @@ function BookingContent() {
                     </div>
                   </div>
 
+                  {/* Quick Summary Box for Mobile & Laplets (< lg) */}
+                  <div className="lg:hidden p-3.5 sm:p-4 rounded-xl bg-ds-surface/60 border border-ds-border space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-ds-text-dim">Reservation</span>
+                      <span className="font-heading font-bold text-ds-text truncate max-w-[200px]">
+                        {selectedStation?.name} • {durationMinutes / 60}hr
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-ds-text-dim">Date & Slot</span>
+                      <span className="text-ds-ice font-mono font-semibold">
+                        {selectedDate} • {selectedSlot?.label}
+                      </span>
+                    </div>
+                    {couponDiscountPaise > 0 && (
+                      <div className="flex items-center justify-between text-xs text-emerald-400">
+                        <span>Promo Code ({appliedCoupon?.code})</span>
+                        <span>-₹{(couponDiscountPaise / 100).toFixed(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-ds-border/60">
+                      <span className="text-xs font-heading font-bold uppercase text-ds-text">Total Payable</span>
+                      <span className="text-xl font-heading font-black text-ds-ice">
+                        ₹{(finalPricePaise / 100).toFixed(0)}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Terms & Policies */}
-                  <div className="p-4 rounded-xl bg-ds-surface/40 border border-ds-border text-xs text-ds-text-dim space-y-2">
+                  <div className="p-3.5 sm:p-4 rounded-xl bg-ds-surface/40 border border-ds-border text-xs text-ds-text-dim space-y-2">
                     <div className="flex items-center gap-2 text-ds-text font-semibold">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
                       <span>Syndicate Booking Guarantee</span>
@@ -1362,7 +1390,7 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-ds-border">
+                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
                     <Button
                       variant="outline"
                       onClick={() => goToStep(3)}
@@ -1398,7 +1426,7 @@ function BookingContent() {
 
             {/* Right Booking Receipt / Summary Sticky Card */}
             <div className="lg:col-span-4 space-y-6">
-              <Card glass className="p-6 border-ds-border sticky top-24 space-y-6">
+              <Card glass className="p-4 sm:p-6 border-ds-border lg:sticky lg:top-24 space-y-5 sm:space-y-6">
                 <div className="flex items-center justify-between border-b border-ds-border pb-4">
                   <h3 className="text-lg font-heading font-bold uppercase text-ds-text">Order Summary</h3>
                   <Badge variant="outline" size="sm">
