@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import {
   Gamepad2,
   Clock,
@@ -21,12 +22,23 @@ import {
   RotateCw,
   Users,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 import { QrScannerModal } from '@/components/staff/QrScannerModal';
 import { WalkInModal } from '@/components/staff/WalkInModal';
 import { ExtendSessionModal } from '@/components/staff/ExtendSessionModal';
 import { EndSessionModal, type EndSessionTarget } from '@/components/staff/EndSessionModal';
 import { useToast } from '@/components/ui/Toast';
+
+interface StationGame {
+  id: string;
+  title: string;
+  genre: string | null;
+  coverImage: string | null;
+  maxPlayers: number;
+  isFeatured?: boolean;
+  description?: string | null;
+}
 
 interface Station {
   id: string;
@@ -37,6 +49,7 @@ interface Station {
   specs: string;
   capacity: number;
   status: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'DEACTIVATED';
+  games?: StationGame[];
   activeSession?: {
     id: string;
     bookingId: string;
@@ -75,6 +88,11 @@ export default function StaffStationGridPage() {
   const [selectedWalkInStationId, setSelectedWalkInStationId] = useState<string | undefined>(undefined);
   const [extendModalStation, setExtendModalStation] = useState<Station | null>(null);
   const [endSessionTarget, setEndSessionTarget] = useState<EndSessionTarget | null>(null);
+
+  // Station Games Modal state
+  const [selectedStationForGames, setSelectedStationForGames] = useState<Station | null>(null);
+  const [gamesModalOpen, setGamesModalOpen] = useState(false);
+  const [stationGamesSearch, setStationGamesSearch] = useState('');
 
   // Live timer tick state
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -502,6 +520,34 @@ export default function StaffStationGridPage() {
                       <p className="text-[11px] text-ds-text-dim">Station locked from public booking.</p>
                     </div>
                   )}
+
+                  {/* Installed Games Button/Chip */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStationForGames(station);
+                        setStationGamesSearch('');
+                        setGamesModalOpen(true);
+                      }}
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-ds-dark/60 hover:bg-ds-accent/15 border border-ds-border hover:border-ds-accent/50 text-[11px] text-ds-text hover:text-ds-ice transition-all flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Gamepad2 className="w-3.5 h-3.5 text-ds-accent shrink-0" />
+                        <span className="font-heading font-bold uppercase text-[10px] text-ds-accent tracking-wider">
+                          Games ({station.games?.length || 0}):
+                        </span>
+                        <span className="text-ds-text-dim truncate text-[11px]">
+                          {station.games && station.games.length > 0
+                            ? station.games.slice(0, 2).map((g) => g.title).join(', ') + (station.games.length > 2 ? '...' : '')
+                            : 'Tap to inspect'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-ds-ice group-hover:text-ds-accent underline shrink-0 ml-1">
+                        View →
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Bottom Actions Strip */}
@@ -599,6 +645,122 @@ export default function StaffStationGridPage() {
         target={endSessionTarget}
         onSuccess={loadData}
       />
+
+      {/* Station Games Inspection Modal */}
+      <Modal
+        isOpen={gamesModalOpen}
+        onClose={() => {
+          setGamesModalOpen(false);
+          setSelectedStationForGames(null);
+        }}
+        title={`Installed Games: ${selectedStationForGames?.name || 'Station'}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-ds-dark/60 border border-ds-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono uppercase text-ds-accent font-bold tracking-wider">
+                  {selectedStationForGames?.facilityName}
+                </span>
+                <span className="text-xs text-ds-text-dim">•</span>
+                <span className="text-xs font-heading font-bold text-ds-ice">
+                  {selectedStationForGames?.stationType}
+                </span>
+              </div>
+              <p className="text-xs text-ds-text-muted mt-0.5">
+                {selectedStationForGames?.games?.length || 0} titles playable on this station.
+              </p>
+            </div>
+
+            <div className="relative w-full sm:w-56">
+              <Input
+                placeholder="Search games on console..."
+                value={stationGamesSearch}
+                onChange={(e) => setStationGamesSearch(e.target.value)}
+                className="text-xs py-1.5 pl-8"
+              />
+              <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-2.5 top-2.5" />
+            </div>
+          </div>
+
+          {/* Games List Grid */}
+          {(() => {
+            const list = (selectedStationForGames?.games || []).filter((g) =>
+              !stationGamesSearch ||
+              g.title.toLowerCase().includes(stationGamesSearch.toLowerCase()) ||
+              (g.genre && g.genre.toLowerCase().includes(stationGamesSearch.toLowerCase()))
+            );
+
+            if (list.length === 0) {
+              return (
+                <div className="p-8 text-center text-xs text-ds-text-dim border border-dashed border-ds-border rounded-xl">
+                  <Gamepad2 className="w-8 h-8 text-ds-accent/40 mx-auto mb-2" />
+                  <p>No games found matching your search.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1">
+                {list.map((game) => (
+                  <div
+                    key={game.id}
+                    className="p-3 rounded-xl bg-ds-dark/70 border border-ds-border hover:border-ds-accent/40 transition-colors flex gap-3 items-center"
+                  >
+                    <div className="w-14 h-16 rounded-lg bg-ds-surface overflow-hidden shrink-0 relative">
+                      {game.coverImage ? (
+                        <img
+                          src={game.coverImage}
+                          alt={game.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-ds-text-dim">
+                          <Gamepad2 className="w-6 h-6 opacity-30" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono uppercase text-ds-accent font-bold">
+                          {game.genre || 'Game'}
+                        </span>
+                        {game.isFeatured && (
+                          <span className="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono font-bold">
+                            HOT
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-heading font-bold text-xs text-ds-text truncate">
+                        {game.title}
+                      </h4>
+                      <p className="text-[10px] text-ds-text-dim flex items-center gap-1">
+                        <Users className="w-3 h-3 text-ds-accent" />
+                        <span>{game.maxPlayers === 1 ? 'Single Player' : `Up to ${game.maxPlayers} Players`}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div className="pt-2 flex justify-end border-t border-ds-border/60">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setGamesModalOpen(false);
+                setSelectedStationForGames(null);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

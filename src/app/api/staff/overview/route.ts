@@ -11,36 +11,42 @@ export async function GET(req: NextRequest) {
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-      // Fetch all active stations
-      const stations = await prisma.gamingStation.findMany({
-        where: { status: { not: 'DEACTIVATED' } },
-        include: {
-          facility: true,
-          sessions: {
-            where: { status: 'ACTIVE' },
-            include: {
-              booking: {
-                include: {
-                  user: { select: { firstName: true, lastName: true, phone: true } },
+      // Fetch all active stations and games concurrently
+      const [stations, allGames] = await Promise.all([
+        prisma.gamingStation.findMany({
+          where: { status: { not: 'DEACTIVATED' } },
+          include: {
+            facility: true,
+            sessions: {
+              where: { status: 'ACTIVE' },
+              include: {
+                booking: {
+                  include: {
+                    user: { select: { firstName: true, lastName: true, phone: true } },
+                  },
                 },
               },
+              take: 1,
             },
-            take: 1,
+            bookings: {
+              where: {
+                date: { gte: startOfDay, lte: endOfDay },
+                status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] },
+              },
+              orderBy: { startTime: 'asc' },
+              take: 3,
+              include: {
+                user: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
           },
-          bookings: {
-            where: {
-              date: { gte: startOfDay, lte: endOfDay },
-              status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] },
-            },
-            orderBy: { startTime: 'asc' },
-            take: 3,
-            include: {
-              user: { select: { firstName: true, lastName: true, phone: true } },
-            },
-          },
-        },
-        orderBy: [{ facilityId: 'asc' }, { displayOrder: 'asc' }],
-      });
+          orderBy: [{ facilityId: 'asc' }, { displayOrder: 'asc' }],
+        }),
+        prisma.game.findMany({
+          where: { isActive: true },
+          orderBy: [{ displayOrder: 'asc' }, { title: 'asc' }],
+        }).catch(() => []),
+      ]);
 
       if (stations.length > 0) {
         // Calculate overview stats
@@ -61,6 +67,27 @@ export async function GET(req: NextRequest) {
             availableCount++;
           }
 
+          // Filter games installed on this station
+          const stationGames = allGames.filter((g) => {
+            if (g.platform !== st.stationType) return false;
+            if (!g.stationIds) return true;
+            let ids: string[] = [];
+            if (Array.isArray(g.stationIds)) ids = g.stationIds as string[];
+            else if (typeof g.stationIds === 'string') {
+              try { ids = JSON.parse(g.stationIds); } catch { ids = [g.stationIds]; }
+            }
+            if (ids.length === 0) return true;
+            return ids.includes(st.id);
+          }).map((g) => ({
+            id: g.id,
+            title: g.title,
+            genre: g.genre,
+            coverImage: g.coverImage,
+            maxPlayers: g.maxPlayers,
+            isFeatured: g.isFeatured,
+            description: g.description,
+          }));
+
           return {
             id: st.id,
             name: st.name,
@@ -70,6 +97,7 @@ export async function GET(req: NextRequest) {
             specs: (st.metadata as any)?.specs || 'Ultra-low latency 4K 120Hz display',
             capacity: (st.metadata as any)?.capacity || (st.stationType === 'PS5' ? 2 : 4),
             status: computedStatus,
+            games: stationGames,
             activeSession: activeSession
               ? {
                   id: activeSession.id,

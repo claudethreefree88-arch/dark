@@ -21,6 +21,16 @@ import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+
+interface StationGameDetail {
+  id: string;
+  title: string;
+  genre: string | null;
+  coverImage: string | null;
+  maxPlayers: number;
+  isFeatured?: boolean;
+}
 
 interface Station {
   id: string;
@@ -31,6 +41,7 @@ interface Station {
   capacity: number;
   specs: string;
   games: string[];
+  gameDetails?: StationGameDetail[];
 }
 
 interface Facility {
@@ -44,6 +55,7 @@ export default function FacilitiesPage() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'PS5' | 'POOL_TABLE'>('ALL');
   const [loading, setLoading] = useState(true);
+  const [viewingStationGames, setViewingStationGames] = useState<Station | null>(null);
 
   useEffect(() => {
     async function fetchFacilities() {
@@ -196,21 +208,40 @@ export default function FacilitiesPage() {
                     </span>
                   </div>
 
-                  {/* Popular Games on this station */}
+                  {/* Installed Games on this station */}
                   {station.games && station.games.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-                        Featured Games:
-                      </p>
+                    <div className="space-y-1.5 pt-2 border-t border-ds-border/40">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
+                          <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
+                          <span>Installed Games ({station.games.length}):</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setViewingStationGames(station)}
+                          className="text-[10px] font-mono text-ds-ice hover:text-ds-accent underline"
+                        >
+                          View All →
+                        </button>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
                         {station.games.slice(0, 4).map((game) => (
                           <span
                             key={game}
-                            className="px-2 py-0.5 rounded text-[10px] font-medium bg-ds-border/50 text-ds-text-muted"
+                            className="px-2 py-0.5 rounded text-[10px] font-medium bg-ds-surface/80 border border-ds-border/60 text-ds-text"
                           >
                             {game}
                           </span>
                         ))}
+                        {station.games.length > 4 && (
+                          <button
+                            type="button"
+                            onClick={() => setViewingStationGames(station)}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/15 border border-ds-accent/40 text-ds-ice hover:bg-ds-accent/25 transition-colors"
+                          >
+                            +{station.games.length - 4} more
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -262,6 +293,92 @@ export default function FacilitiesPage() {
           </section>
         </div>
       </main>
+
+      {/* Station Games Inspection Modal */}
+      <Modal
+        isOpen={!!viewingStationGames}
+        onClose={() => setViewingStationGames(null)}
+        title={`Games Library: ${viewingStationGames?.name || 'Station'}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-ds-dark border border-ds-border">
+            <div>
+              <span className="text-xs font-mono uppercase text-ds-accent font-bold">
+                {viewingStationGames?.stationType === 'PS5' ? 'PlayStation 5 Console' : 'Championship Table'}
+              </span>
+              <p className="text-xs text-ds-text-muted mt-0.5">
+                {viewingStationGames?.games.length || 0} titles ready to play on this station.
+              </p>
+            </div>
+            <Link href={`/booking?stationId=${viewingStationGames?.id}`} onClick={() => setViewingStationGames(null)}>
+              <Button variant="accent" size="sm">
+                <span>Book This Station</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto pr-1">
+            {viewingStationGames?.gameDetails && viewingStationGames.gameDetails.length > 0 ? (
+              viewingStationGames.gameDetails.map((game) => (
+                <div
+                  key={game.id}
+                  className="p-3 rounded-xl bg-ds-dark/70 border border-ds-border hover:border-ds-accent/40 transition-colors flex gap-3 items-center"
+                >
+                  <div className="w-14 h-16 rounded-lg bg-ds-surface overflow-hidden shrink-0">
+                    {game.coverImage ? (
+                      <img src={game.coverImage} alt={game.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-ds-text-dim">
+                        <Gamepad2 className="w-6 h-6 opacity-30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono uppercase text-ds-accent font-bold">
+                        {game.genre || 'Game'}
+                      </span>
+                      {game.isFeatured && (
+                        <span className="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono font-bold">
+                          HOT
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-heading font-bold text-xs text-ds-text truncate">{game.title}</h4>
+                    <p className="text-[10px] text-ds-text-dim flex items-center gap-1">
+                      <Users className="w-3 h-3 text-ds-accent" />
+                      <span>{game.maxPlayers === 1 ? '1 Player' : `Up to ${game.maxPlayers} Players`}</span>
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              (viewingStationGames?.games || []).map((gameTitle, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-ds-dark/70 border border-ds-border flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-ds-accent/10 border border-ds-accent/30 flex items-center justify-center text-ds-accent shrink-0">
+                    <Gamepad2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-heading font-bold text-xs text-ds-text truncate">{gameTitle}</h4>
+                    <span className="text-[10px] font-mono text-emerald-400">Ready to play</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="pt-2 flex justify-end border-t border-ds-border/60">
+            <Button variant="outline" size="sm" onClick={() => setViewingStationGames(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Footer />
     </div>

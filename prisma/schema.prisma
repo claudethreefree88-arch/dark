@@ -644,3 +644,25 @@ model Membership {
   @@map("memberships")
 }
 
+/// Arena games catalog available across consoles and tables
+model Game {
+  id           String      @id @default(uuid())
+  title        String
+  slug         String      @unique
+  platform     StationType @default(PS5)
+  genre        String?
+  description  String?     @db.Text
+  coverImage   String?     @map("cover_image")
+  maxPlayers   Int         @default(2) @map("max_players")
+  stationIds   Json?       @map("station_ids") // Array of station IDs where installed, or null = all of platform
+  isFeatured   Boolean     @default(false) @map("is_featured")
+  isActive     Boolean     @default(true) @map("is_active")
+  displayOrder Int         @default(0) @map("display_order")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@index([platform])
+  @@index([isActive])
+  @@map("games")
+}
+

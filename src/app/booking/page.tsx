@@ -41,6 +41,8 @@ interface Station {
   specs: string;
   capacity: number;
   status: string;
+  games?: string[];
+  gameDetails?: any[];
 }
 
 interface TimeSlot {
@@ -134,6 +136,8 @@ function BookingContent() {
               specs: st.specs || 'High-performance battle station',
               capacity: st.capacity || (st.stationType === 'PS5' ? 2 : 4),
               status: st.status,
+              games: st.games || [],
+              gameDetails: st.gameDetails || [],
             });
           });
         });
@@ -597,6 +601,33 @@ function BookingContent() {
                                     : '3-4 players included · +₹50/extra player'}
                                 </p>
                               </div>
+
+                              {/* Available Games on Station */}
+                              {station.games && station.games.length > 0 && (
+                                <div className="pt-2 border-t border-ds-border/40 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
+                                      <Gamepad2 className="w-3 h-3 text-ds-accent" />
+                                      <span>Installed Games ({station.games.length}):</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {station.games.slice(0, 3).map((g: string, i: number) => (
+                                      <span
+                                        key={i}
+                                        className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
+                                      >
+                                        {g}
+                                      </span>
+                                    ))}
+                                    {station.games.length > 3 && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
+                                        +{station.games.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             <div className="mt-4 pt-3 flex justify-end">

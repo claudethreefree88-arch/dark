@@ -27,6 +27,7 @@ import {
   Menu,
   X,
   LogOut,
+  Disc3,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 
@@ -40,6 +41,7 @@ const navigation: NavItem[] = [
   { name: 'Executive Overview', href: '/admin', icon: LayoutDashboard },
   { name: 'Financial Reports', href: '/admin/reports', icon: BarChart3 },
   { name: 'Station Inventory', href: '/admin/stations', icon: Gamepad2 },
+  { name: 'Games Library', href: '/admin/games', icon: Disc3 },
   { name: 'All Bookings', href: '/admin/bookings', icon: Calendar },
   { name: 'Customer Directory', href: '/admin/customers', icon: Users },
   { name: 'Syndicate Passes', href: '/admin/memberships', icon: Sparkles },

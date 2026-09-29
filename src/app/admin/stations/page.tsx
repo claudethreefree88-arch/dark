@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -176,6 +177,13 @@ export default function AdminStationsPage() {
             <RotateCw className="w-4 h-4 mr-1.5" />
             <span>Refresh</span>
           </Button>
+
+          <Link href="/admin/games">
+            <Button variant="outline" size="sm" className="border-ds-accent/40 text-ds-ice hover:bg-ds-accent/10">
+              <Gamepad2 className="w-4 h-4 mr-1.5 text-ds-accent" />
+              <span>Games Library</span>
+            </Button>
+          </Link>
 
           <Button variant="accent" size="sm" onClick={openCreateModal}>
             <Plus className="w-4 h-4 mr-1.5" />

@@ -88,21 +88,42 @@ const DEFAULT_FACILITIES = [
 
 export async function GET() {
   try {
-    const facilities = await prisma.gamingFacility.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
-      include: {
-        stations: {
-          where: {
-            status: {
-              not: 'DEACTIVATED',
+    const [facilities, allGames] = await Promise.all([
+      prisma.gamingFacility.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: 'asc' },
+        include: {
+          stations: {
+            where: {
+              status: {
+                not: 'DEACTIVATED',
+              },
             },
           },
         },
-      },
-    });
+      }),
+      prisma.game.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: 'asc' },
+      }).catch(() => []),
+    ]);
 
     if (facilities && facilities.length > 0) {
+      // Helper to get games for a station
+      const getStationGames = (stId: string, stType: string) => {
+        return allGames.filter((g) => {
+          if (g.platform !== stType) return false;
+          if (!g.stationIds) return true;
+          let ids: string[] = [];
+          if (Array.isArray(g.stationIds)) ids = g.stationIds as string[];
+          else if (typeof g.stationIds === 'string') {
+            try { ids = JSON.parse(g.stationIds); } catch { ids = [g.stationIds]; }
+          }
+          if (ids.length === 0) return true;
+          return ids.includes(stId);
+        });
+      };
+
       // Standardize to exactly 3 PS5 stations and 3 Snooker tables as requested
       const standardized = facilities.map((fac) => {
         const isPs5 =
@@ -110,15 +131,23 @@ export async function GET() {
           (fac.slug && fac.slug.includes('ps5'));
 
         if (isPs5) {
-          const ps5Stations = fac.stations.slice(0, 3).map((st, idx) => ({
-            ...st,
-            name: `PS5 Station ${idx + 1}`,
-            stationType: 'PS5',
-            pricePerHourPaise: 15000,
-            capacity: 4,
-            specs:
-              'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
-          }));
+          const ps5Stations = fac.stations.slice(0, 3).map((st, idx) => {
+            const stGames = getStationGames(st.id, 'PS5');
+            const fallbackGames = ['EA FC 24', 'Tekken 8', 'Spider-Man 2', 'Mortal Kombat 1', 'Gran Turismo 7'];
+            const gameTitles = stGames.length > 0 ? stGames.map((g) => g.title) : fallbackGames;
+
+            return {
+              ...st,
+              name: `PS5 Station ${idx + 1}`,
+              stationType: 'PS5',
+              pricePerHourPaise: 15000,
+              capacity: 4,
+              specs:
+                'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
+              games: gameTitles,
+              gameDetails: stGames,
+            };
+          });
 
           return {
             ...fac,
@@ -128,15 +157,23 @@ export async function GET() {
             stations: ps5Stations,
           };
         } else {
-          const snookerStations = fac.stations.slice(0, 3).map((st, idx) => ({
-            ...st,
-            name: `Snooker Table ${idx + 1}`,
-            stationType: 'POOL_TABLE',
-            pricePerHourPaise: 25000,
-            capacity: 4,
-            specs:
-              'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
-          }));
+          const snookerStations = fac.stations.slice(0, 3).map((st, idx) => {
+            const stGames = getStationGames(st.id, 'POOL_TABLE');
+            const fallbackGames = ['Championship Snooker', 'American 8-Ball', 'English Pool'];
+            const gameTitles = stGames.length > 0 ? stGames.map((g) => g.title) : fallbackGames;
+
+            return {
+              ...st,
+              name: `Snooker Table ${idx + 1}`,
+              stationType: 'POOL_TABLE',
+              pricePerHourPaise: 25000,
+              capacity: 4,
+              specs:
+                'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
+              games: gameTitles,
+              gameDetails: stGames,
+            };
+          });
 
           return {
             ...fac,
