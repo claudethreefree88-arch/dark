@@ -76,7 +76,7 @@ function BookingContent() {
   // Stations State
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [facilityFilter, setFacilityFilter] = useState<string>('ALL');
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   // Date & Duration State
   const todayStr = new Date().toISOString().split('T')[0];
@@ -148,10 +148,9 @@ function BookingContent() {
           const matched = allStations.find((s) => s.id === preselectedStationId);
           if (matched) {
             setSelectedStation(matched);
+            setSelectedZone(matched.stationType);
             setCurrentStep(2);
           }
-        } else if (allStations.length > 0 && !selectedStation) {
-          setSelectedStation(allStations[0]);
         }
       } catch (err) {
         console.error('Failed to load stations:', err);
@@ -482,182 +481,324 @@ function BookingContent() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Main Form / Stepper Canvas */}
             <div className="lg:col-span-8 space-y-8">
-              {/* STEP 1: STATION SELECTION */}
+              {/* STEP 1: ARENA ZONE & STATION SELECTION */}
               {currentStep === 1 && (
                 <Card glass className="p-6 sm:p-8 border-ds-border space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ds-border pb-4">
-                    <div>
-                      <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                        1. Choose Your Station
-                      </h2>
-                      <p className="text-xs text-ds-text-muted mt-0.5">
-                        Select a PS5 station or snooker table for your session.
-                      </p>
-                    </div>
+                  {/* ─── STAGE 1: ONLY SHOW ARENA ZONE IMAGE CARDS INITIALLY ─── */}
+                  {!selectedZone ? (
+                    <div className="space-y-6">
+                      <div className="border-b border-ds-border pb-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-2">
+                          <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
+                          <span>Step 1: Choose Your Zone</span>
+                        </div>
+                        <h2 className="text-2xl font-heading font-black uppercase text-ds-text">
+                          Choose Your Gaming Zone
+                        </h2>
+                        <p className="text-xs sm:text-sm text-ds-text-muted mt-1">
+                          Tap an arena below to explore available gaming consoles and championship snooker tables.
+                        </p>
+                      </div>
 
-                    {/* Category Filter Pills */}
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'ALL', label: 'All' },
-                        { id: 'PS5', label: 'PS5' },
-                        { id: 'POOL_TABLE', label: 'Snooker' },
-                      ].map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => setFacilityFilter(cat.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-                            facilityFilter === cat.id
-                              ? 'bg-ds-accent text-white shadow-sm'
-                              : 'bg-ds-surface border border-ds-border text-ds-text-muted hover:text-white'
-                          }`}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 1. PlayStation 5 Arena Card */}
+                        <div
+                          onClick={() => {
+                            setSelectedZone('PS5');
+                            setSelectedStation(null);
+                          }}
+                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-ds-accent transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between"
                         >
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Zone Image Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    {(facilityFilter === 'ALL' || facilityFilter === 'PS5') && (
-                      <div className="relative rounded-xl overflow-hidden border border-ds-border/60 group">
-                        <Image
-                          src="/ps5-station.jpg"
-                          alt="PlayStation 5 Gaming Station"
-                          width={600}
-                          height={340}
-                          className="w-full h-40 sm:h-44 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-ds-dark/90 via-ds-dark/30 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-3">
-                          <h4 className="font-heading font-bold text-sm text-ds-text uppercase">PlayStation 5 Arena</h4>
-                          <p className="text-[11px] text-ds-text-muted mt-0.5">3 Stations · From ₹150/hr</p>
-                        </div>
-                      </div>
-                    )}
-                    {(facilityFilter === 'ALL' || facilityFilter === 'POOL_TABLE') && (
-                      <div className="relative rounded-xl overflow-hidden border border-ds-border/60 group">
-                        <Image
-                          src="/snooker-table.jpg"
-                          alt="Championship Snooker Table"
-                          width={600}
-                          height={340}
-                          className="w-full h-40 sm:h-44 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-ds-dark/90 via-ds-dark/30 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-3">
-                          <h4 className="font-heading font-bold text-sm text-ds-text uppercase">Snooker Lounge</h4>
-                          <p className="text-[11px] text-ds-text-muted mt-0.5">3 Tables · ₹250/hr per table</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stations Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {stations
-                      .filter((st) => facilityFilter === 'ALL' || st.stationType === facilityFilter)
-                      .map((station) => {
-                        const isSelected = selectedStation?.id === station.id;
-
-                        return (
-                          <div
-                            key={station.id}
-                            onClick={() => setSelectedStation(station)}
-                            className={`p-5 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
-                              isSelected
-                                ? 'bg-ds-surface border-ds-accent shadow-lg shadow-ds-accent/15 ring-1 ring-ds-accent'
-                                : 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
-                            }`}
-                          >
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent">
-                                  {station.facilityName}
-                                </span>
-                                <Badge
-                                  variant={station.status === 'AVAILABLE' ? 'success' : 'warning'}
-                                  size="sm"
-                                >
-                                  {station.status === 'AVAILABLE' ? '🟢 Ready' : '🟡 In Use'}
-                                </Badge>
-                              </div>
-
-                              <div>
-                                <h3 className="text-lg font-heading font-bold text-ds-text">{station.name}</h3>
-                                <p className="text-xs text-ds-text-muted line-clamp-2 mt-1">{station.specs}</p>
-                              </div>
-
-                              <div className="flex flex-col gap-1 text-xs text-ds-text-dim pt-2 border-t border-ds-border/40">
-                                <div className="flex items-center justify-between">
-                                  <span>{station.capacity} Max Players</span>
-                                  <span className="text-ds-ice font-bold">
-                                    {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr (Table)'}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-ds-text-muted">
-                                  {station.stationType === 'PS5'
-                                    ? 'Single: ₹150 · Duo: ₹200 · Squad (3-4): ₹250'
-                                    : '3-4 players included · +₹50/extra player'}
-                                </p>
-                              </div>
-
-                              {/* Available Games on Station */}
-                              {station.games && station.games.length > 0 && (
-                                <div className="pt-2 border-t border-ds-border/40 space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
-                                      <Gamepad2 className="w-3 h-3 text-ds-accent" />
-                                      <span>Installed Games ({station.games.length}):</span>
-                                    </span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {station.games.slice(0, 3).map((g: string, i: number) => (
-                                      <span
-                                        key={i}
-                                        className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
-                                      >
-                                        {g}
-                                      </span>
-                                    ))}
-                                    {station.games.length > 3 && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
-                                        +{station.games.length - 3} more
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="mt-4 pt-3 flex justify-end">
-                              <span
-                                className={`text-xs font-semibold inline-flex items-center gap-1 ${
-                                  isSelected ? 'text-ds-ice' : 'text-ds-text-dim'
-                                }`}
-                              >
-                                {isSelected ? 'Selected ✓' : 'Click to Select'}
+                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                            <Image
+                              src="/ps5-station.jpg"
+                              alt="PlayStation 5 Gaming Station"
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              priority
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                            <div className="absolute top-3 right-3">
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                                {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
                               </span>
                             </div>
                           </div>
-                        );
-                      })}
-                  </div>
 
-                  <div className="flex justify-end pt-4 border-t border-ds-border">
-                    <Button
-                      variant="accent"
-                      onClick={() => {
-                        if (selectedStation) setCurrentStep(2);
-                        else toast.error('Please select a station to proceed');
-                      }}
-                      disabled={!selectedStation}
-                      className="px-6"
-                    >
-                      <span>Continue to Date & Slot</span>
-                      <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Button>
-                  </div>
+                          <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-2xl">🎮</span>
+                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
+                                  PlayStation 5 Arena
+                                </h3>
+                              </div>
+                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                                From ₹150/hr
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-ds-text-muted leading-relaxed">
+                              Sony PS5 4K 120Hz OLED displays, DualSense wireless controllers, and top titles (FC 24, Tekken 8, Spider-Man 2, GTA V).
+                            </p>
+
+                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                              <span className="text-[11px] font-mono text-ds-text-dim">Single, Duo & Squad</span>
+                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
+                                <span>Explore PS5 Consoles</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Snooker Lounge Card */}
+                        <div
+                          onClick={() => {
+                            setSelectedZone('POOL_TABLE');
+                            setSelectedStation(null);
+                          }}
+                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-emerald-500 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between"
+                        >
+                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                            <Image
+                              src="/snooker-table.jpg"
+                              alt="Championship Snooker Table"
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              priority
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                            <div className="absolute top-3 right-3">
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                                {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-2xl">🎱</span>
+                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-emerald-400 transition-colors">
+                                  Snooker Lounge
+                                </h3>
+                              </div>
+                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                                ₹250/hr (Table)
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-ds-text-muted leading-relaxed">
+                              Full-size championship English snooker tables, shadowless canopy lighting, premium Ashwood cues & tournament Aramith balls.
+                            </p>
+
+                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                              <span className="text-[11px] font-mono text-ds-text-dim">Up to 4 Players Included</span>
+                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
+                                <span>Explore Snooker Tables</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ─── STAGE 2: DISPLAY SPECIFIC STATIONS ONCE ZONE IS CLICKED ─── */
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ds-border pb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedZone(null);
+                                setSelectedStation(null);
+                              }}
+                              className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border hover:border-ds-accent transition-colors"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                              <span>All Arenas</span>
+                            </button>
+                            <span className="text-ds-text-dim">•</span>
+                            <span className="text-xs font-mono uppercase text-ds-accent font-bold">
+                              {selectedZone === 'PS5' ? 'PlayStation 5' : 'Snooker & Pool'}
+                            </span>
+                          </div>
+                          <h2 className="text-xl font-heading font-black uppercase text-ds-text">
+                            {selectedZone === 'PS5'
+                              ? 'Choose Your PlayStation 5 Station'
+                              : 'Choose Your Snooker Table'}
+                          </h2>
+                          <p className="text-xs text-ds-text-muted mt-0.5">
+                            Click a station to select it for your session.
+                          </p>
+                        </div>
+
+                        {/* Quick Zone Toggle Pills */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedZone('PS5');
+                              setSelectedStation(null);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
+                              selectedZone === 'PS5'
+                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
+                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
+                            }`}
+                          >
+                            <span>🎮</span>
+                            <span>PS5 Arena</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedZone('POOL_TABLE');
+                              setSelectedStation(null);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
+                              selectedZone === 'POOL_TABLE'
+                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
+                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
+                            }`}
+                          >
+                            <span>🎱</span>
+                            <span>Snooker</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Stations Grid for Selected Zone */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {stations
+                          .filter((st) => st.stationType === selectedZone)
+                          .map((station) => {
+                            const isSelected = selectedStation?.id === station.id;
+                            const isAvailable = station.status === 'AVAILABLE';
+
+                            return (
+                              <div
+                                key={station.id}
+                                onClick={() => {
+                                  if (isAvailable) {
+                                    setSelectedStation(station);
+                                  } else {
+                                    toast.error(`${station.name} is currently occupied`);
+                                  }
+                                }}
+                                className={`p-5 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                                  isSelected
+                                    ? 'bg-ds-surface border-ds-accent shadow-lg shadow-ds-accent/15 ring-2 ring-ds-accent'
+                                    : isAvailable
+                                    ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
+                                    : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent">
+                                      {station.facilityName}
+                                    </span>
+                                    <Badge
+                                      variant={isAvailable ? 'success' : 'warning'}
+                                      size="sm"
+                                    >
+                                      {isAvailable ? '🟢 Ready' : '🟡 In Use'}
+                                    </Badge>
+                                  </div>
+
+                                  <div>
+                                    <h3 className="text-lg font-heading font-bold text-ds-text">{station.name}</h3>
+                                    <p className="text-xs text-ds-text-muted line-clamp-2 mt-1">{station.specs}</p>
+                                  </div>
+
+                                  <div className="flex flex-col gap-1 text-xs text-ds-text-dim pt-2 border-t border-ds-border/40">
+                                    <div className="flex items-center justify-between">
+                                      <span>{station.capacity} Max Players</span>
+                                      <span className="text-ds-ice font-bold">
+                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr (Table)'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-ds-text-muted">
+                                      {station.stationType === 'PS5'
+                                        ? 'Single: ₹150 · Duo: ₹200 · Squad (3-4): ₹250'
+                                        : '3-4 players included · +₹50/extra player'}
+                                    </p>
+                                  </div>
+
+                                  {/* Available Games on Station (Consoles only) */}
+                                  {station.games && station.games.length > 0 && (
+                                    <div className="pt-2 border-t border-ds-border/40 space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
+                                          <Gamepad2 className="w-3 h-3 text-ds-accent" />
+                                          <span>Installed Games ({station.games.length}):</span>
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {station.games.slice(0, 3).map((g: string, i: number) => (
+                                          <span
+                                            key={i}
+                                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
+                                          >
+                                            {g}
+                                          </span>
+                                        ))}
+                                        {station.games.length > 3 && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
+                                            +{station.games.length - 3} more
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="mt-4 pt-3 flex justify-end border-t border-ds-border/30">
+                                  <span
+                                    className={`text-xs font-semibold inline-flex items-center gap-1 ${
+                                      isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
+                                    }`}
+                                  >
+                                    {isSelected ? 'Selected ✓' : 'Click to Select'}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Bottom Navigation */}
+                      <div className="flex justify-between items-center pt-4 border-t border-ds-border">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedZone(null);
+                            setSelectedStation(null);
+                          }}
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-1.5" />
+                          <span>Change Arena</span>
+                        </Button>
+
+                        <Button
+                          variant="accent"
+                          onClick={() => {
+                            if (selectedStation) setCurrentStep(2);
+                            else toast.error('Please select a station or table to continue');
+                          }}
+                          disabled={!selectedStation}
+                          className="px-6"
+                        >
+                          <span>Continue to Date & Slot</span>
+                          <ArrowRight className="w-4 h-4 ml-1.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               )}
 
@@ -1130,9 +1271,11 @@ function BookingContent() {
                     <div>
                       <p className="text-[10px] uppercase font-bold text-ds-accent">Station</p>
                       <p className="font-heading font-bold text-sm text-ds-text">
-                        {selectedStation?.name || 'No Station Selected'}
+                        {selectedStation?.name || (selectedZone ? 'Choose a station on left' : 'Select a zone to begin')}
                       </p>
-                      <p className="text-ds-text-dim text-[11px]">{selectedStation?.facilityName}</p>
+                      <p className="text-ds-text-dim text-[11px]">
+                        {selectedStation?.facilityName || (selectedZone ? (selectedZone === 'PS5' ? 'PlayStation 5 Arena' : 'Snooker Lounge') : 'No Arena Selected')}
+                      </p>
                     </div>
                     <Gamepad2 className="w-5 h-5 text-ds-ice mt-1" />
                   </div>
