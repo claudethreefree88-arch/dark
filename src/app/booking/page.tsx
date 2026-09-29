@@ -29,6 +29,8 @@ import {
   Info,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Banknote,
   QrCode,
 } from 'lucide-react';
@@ -73,8 +75,10 @@ function BookingContent() {
 
   // Wizard Step (1: Station, 2: Date & Time, 3: Gamer Info, 4: Payment)
   const [currentStep, setCurrentStep] = useState<number>(preselectedStationId ? 2 : 1);
+  const [isSummaryOpen, setIsSummaryOpen] = useState<boolean>(false);
 
   const goToStep = (step: number) => {
+    setIsSummaryOpen(false);
     setCurrentStep(step);
     if (typeof window !== 'undefined') {
       setTimeout(() => {
@@ -444,11 +448,71 @@ function BookingContent() {
     }
   };
 
+  // Mobile Sticky Navigation Handlers
+  const isMobileBackDisabled = (currentStep === 1 && !selectedZone) || submitting;
+
+  const handleMobileBack = () => {
+    setIsSummaryOpen(false);
+    if (currentStep === 1) {
+      if (selectedZone) {
+        setSelectedZone(null);
+        setSelectedStation(null);
+      }
+      return;
+    }
+    goToStep(currentStep - 1);
+  };
+
+  const handleMobileContinue = () => {
+    setIsSummaryOpen(false);
+    if (currentStep === 1) {
+      if (!selectedStation) {
+        toast.error('Please choose a gaming station or table to continue');
+        return;
+      }
+      goToStep(2);
+      return;
+    }
+    if (currentStep === 2) {
+      if (!selectedSlot) {
+        toast.error('Please pick an available time slot');
+        return;
+      }
+      goToStep(3);
+      return;
+    }
+    if (currentStep === 3) {
+      if (!customerName.trim() || !customerPhone.trim()) {
+        toast.error('Please enter your full name and phone number');
+        return;
+      }
+      goToStep(4);
+      return;
+    }
+    if (currentStep === 4) {
+      handleConfirmBooking();
+      return;
+    }
+  };
+
+  const getMobileContinueText = () => {
+    if (submitting) return 'Processing...';
+    if (currentStep === 1) return 'Continue';
+    if (currentStep === 2) return 'Continue';
+    if (currentStep === 3) return 'Proceed to Checkout';
+    if (currentStep === 4) {
+      return paymentOption === 'ONLINE'
+        ? `Pay ₹${(finalPricePaise / 100).toFixed(0)}`
+        : 'Reserve Desk';
+    }
+    return 'Continue';
+  };
+
   return (
     <div className="min-h-screen bg-ds-darker text-ds-text flex flex-col selection:bg-ds-accent selection:text-white">
       <Navbar />
 
-      <main className="flex-1 pt-24 sm:pt-32 pb-16">
+      <main className="flex-1 pt-24 sm:pt-32 pb-36 lg:pb-16">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           {/* Header Banner */}
           <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-10 px-2">
@@ -729,7 +793,7 @@ function BookingContent() {
                                 }}
                                 className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
                                   isSelected
-                                    ? 'bg-ds-surface border-ds-accent shadow-lg shadow-ds-accent/20 ring-2 ring-ds-accent'
+                                    ? 'bg-ds-surface border-amber-500/80 shadow-xl shadow-amber-500/15 ring-2 ring-amber-500/80'
                                     : isAvailable
                                     ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
                                     : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
@@ -750,11 +814,19 @@ function BookingContent() {
                                       <Badge
                                         variant={isAvailable ? 'success' : 'warning'}
                                         size="sm"
-                                        className="backdrop-blur-md shadow-md"
+                                        className="backdrop-blur-md shadow-md text-[10px]"
                                       >
                                         {isAvailable ? '🟢 Ready' : '🟡 In Use'}
                                       </Badge>
                                     </div>
+
+                                    {/* Top-Right Circular Checkmark Badge when Selected (matching reference) */}
+                                    {isSelected && (
+                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-amber-500 text-black font-black text-xs flex items-center justify-center shadow-lg shadow-amber-500/40 z-10 animate-in zoom-in-75">
+                                        ✓
+                                      </div>
+                                    )}
+
                                     <div className="absolute bottom-2 left-2.5 flex items-center gap-1 text-[10px] text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10 font-mono">
                                       <span>{station.capacity} Max Players</span>
                                     </div>
@@ -834,7 +906,7 @@ function BookingContent() {
                           </div>
                         )}
 
-                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                        <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
                           <Button
                             variant="outline"
                             size="sm"
@@ -845,8 +917,7 @@ function BookingContent() {
                             className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                           >
                             <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                            <span className="sm:hidden">Change</span>
-                            <span className="hidden sm:inline">Change Arena</span>
+                            <span>Change Arena</span>
                           </Button>
 
                           <Button
@@ -859,8 +930,7 @@ function BookingContent() {
                             disabled={!selectedStation}
                             className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                           >
-                            <span className="sm:hidden">Continue</span>
-                            <span className="hidden sm:inline">Continue to Date & Slot</span>
+                            <span>Continue to Date & Slot</span>
                             <ArrowRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
                         </div>
@@ -1139,7 +1209,7 @@ function BookingContent() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                    <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
                       <Button
                         variant="outline"
                         size="sm"
@@ -1147,8 +1217,7 @@ function BookingContent() {
                         className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                       >
                         <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                        <span className="sm:hidden">Stations</span>
-                        <span className="hidden sm:inline">Back to Stations</span>
+                        <span>Back to Stations</span>
                       </Button>
 
                       <Button
@@ -1161,8 +1230,7 @@ function BookingContent() {
                         disabled={!selectedSlot}
                         className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                       >
-                        <span className="sm:hidden">Continue</span>
-                        <span className="hidden sm:inline">Proceed to Gamer Info</span>
+                        <span>Proceed to Gamer Info</span>
                         <ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Button>
                     </div>
@@ -1266,7 +1334,7 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
+                  <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1274,8 +1342,7 @@ function BookingContent() {
                       className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span className="sm:hidden">Back</span>
-                      <span className="hidden sm:inline">Back to Date & Slot</span>
+                      <span>Back to Date & Slot</span>
                     </Button>
 
                     <Button
@@ -1290,8 +1357,7 @@ function BookingContent() {
                       }}
                       className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                     >
-                      <span className="sm:hidden">Checkout</span>
-                      <span className="hidden sm:inline">Proceed to Checkout</span>
+                      <span>Proceed to Checkout</span>
                       <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
@@ -1404,7 +1470,7 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
+                  <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1413,8 +1479,7 @@ function BookingContent() {
                       className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span className="sm:hidden">Back</span>
-                      <span className="hidden sm:inline">Back to Gamer Info</span>
+                      <span>Back to Gamer Info</span>
                     </Button>
 
                     <Button
@@ -1431,10 +1496,7 @@ function BookingContent() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="sm:hidden">
-                            {paymentOption === 'ONLINE' ? `Pay ₹${(finalPricePaise / 100).toFixed(0)}` : 'Reserve Desk'}
-                          </span>
-                          <span className="hidden sm:inline">
+                          <span>
                             {paymentOption === 'ONLINE' ? 'Pay & Confirm Pass' : 'Reserve & Pay at Desk'}
                           </span>
                           <ArrowRight className="w-3.5 h-3.5 ml-1" />
@@ -1446,8 +1508,8 @@ function BookingContent() {
               )}
             </div>
 
-            {/* Right Booking Receipt / Summary Sticky Card */}
-            <div className="lg:col-span-4 space-y-6">
+            {/* Right Booking Receipt / Summary Sticky Card (Desktop Only) */}
+            <div className="hidden lg:block lg:col-span-4 space-y-6">
               <Card glass className="p-4 sm:p-6 border-ds-border lg:sticky lg:top-24 space-y-5 sm:space-y-6">
                 <div className="flex items-center justify-between border-b border-ds-border pb-4">
                   <h3 className="text-lg font-heading font-bold uppercase text-ds-text">Order Summary</h3>
@@ -1604,6 +1666,256 @@ function BookingContent() {
                   </div>
                 </div>
               </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── MOBILE STICKY CHECKOUT BAR & EXPANDABLE DRAWER (lg:hidden) ─── */}
+        <div className="lg:hidden">
+          {/* Backdrop Overlay when Summary is Open */}
+          {isSummaryOpen && (
+            <div
+              onClick={() => setIsSummaryOpen(false)}
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 transition-opacity animate-in fade-in duration-200"
+            />
+          )}
+
+          {/* Floating Bottom Drawer & Bar */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F17]/95 backdrop-blur-2xl border-t border-ds-border shadow-[0_-12px_40px_rgba(0,0,0,0.85)] px-4 pt-2.5 pb-3">
+            <div className="max-w-md mx-auto">
+              {/* Top Pull Handle / Tap Indicator */}
+              <div
+                onClick={() => setIsSummaryOpen((prev) => !prev)}
+                className="w-12 h-1 bg-ds-border-light/60 hover:bg-ds-accent/80 rounded-full mx-auto mb-2 cursor-pointer transition-colors"
+              />
+
+              {/* EXPANDED SUMMARY SHEET CONTENT */}
+              {isSummaryOpen && (
+                <div className="border-b border-ds-border/80 pb-3 mb-3 max-h-[55vh] overflow-y-auto space-y-3 animate-in slide-in-from-bottom-4 duration-200">
+                  <div className="flex items-center justify-between text-xs border-b border-ds-border/40 pb-2">
+                    <span className="font-heading font-bold uppercase tracking-wider text-ds-ice text-[11px]">
+                      Booking Details
+                    </span>
+                    <button
+                      onClick={() => setIsSummaryOpen(false)}
+                      className="text-[10px] text-ds-text-dim hover:text-white"
+                    >
+                      Close ✕
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {/* 1. Experience */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Experience</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          {selectedZone === 'PS5' ? 'PlayStation 5' : selectedZone === 'POOL_TABLE' ? 'Snooker Lounge' : 'Arena Selection'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 2. Station */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Station</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          {selectedStation?.name || 'Not Chosen Yet'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3. Date */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Date</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          {selectedDate
+                            ? new Date(selectedDate).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : 'Today'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 4. Slot Window */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Time Slot</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          {selectedSlot ? selectedSlot.label : `${durationMinutes / 60} Hour Session`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 5. Players */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Players</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          {selectedStation?.stationType === 'PS5'
+                            ? playerCount === 1
+                              ? 'Single Player (1P)'
+                              : playerCount === 2
+                              ? 'Duo (2P)'
+                              : `${playerCount} Players`
+                            : `${playerCount} Players`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 6. Hourly Rate */}
+                    <div className="flex items-start gap-2 p-2.5 rounded-xl bg-ds-surface-2/70 border border-ds-border/60">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase font-mono text-ds-text-dim">Rate Tier</p>
+                        <p className="font-heading font-bold text-ds-text truncate">
+                          ₹{(hourlyRatePaise / 100).toFixed(0)}/hr
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Promo Code Section in Drawer */}
+                  <div className="space-y-1.5 pt-1">
+                    {appliedCoupon ? (
+                      <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-emerald-400">{appliedCoupon.code}</span>
+                          <p className="text-[10px] text-emerald-300/80">{appliedCoupon.description}</p>
+                        </div>
+                        <button
+                          onClick={handleRemoveCoupon}
+                          className="text-rose-400 hover:underline text-[11px] font-semibold"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1.5">
+                        <Input
+                          placeholder="ENTER PROMO CODE"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          className="text-xs uppercase font-mono h-8"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleApplyCoupon()}
+                          disabled={couponLoading}
+                          className="text-xs h-8 px-3"
+                        >
+                          {couponLoading ? '...' : 'Apply'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Price Breakdown in Drawer */}
+                  <div className="p-2.5 rounded-xl bg-ds-darker/60 border border-ds-border/50 space-y-1 text-[11px]">
+                    <div className="flex justify-between text-ds-text-dim">
+                      <span>Base Hourly ({hours}h × ₹{(hourlyRatePaise / 100).toFixed(0)})</span>
+                      <span className="font-mono text-ds-text">₹{(subtotalPaise / 100).toFixed(0)}</span>
+                    </div>
+                    {multiHourDiscountPaise > 0 && (
+                      <div className="flex justify-between text-emerald-400">
+                        <span>Multi-Hour Deal (10% off)</span>
+                        <span className="font-mono">-₹{(multiHourDiscountPaise / 100).toFixed(0)}</span>
+                      </div>
+                    )}
+                    {couponDiscountPaise > 0 && (
+                      <div className="flex justify-between text-emerald-400">
+                        <span>Coupon Discount</span>
+                        <span className="font-mono">-₹{(couponDiscountPaise / 100).toFixed(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-ds-text-dim text-[10px] pt-1 border-t border-ds-border/40">
+                      <span>Taxes & Hardware Amenities</span>
+                      <span className="text-emerald-400 font-semibold">Included</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TOP ROW: Estimated Total & Summary Accordion */}
+              <div className="flex items-center justify-between pb-2.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] uppercase tracking-wider text-ds-text-dim font-mono">
+                    Estimated total
+                  </span>
+                  <span className="text-2xl font-heading font-black text-ds-text tracking-tight">
+                    ₹{(finalPricePaise / 100).toFixed(0)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSummaryOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white transition-colors py-1.5 px-3 rounded-lg bg-ds-surface hover:bg-ds-surface-2 border border-ds-border/70 shadow-sm"
+                >
+                  <span>Summary</span>
+                  {isSummaryOpen ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-ds-accent transition-transform" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-ds-accent transition-transform" />
+                  )}
+                </button>
+              </div>
+
+              {/* BOTTOM ROW: [ < ] Back + [ Continue > ] Primary Button */}
+              <div className="flex items-center gap-2.5 pb-1">
+                {/* Square Back Button */}
+                <button
+                  type="button"
+                  onClick={handleMobileBack}
+                  disabled={isMobileBackDisabled}
+                  aria-label="Previous step"
+                  className="w-12 h-12 rounded-xl bg-ds-surface border border-ds-border hover:border-ds-accent/60 flex items-center justify-center text-ds-text hover:text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                >
+                  <ChevronLeft className="w-5 h-5 text-ds-text" />
+                </button>
+
+                {/* Wide Primary Action Button */}
+                <button
+                  type="button"
+                  onClick={handleMobileContinue}
+                  disabled={submitting}
+                  className="h-12 flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-heading font-black text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <span>{getMobileContinueText()}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
