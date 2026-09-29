@@ -23,7 +23,7 @@ const sizeStyles: Record<string, string> = {
   md: 'max-w-lg',
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
-  full: 'max-w-[90vw] max-h-[90vh]',
+  full: 'w-full max-w-[96vw] h-[92vh] flex flex-col',
 };
 
 export function Modal({
@@ -114,7 +114,14 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
+        <div
+          className={cn(
+            'p-6 overflow-y-auto',
+            size === 'full' ? 'flex-1 max-h-[calc(92vh-80px)]' : 'max-h-[70vh]'
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
