@@ -826,37 +826,42 @@ function BookingContent() {
                       </div>
 
                       {/* Bottom Navigation */}
-                      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-5 border-t border-ds-border mt-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedZone(null);
-                            setSelectedStation(null);
-                          }}
-                          className="w-full sm:w-auto"
-                        >
-                          <ArrowLeft className="w-4 h-4 mr-1.5" />
-                          <span>Change Arena</span>
-                        </Button>
+                      <div className="space-y-3 pt-4 border-t border-ds-border mt-2">
+                        {selectedStation && (
+                          <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                            <span className="text-[10px] text-ds-text-dim uppercase font-mono">Selected Station</span>
+                            <span className="text-xs font-bold text-ds-ice font-heading truncate max-w-[200px]">{selectedStation.name}</span>
+                          </div>
+                        )}
 
-                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-                          {selectedStation && (
-                            <div className="text-left sm:text-right">
-                              <span className="text-[10px] text-ds-text-dim uppercase font-mono block">Selected</span>
-                              <span className="text-xs font-bold text-ds-ice font-heading">{selectedStation.name}</span>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedZone(null);
+                              setSelectedStation(null);
+                            }}
+                            className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                            <span className="sm:hidden">Change</span>
+                            <span className="hidden sm:inline">Change Arena</span>
+                          </Button>
+
                           <Button
                             variant="accent"
+                            size="sm"
                             onClick={() => {
                               if (selectedStation) goToStep(2);
                               else toast.error('Please select a station or table to continue');
                             }}
                             disabled={!selectedStation}
-                            className="flex-1 sm:flex-initial sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
+                            className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                           >
-                            <span>Continue to Date & Slot</span>
-                            <ArrowRight className="w-4 h-4 ml-1.5" />
+                            <span className="sm:hidden">Continue</span>
+                            <span className="hidden sm:inline">Continue to Date & Slot</span>
+                            <ArrowRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
                         </div>
                       </div>
@@ -1126,34 +1131,39 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
-                    <Button
-                      variant="outline"
-                      onClick={() => goToStep(1)}
-                      className="w-full sm:w-auto"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      <span>Back to Stations</span>
-                    </Button>
+                  <div className="space-y-3 pt-4 border-t border-ds-border">
+                    {selectedSlot && (
+                      <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                        <span className="text-[10px] text-ds-text-dim uppercase font-mono">Selected Slot</span>
+                        <span className="text-xs font-bold text-ds-ice font-heading">{selectedSlot.label}</span>
+                      </div>
+                    )}
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-                      {selectedSlot && (
-                        <div className="text-left sm:text-right">
-                          <span className="text-[10px] text-ds-text-dim uppercase font-mono block">Selected Time</span>
-                          <span className="text-xs font-bold text-ds-ice font-heading">{selectedSlot.label}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToStep(1)}
+                        className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                        <span className="sm:hidden">Stations</span>
+                        <span className="hidden sm:inline">Back to Stations</span>
+                      </Button>
+
                       <Button
                         variant="accent"
+                        size="sm"
                         onClick={() => {
                           if (selectedSlot) goToStep(3);
                           else toast.error('Please pick an available time slot');
                         }}
                         disabled={!selectedSlot}
-                        className="flex-1 sm:flex-initial sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
+                        className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                       >
-                        <span>Proceed to Gamer Info</span>
-                        <ArrowRight className="w-4 h-4 ml-1.5" />
+                        <span className="sm:hidden">Continue</span>
+                        <span className="hidden sm:inline">Proceed to Gamer Info</span>
+                        <ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Button>
                     </div>
                   </div>
@@ -1256,18 +1266,21 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
+                  <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => goToStep(2)}
-                      className="w-full sm:w-auto"
+                      className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      <span>Back to Date & Slot</span>
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span className="sm:hidden">Back</span>
+                      <span className="hidden sm:inline">Back to Date & Slot</span>
                     </Button>
 
                     <Button
                       variant="accent"
+                      size="sm"
                       onClick={() => {
                         if (!customerName || !customerPhone) {
                           toast.error('Please enter your full name and phone number');
@@ -1275,10 +1288,11 @@ function BookingContent() {
                         }
                         goToStep(4);
                       }}
-                      className="w-full sm:w-auto px-6 py-2.5 shadow-lg shadow-ds-accent/20"
+                      className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                     >
-                      <span>Proceed to Checkout</span>
-                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                      <span className="sm:hidden">Checkout</span>
+                      <span className="hidden sm:inline">Proceed to Checkout</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
                 </Card>
@@ -1390,32 +1404,40 @@ function BookingContent() {
                   </div>
 
                   {/* Bottom Navigation */}
-                  <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-ds-border">
+                  <div className="flex items-center gap-2 sm:gap-3 w-full sm:justify-between pt-4 border-t border-ds-border">
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => goToStep(3)}
                       disabled={submitting}
-                      className="w-full sm:w-auto"
+                      className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
-                      <ArrowLeft className="w-4 h-4 mr-1.5" />
-                      <span>Back to Gamer Info</span>
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                      <span className="sm:hidden">Back</span>
+                      <span className="hidden sm:inline">Back to Gamer Info</span>
                     </Button>
 
                     <Button
                       variant="accent"
+                      size="sm"
                       onClick={handleConfirmBooking}
                       disabled={submitting}
-                      className="w-full sm:w-auto px-8 py-3 text-base shadow-lg shadow-ds-accent/25"
+                      className="flex-[1.8] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-6 shadow-md shadow-ds-accent/25"
                     >
                       {submitting ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Issuing Your Pass...</span>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Issuing Pass...</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span>{paymentOption === 'ONLINE' ? 'Pay & Confirm Pass' : 'Reserve & Pay at Desk'}</span>
-                          <ArrowRight className="w-5 h-5 ml-1" />
+                        <div className="flex items-center gap-1.5">
+                          <span className="sm:hidden">
+                            {paymentOption === 'ONLINE' ? `Pay ₹${(finalPricePaise / 100).toFixed(0)}` : 'Reserve Desk'}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {paymentOption === 'ONLINE' ? 'Pay & Confirm Pass' : 'Reserve & Pay at Desk'}
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 ml-1" />
                         </div>
                       )}
                     </Button>
