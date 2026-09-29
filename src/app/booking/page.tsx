@@ -640,10 +640,6 @@ function BookingContent() {
                               </span>
                             </div>
 
-                            <p className="text-xs text-ds-text-muted leading-relaxed">
-                              Sony PS5 4K 120Hz OLED displays, DualSense wireless controllers, and top titles (FC 24, Tekken 8, Spider-Man 2, GTA V).
-                            </p>
-
                             <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
                               <span className="text-[11px] font-mono text-ds-text-dim">Single, Duo & Squad</span>
                               <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
@@ -690,10 +686,6 @@ function BookingContent() {
                                 ₹250/hr (Table)
                               </span>
                             </div>
-
-                            <p className="text-xs text-ds-text-muted leading-relaxed">
-                              Full-size championship English snooker tables, shadowless canopy lighting, premium Ashwood cues & tournament Aramith balls.
-                            </p>
 
                             <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
                               <span className="text-[11px] font-mono text-ds-text-dim">Up to 4 Players Included</span>
@@ -1887,25 +1879,26 @@ function BookingContent() {
                 </button>
               </div>
 
-              {/* BOTTOM ROW: [ < ] Back + [ Continue > ] Primary Button */}
-              <div className="flex items-center gap-2 pb-0.5">
-                {/* Compact Square Back Button */}
+              {/* BOTTOM ROW: Back Button (30%) + Continue Button (70%) */}
+              <div className="flex items-center gap-2 pb-0.5 w-full">
+                {/* Back Button (30% width) */}
                 <button
                   type="button"
                   onClick={handleMobileBack}
                   disabled={isMobileBackDisabled}
                   aria-label="Previous step"
-                  className="w-10 h-10 rounded-lg bg-ds-surface border border-ds-border hover:border-ds-accent/60 flex items-center justify-center text-ds-text hover:text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                  className="w-[30%] shrink-0 h-10 rounded-lg bg-ds-surface border border-ds-border hover:border-ds-accent/60 flex items-center justify-center gap-1 text-xs font-heading font-bold text-ds-text hover:text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
                 >
                   <ChevronLeft className="w-4 h-4 text-ds-text" />
+                  <span>Back</span>
                 </button>
 
-                {/* Compact Primary Action Button matching App Theme */}
+                {/* Continue Action Button (70% width) */}
                 <button
                   type="button"
                   onClick={handleMobileContinue}
                   disabled={submitting}
-                  className="h-10 flex-1 rounded-lg bg-gradient-to-r from-ds-accent to-ds-ice hover:brightness-110 active:scale-[0.98] text-ds-darker font-heading font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-ds-accent/25 transition-all disabled:opacity-50"
+                  className="w-[70%] flex-1 h-10 rounded-lg bg-gradient-to-r from-ds-accent to-ds-ice hover:brightness-110 active:scale-[0.98] text-ds-darker font-heading font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-ds-accent/25 transition-all disabled:opacity-50"
                 >
                   {submitting ? (
                     <div className="flex items-center gap-1.5">
