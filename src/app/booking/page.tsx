@@ -234,7 +234,7 @@ function BookingContent() {
 
   // Calculate dynamic hourly rate based on station and player count
   const getHourlyRatePaise = () => {
-    if (!selectedStation) return 15000;
+    if (!selectedStation) return 0;
     const isPs5 =
       selectedStation.stationType === 'PS5' ||
       selectedStation.name.toUpperCase().includes('PS5');
@@ -260,16 +260,16 @@ function BookingContent() {
 
   const hourlyRatePaise = getHourlyRatePaise();
   const hours = durationMinutes / 60;
-  const subtotalPaise = Math.round(hourlyRatePaise * hours);
+  const subtotalPaise = selectedStation ? Math.round(hourlyRatePaise * hours) : 0;
 
   // Multi-hour discount: 3+ hours gives 10%
-  const multiHourDiscountPaise = durationMinutes >= 180 ? Math.round(subtotalPaise * 0.1) : 0;
+  const multiHourDiscountPaise = (selectedStation && durationMinutes >= 180) ? Math.round(subtotalPaise * 0.1) : 0;
 
   // Coupon discount
   const couponDiscountPaise = appliedCoupon ? appliedCoupon.discountPaise : 0;
 
   const totalDiscountPaise = multiHourDiscountPaise + couponDiscountPaise;
-  const finalPricePaise = Math.max(0, subtotalPaise - totalDiscountPaise);
+  const finalPricePaise = selectedStation ? Math.max(0, subtotalPaise - totalDiscountPaise) : 0;
 
   // Handle Coupon Apply
   const handleApplyCoupon = async (codeToApply?: string) => {
@@ -793,7 +793,7 @@ function BookingContent() {
                                 }}
                                 className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
                                   isSelected
-                                    ? 'bg-ds-surface border-amber-500/80 shadow-xl shadow-amber-500/15 ring-2 ring-amber-500/80'
+                                    ? 'bg-ds-surface border-ds-accent shadow-xl shadow-ds-accent/20 ring-2 ring-ds-accent'
                                     : isAvailable
                                     ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
                                     : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
@@ -820,9 +820,9 @@ function BookingContent() {
                                       </Badge>
                                     </div>
 
-                                    {/* Top-Right Circular Checkmark Badge when Selected (matching reference) */}
+                                    {/* Top-Right Circular Checkmark Badge when Selected (App Theme) */}
                                     {isSelected && (
-                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-amber-500 text-black font-black text-xs flex items-center justify-center shadow-lg shadow-amber-500/40 z-10 animate-in zoom-in-75">
+                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 z-10 animate-in zoom-in-75">
                                         ✓
                                       </div>
                                     )}
@@ -1631,9 +1631,11 @@ function BookingContent() {
                 <div className="space-y-2 pt-4 border-t border-ds-border text-xs">
                   <div className="flex justify-between text-ds-text-muted">
                     <span>
-                      Base Hourly Rate (₹{(hourlyRatePaise / 100).toFixed(0)} × {hours} hr)
+                      {selectedStation
+                        ? `Base Hourly Rate (₹${(hourlyRatePaise / 100).toFixed(0)} × ${hours} hr)`
+                        : 'Base Hourly Rate'}
                     </span>
-                    <span>₹{(subtotalPaise / 100).toFixed(0)}</span>
+                    <span>{selectedStation ? `₹${(subtotalPaise / 100).toFixed(0)}` : '—'}</span>
                   </div>
 
                   {multiHourDiscountPaise > 0 && (
@@ -1659,7 +1661,7 @@ function BookingContent() {
                     <span className="text-sm font-heading font-bold text-ds-text uppercase">Total Payable</span>
                     <div className="text-right">
                       <span className="text-2xl font-heading font-black text-ds-ice">
-                        ₹{(finalPricePaise / 100).toFixed(0)}
+                        {selectedStation ? `₹${(finalPricePaise / 100).toFixed(0)}` : '—'}
                       </span>
                       <span className="text-[10px] text-ds-text-dim block">Taxes & Amenities Included</span>
                     </div>
@@ -1790,7 +1792,7 @@ function BookingContent() {
                       <div className="min-w-0">
                         <p className="text-[9px] uppercase font-mono text-ds-text-dim">Rate Tier</p>
                         <p className="font-heading font-bold text-ds-text truncate">
-                          ₹{(hourlyRatePaise / 100).toFixed(0)}/hr
+                          {selectedStation ? `₹${(hourlyRatePaise / 100).toFixed(0)}/hr` : '—'}
                         </p>
                       </div>
                     </div>
@@ -1835,8 +1837,10 @@ function BookingContent() {
                   {/* Price Breakdown in Drawer */}
                   <div className="p-2.5 rounded-xl bg-ds-darker/60 border border-ds-border/50 space-y-1 text-[11px]">
                     <div className="flex justify-between text-ds-text-dim">
-                      <span>Base Hourly ({hours}h × ₹{(hourlyRatePaise / 100).toFixed(0)})</span>
-                      <span className="font-mono text-ds-text">₹{(subtotalPaise / 100).toFixed(0)}</span>
+                      <span>Base Hourly {selectedStation ? `(${hours}h × ₹${(hourlyRatePaise / 100).toFixed(0)})` : ''}</span>
+                      <span className="font-mono text-ds-text">
+                        {selectedStation ? `₹${(subtotalPaise / 100).toFixed(0)}` : '—'}
+                      </span>
                     </div>
                     {multiHourDiscountPaise > 0 && (
                       <div className="flex justify-between text-emerald-400">
@@ -1859,20 +1863,20 @@ function BookingContent() {
               )}
 
               {/* TOP ROW: Estimated Total & Summary Accordion */}
-              <div className="flex items-center justify-between pb-2.5">
+              <div className="flex items-center justify-between pb-1.5">
                 <div className="flex items-baseline gap-2">
                   <span className="text-[11px] uppercase tracking-wider text-ds-text-dim font-mono">
                     Estimated total
                   </span>
-                  <span className="text-2xl font-heading font-black text-ds-text tracking-tight">
-                    ₹{(finalPricePaise / 100).toFixed(0)}
+                  <span className="text-xl sm:text-2xl font-heading font-black text-ds-ice tracking-tight">
+                    {selectedStation ? `₹${(finalPricePaise / 100).toFixed(0)}` : '—'}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsSummaryOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white transition-colors py-1.5 px-3 rounded-lg bg-ds-surface hover:bg-ds-surface-2 border border-ds-border/70 shadow-sm"
+                  className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white transition-colors py-1 px-2.5 rounded-lg bg-ds-surface hover:bg-ds-surface-2 border border-ds-border/70 shadow-sm"
                 >
                   <span>Summary</span>
                   {isSummaryOpen ? (
@@ -1884,34 +1888,34 @@ function BookingContent() {
               </div>
 
               {/* BOTTOM ROW: [ < ] Back + [ Continue > ] Primary Button */}
-              <div className="flex items-center gap-2.5 pb-1">
-                {/* Square Back Button */}
+              <div className="flex items-center gap-2 pb-0.5">
+                {/* Compact Square Back Button */}
                 <button
                   type="button"
                   onClick={handleMobileBack}
                   disabled={isMobileBackDisabled}
                   aria-label="Previous step"
-                  className="w-12 h-12 rounded-xl bg-ds-surface border border-ds-border hover:border-ds-accent/60 flex items-center justify-center text-ds-text hover:text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                  className="w-10 h-10 rounded-lg bg-ds-surface border border-ds-border hover:border-ds-accent/60 flex items-center justify-center text-ds-text hover:text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 shadow-sm"
                 >
-                  <ChevronLeft className="w-5 h-5 text-ds-text" />
+                  <ChevronLeft className="w-4 h-4 text-ds-text" />
                 </button>
 
-                {/* Wide Primary Action Button */}
+                {/* Compact Primary Action Button matching App Theme */}
                 <button
                   type="button"
                   onClick={handleMobileContinue}
                   disabled={submitting}
-                  className="h-12 flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-heading font-black text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="h-10 flex-1 rounded-lg bg-gradient-to-r from-ds-accent to-ds-ice hover:brightness-110 active:scale-[0.98] text-ds-darker font-heading font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-ds-accent/25 transition-all disabled:opacity-50"
                 >
                   {submitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3.5 h-3.5 border-2 border-ds-darker border-t-transparent rounded-full animate-spin" />
                       <span>Processing...</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
                       <span>{getMobileContinueText()}</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   )}
                 </button>
