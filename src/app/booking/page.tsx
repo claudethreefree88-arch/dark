@@ -34,6 +34,8 @@ import {
   Banknote,
   QrCode,
   Crown,
+  X,
+  Search,
 } from 'lucide-react';
 
 interface Station {
@@ -138,6 +140,11 @@ function BookingContent() {
   const [customerEmail, setCustomerEmail] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+
+  // Game Selection State (Optional)
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [showGameModal, setShowGameModal] = useState<boolean>(false);
+  const [gameSearchQuery, setGameSearchQuery] = useState<string>('');
 
   // Payment & Coupon State
   const [couponCode, setCouponCode] = useState<string>('');
@@ -389,6 +396,11 @@ function BookingContent() {
     setSubmitting(true);
     try {
       // 1. Create Booking Record
+      const combinedNotes = [
+        selectedGame ? `Requested Game: ${selectedGame}` : null,
+        notes?.trim() || null,
+      ].filter(Boolean).join(' | ');
+
       const bookingPayload = {
         stationId: selectedStation.id,
         date: selectedDate,
@@ -398,7 +410,7 @@ function BookingContent() {
         customerName,
         customerEmail: customerEmail || undefined,
         customerPhone,
-        notes: notes || undefined,
+        notes: combinedNotes || undefined,
         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         payAtCounter: paymentOption === 'COUNTER',
         paymentMethod: paymentOption === 'COUNTER' ? 'CASH' : 'UPI',
@@ -812,7 +824,14 @@ function BookingContent() {
                                 key={station.id}
                                 onClick={() => {
                                   if (isAvailable) {
+                                    const isDifferent = selectedStation?.id !== station.id;
                                     setSelectedStation(station);
+                                    if (isDifferent) {
+                                      setSelectedGame(null);
+                                    }
+                                    if (station.games && station.games.length > 0) {
+                                      setShowGameModal(true);
+                                    }
                                   } else {
                                     toast.error(`${station.name} is currently occupied`);
                                   }
@@ -878,37 +897,49 @@ function BookingContent() {
                                         : '3-4 players included · +₹50/extra player'}
                                     </div>
 
-                                    {/* Available Games on Station (Consoles only) */}
-                                    {station.games && station.games.length > 0 && (
-                                      <div className="pt-2 border-t border-ds-border/40 space-y-1">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent flex items-center gap-1">
-                                            <Gamepad2 className="w-3 h-3 text-ds-accent" />
-                                            <span>Installed Games ({station.games.length}):</span>
-                                          </span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1">
-                                          {station.games.slice(0, 3).map((g: string, i: number) => (
-                                            <span
-                                              key={i}
-                                              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-dark border border-ds-border/70 text-ds-text-dim"
-                                            >
-                                              {g}
-                                            </span>
-                                          ))}
-                                          {station.games.length > 3 && (
-                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-ds-accent/10 text-ds-ice border border-ds-accent/30">
-                                              +{station.games.length - 3} more
-                                            </span>
-                                          )}
-                                        </div>
+                                    {/* Optional selected game display on card */}
+                                    {isSelected && selectedGame && (
+                                      <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
+                                        <span className="inline-flex items-center gap-1.5 font-medium truncate">
+                                          <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
+                                          <span className="truncate max-w-[140px] sm:max-w-[170px]">{selectedGame}</span>
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowGameModal(true);
+                                          }}
+                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5"
+                                        >
+                                          Change
+                                        </button>
                                       </div>
                                     )}
                                   </div>
                                 </div>
 
                                 <div className="p-4 pt-0">
-                                  <div className="pt-3 flex justify-end border-t border-ds-border/30">
+                                  <div className="pt-3 flex justify-between items-center border-t border-ds-border/30">
+                                    {station.games && station.games.length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (selectedStation?.id !== station.id) {
+                                            setSelectedStation(station);
+                                            setSelectedGame(null);
+                                          }
+                                          setShowGameModal(true);
+                                        }}
+                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1"
+                                      >
+                                        <Gamepad2 className="w-3 h-3" />
+                                        <span>Games ({station.games.length})</span>
+                                      </button>
+                                    ) : (
+                                      <div />
+                                    )}
                                     <span
                                       className={`text-xs font-semibold inline-flex items-center gap-1 ${
                                         isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
@@ -1346,9 +1377,17 @@ function BookingContent() {
                     </div>
 
                     <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-semibold text-ds-text-muted uppercase">
-                        Special Requests / Game Pre-install Note (Optional)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-ds-text-muted uppercase">
+                          Special Requests / Pre-load Note (Optional)
+                        </label>
+                        {selectedGame && (
+                          <span className="text-xs text-ds-cyan font-medium flex items-center gap-1">
+                            <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan" />
+                            Game: <strong>{selectedGame}</strong>
+                          </span>
+                        )}
+                      </div>
                       <textarea
                         rows={3}
                         className="w-full px-4 py-2.5 rounded-xl bg-ds-surface border border-ds-border text-ds-text placeholder:text-ds-text-dim text-sm focus:outline-none focus:border-ds-accent transition-colors"
@@ -1555,6 +1594,18 @@ function BookingContent() {
                       <p className="text-ds-text-dim text-[11px]">
                         {selectedStation?.facilityName || (selectedZone ? (selectedZone === 'PS5' ? 'PlayStation 5 Arena' : 'Snooker Lounge') : 'No Arena Selected')}
                       </p>
+                      {selectedGame && (
+                        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-ds-cyan font-medium">
+                          <span>🎮 {selectedGame}</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowGameModal(true)}
+                            className="text-[10px] text-ds-text-dim hover:text-white underline ml-1"
+                          >
+                            Change
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <Gamepad2 className="w-5 h-5 text-ds-ice mt-1" />
                   </div>
@@ -1778,6 +1829,11 @@ function BookingContent() {
                         <p className="font-heading font-bold text-ds-text truncate">
                           {selectedStation?.name || 'Not Chosen Yet'}
                         </p>
+                        {selectedGame && (
+                          <p className="text-[10px] text-ds-cyan font-semibold truncate">
+                            🎮 {selectedGame}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1992,6 +2048,169 @@ function BookingContent() {
             </div>
           </div>
         </div>
+
+        {/* ─── OPTIONAL GAME SELECTION MODAL ─── */}
+        {showGameModal && selectedStation && selectedStation.games && selectedStation.games.length > 0 && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setShowGameModal(false)}
+          >
+            <div
+              className="relative w-full max-w-lg rounded-2xl bg-ds-dark border border-ds-border shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-ds-border/60 pb-3 shrink-0">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-ds-accent/15 border border-ds-accent/30 text-ds-cyan">
+                      <Gamepad2 className="w-4 h-4" />
+                    </span>
+                    <h3 className="font-heading font-black text-base sm:text-lg uppercase text-ds-text">
+                      Select Game
+                    </h3>
+                    <Badge variant="outline" size="sm" className="text-[10px] uppercase font-mono tracking-wider text-ds-cyan border-ds-cyan/40">
+                      Optional
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-ds-text-muted">
+                    Installed on <span className="text-ds-ice font-semibold">{selectedStation.name}</span>. Pick a title to have it pre-loaded, or close to decide at the arena.
+                  </p>
+                </div>
+
+                {/* X Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowGameModal(false)}
+                  aria-label="Close modal"
+                  className="p-1.5 rounded-xl bg-ds-surface/80 hover:bg-ds-surface border border-ds-border text-ds-text-muted hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Game Search Bar */}
+              {selectedStation.games.length > 4 && (
+                <div className="relative shrink-0">
+                  <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={gameSearchQuery}
+                    onChange={(e) => setGameSearchQuery(e.target.value)}
+                    placeholder="Search available games..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-ds-surface border border-ds-border text-xs text-ds-text placeholder:text-ds-text-dim focus:outline-none focus:border-ds-accent transition-colors"
+                  />
+                  {gameSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setGameSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ds-text-dim hover:text-ds-text text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Games List / Grid */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[45vh] custom-scrollbar">
+                {/* Option to clear / play anything */}
+                <div
+                  onClick={() => setSelectedGame(null)}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    selectedGame === null
+                      ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-sm shadow-ds-accent/10'
+                      : 'bg-ds-surface/40 border-ds-border/60 hover:border-ds-accent/40 text-ds-text-muted hover:text-ds-text'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-ds-dark border border-ds-border/60 flex items-center justify-center text-xs">
+                      🎮
+                    </div>
+                    <div>
+                      <span className="text-xs font-heading font-bold uppercase block">
+                        Decide at Venue / Any Game
+                      </span>
+                      <span className="text-[10px] text-ds-text-dim block">
+                        Choose or switch games freely when you sit at the station
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-black transition-colors ${
+                    selectedGame === null
+                      ? 'border-ds-accent bg-ds-accent text-ds-darker'
+                      : 'border-ds-border text-transparent'
+                  }`}>
+                    ✓
+                  </div>
+                </div>
+
+                {/* Filtered Games */}
+                {selectedStation.games
+                  .filter((g) => g.toLowerCase().includes(gameSearchQuery.toLowerCase()))
+                  .map((gameTitle, idx) => {
+                    const isGameSelected = selectedGame === gameTitle;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedGame(gameTitle)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                          isGameSelected
+                            ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-md shadow-ds-accent/20 ring-1 ring-ds-accent'
+                            : 'bg-ds-surface/40 border-ds-border/60 hover:border-ds-accent/40 hover:bg-ds-surface/70 text-ds-text'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-ds-dark border border-ds-border/70 flex items-center justify-center text-ds-accent shrink-0">
+                            <Gamepad2 className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-heading font-bold text-ds-text block truncate">
+                              {gameTitle}
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-mono block">
+                              Installed & Ready to play
+                            </span>
+                          </div>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                          isGameSelected
+                            ? 'border-ds-accent bg-ds-accent text-ds-darker'
+                            : 'border-ds-border text-transparent'
+                        }`}>
+                          ✓
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Modal Actions Footer */}
+              <div className="pt-3 border-t border-ds-border/60 flex items-center justify-between gap-3 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedGame(null);
+                    setShowGameModal(false);
+                  }}
+                  className="text-xs"
+                >
+                  Skip / No Game
+                </Button>
+
+                <Button
+                  variant="accent"
+                  size="sm"
+                  onClick={() => setShowGameModal(false)}
+                  className="text-xs font-heading font-bold uppercase tracking-wider"
+                >
+                  {selectedGame ? `Select ${selectedGame}` : 'Confirm & Continue'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />
