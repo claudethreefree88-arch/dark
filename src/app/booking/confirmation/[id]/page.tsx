@@ -42,6 +42,7 @@ interface BookingDetail {
   qrDataUrl: string;
   customerName: string;
   customerPhone?: string;
+  gameTitle?: string;
   notes?: string;
   createdAt: string;
   station?: {
@@ -263,6 +264,12 @@ export default function BookingConfirmationPage() {
                     <p className="text-xs text-ds-accent print:text-black">
                       {booking.station?.facility?.name || 'PlayStation 5 Arena'}
                     </p>
+                    {booking.gameTitle && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ds-accent/15 border border-ds-accent/30 text-ds-cyan text-xs font-heading font-bold print:border-black print:text-black">
+                        <Gamepad2 className="w-3.5 h-3.5" />
+                        <span>Game: {booking.gameTitle}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>

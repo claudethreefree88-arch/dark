@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess } from '@/lib/errors';
+import { DEFAULT_ARENA_GAMES } from '@/lib/games';
+
+const ps5DefaultGames = DEFAULT_ARENA_GAMES.filter((g) => g.platform === 'PS5');
+const poolDefaultGames = DEFAULT_ARENA_GAMES.filter((g) => g.platform === 'POOL_TABLE');
 
 // Fallback seed data in case database is in setup mode
 const DEFAULT_FACILITIES = [
@@ -20,7 +24,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 15000, // ₹150 / hr (single player base)
         capacity: 4,
         specs: 'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries Arctis Nova 7P. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
-        games: ['EA FC 24', 'Tekken 8', 'Spider-Man 2', 'Call of Duty: Modern Warfare III', 'Mortal Kombat 1'],
+        games: ps5DefaultGames.map((g) => g.title),
+        gameDetails: ps5DefaultGames,
       },
       {
         id: 'station-ps5-02',
@@ -30,7 +35,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 15000,
         capacity: 4,
         specs: 'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, Sony Pulse 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
-        games: ['God of War Ragnarok', 'Gran Turismo 7', 'NBA 2K24', 'WWE 2K24', 'It Takes Two'],
+        games: ps5DefaultGames.map((g) => g.title),
+        gameDetails: ps5DefaultGames,
       },
       {
         id: 'station-ps5-03',
@@ -40,7 +46,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 15000,
         capacity: 4,
         specs: 'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
-        games: ['EA FC 24', 'Tekken 8', 'Overcooked! All You Can Eat', 'Rocket League', 'WWE 2K24'],
+        games: ps5DefaultGames.map((g) => g.title),
+        gameDetails: ps5DefaultGames,
       },
     ],
   },
@@ -60,7 +67,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 25000, // ₹250 / hr
         capacity: 4,
         specs: 'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
-        games: ['Snooker', 'English Pool', '8-Ball'],
+        games: poolDefaultGames.map((g) => g.title),
+        gameDetails: poolDefaultGames,
       },
       {
         id: 'station-snooker-02',
@@ -70,7 +78,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 25000,
         capacity: 4,
         specs: 'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
-        games: ['Snooker', 'English Pool', '8-Ball'],
+        games: poolDefaultGames.map((g) => g.title),
+        gameDetails: poolDefaultGames,
       },
       {
         id: 'station-snooker-03',
@@ -80,7 +89,8 @@ const DEFAULT_FACILITIES = [
         pricePerHourPaise: 25000,
         capacity: 4,
         specs: 'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
-        games: ['Snooker', 'English Pool', '8-Ball'],
+        games: poolDefaultGames.map((g) => g.title),
+        gameDetails: poolDefaultGames,
       },
     ],
   },
@@ -133,8 +143,8 @@ export async function GET() {
         if (isPs5) {
           const ps5Stations = fac.stations.slice(0, 3).map((st, idx) => {
             const stGames = getStationGames(st.id, 'PS5');
-            const fallbackGames = ['EA FC 24', 'Tekken 8', 'Spider-Man 2', 'Mortal Kombat 1', 'Gran Turismo 7'];
-            const gameTitles = stGames.length > 0 ? stGames.map((g) => g.title) : fallbackGames;
+            const resolvedGames = stGames.length > 0 ? stGames : ps5DefaultGames;
+            const gameTitles = resolvedGames.map((g) => g.title);
 
             return {
               ...st,
@@ -145,7 +155,7 @@ export async function GET() {
               specs:
                 'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
               games: gameTitles,
-              gameDetails: stGames,
+              gameDetails: resolvedGames,
             };
           });
 
@@ -159,8 +169,8 @@ export async function GET() {
         } else {
           const snookerStations = fac.stations.slice(0, 3).map((st, idx) => {
             const stGames = getStationGames(st.id, 'POOL_TABLE');
-            const fallbackGames = ['Championship Snooker', 'American 8-Ball', 'English Pool'];
-            const gameTitles = stGames.length > 0 ? stGames.map((g) => g.title) : fallbackGames;
+            const resolvedGames = stGames.length > 0 ? stGames : poolDefaultGames;
+            const gameTitles = resolvedGames.map((g) => g.title);
 
             return {
               ...st,
@@ -171,7 +181,7 @@ export async function GET() {
               specs:
                 'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
               games: gameTitles,
-              gameDetails: stGames,
+              gameDetails: resolvedGames,
             };
           });
 

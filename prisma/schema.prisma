@@ -289,6 +289,7 @@ model Booking {
   isWalkIn         Boolean       @default(false) @map("is_walk_in")
   customerName     String?       @map("customer_name") // For walk-ins
   customerPhone    String?       @map("customer_phone") // For walk-ins
+  gameTitle        String?       @map("game_title")
   notes            String?       @db.Text
   cancelledAt      DateTime?     @map("cancelled_at")
   cancelReason     String?       @map("cancel_reason") @db.Text

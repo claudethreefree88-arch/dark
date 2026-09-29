@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
         }
 
         const gameTitle =
+          booking.gameTitle ||
           booking.session?.notes ||
           (booking.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
           null;

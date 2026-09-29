@@ -37,6 +37,7 @@ import {
   X,
   Search,
 } from 'lucide-react';
+import { ARENA_GAMES, lookupGame, GameCatalogItem } from '@/lib/gameCatalog';
 
 interface Station {
   id: string;
@@ -48,7 +49,7 @@ interface Station {
   capacity: number;
   status: string;
   games?: string[];
-  gameDetails?: any[];
+  gameDetails?: GameCatalogItem[];
 }
 
 interface TimeSlot {
@@ -145,6 +146,74 @@ function BookingContent() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [showGameModal, setShowGameModal] = useState<boolean>(false);
   const [gameSearchQuery, setGameSearchQuery] = useState<string>('');
+  const gameCarouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
+  const [canScrollRight, setCanScrollRight] = useState<boolean>(true);
+
+  const checkCarouselScroll = () => {
+    if (gameCarouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = gameCarouselRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scrollGameCarousel = (direction: 'left' | 'right') => {
+    if (gameCarouselRef.current) {
+      const scrollAmount = direction === 'left' ? -280 : 280;
+      gameCarouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Resolved list of available games for the current station with rich metadata
+  const stationAvailableGames: GameCatalogItem[] = React.useMemo(() => {
+    if (!selectedStation) return [];
+
+    if (selectedStation.gameDetails && selectedStation.gameDetails.length > 0) {
+      return selectedStation.gameDetails.map((g: any) => {
+        const meta = lookupGame(g.title);
+        return {
+          slug: g.slug || meta?.slug || g.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          title: g.title,
+          platform: (g.platform || meta?.platform || selectedStation.stationType) as any,
+          genre: g.genre || meta?.genre || 'Esports',
+          description: g.description || meta?.description || 'Installed and ready to launch on this station.',
+          coverImage: g.coverImage || meta?.coverImage || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+          maxPlayers: g.maxPlayers || meta?.maxPlayers || (selectedStation.stationType === 'PS5' ? 2 : 4),
+        };
+      });
+    }
+
+    if (selectedStation.games && selectedStation.games.length > 0) {
+      return selectedStation.games.map((title) => {
+        const meta = lookupGame(title);
+        if (meta) return meta;
+        return {
+          slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          title,
+          platform: selectedStation.stationType as any,
+          genre: selectedStation.stationType === 'PS5' ? 'Console Game' : 'Billiards',
+          description: 'Installed and fully optimized for low-latency tournament gameplay.',
+          coverImage: selectedStation.stationType === 'PS5'
+            ? 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80'
+            : 'https://images.unsplash.com/photo-1615655406736-b37c4fabf923?w=600&auto=format&fit=crop&q=80',
+          maxPlayers: selectedStation.stationType === 'PS5' ? 2 : 4,
+        };
+      });
+    }
+
+    return ARENA_GAMES.filter(
+      (g) => g.platform === (selectedStation.stationType === 'PS5' ? 'PS5' : 'POOL_TABLE')
+    );
+  }, [selectedStation]);
+
+  const displayedGames = React.useMemo(() => {
+    if (!gameSearchQuery.trim()) return stationAvailableGames;
+    const q = gameSearchQuery.toLowerCase();
+    return stationAvailableGames.filter(
+      (g) => g.title.toLowerCase().includes(q) || g.genre.toLowerCase().includes(q)
+    );
+  }, [stationAvailableGames, gameSearchQuery]);
 
   // Payment & Coupon State
   const [couponCode, setCouponCode] = useState<string>('');
@@ -410,6 +479,7 @@ function BookingContent() {
         customerName,
         customerEmail: customerEmail || undefined,
         customerPhone,
+        gameTitle: selectedGame || undefined,
         notes: combinedNotes || undefined,
         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         payAtCounter: paymentOption === 'COUNTER',
@@ -900,17 +970,28 @@ function BookingContent() {
                                     {/* Optional selected game display on card */}
                                     {isSelected && selectedGame && (
                                       <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
-                                        <span className="inline-flex items-center gap-1.5 font-medium truncate">
-                                          <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
-                                          <span className="truncate max-w-[140px] sm:max-w-[170px]">{selectedGame}</span>
-                                        </span>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {lookupGame(selectedGame)?.coverImage ? (
+                                            <div className="w-6 h-6 rounded-md overflow-hidden relative shrink-0 border border-ds-border/60">
+                                              <Image
+                                                src={lookupGame(selectedGame)!.coverImage}
+                                                alt={selectedGame}
+                                                fill
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
+                                          )}
+                                          <span className="truncate max-w-[130px] sm:max-w-[170px] font-semibold">{selectedGame}</span>
+                                        </div>
                                         <button
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setShowGameModal(true);
                                           }}
-                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5"
+                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5 cursor-pointer"
                                         >
                                           Change
                                         </button>
@@ -932,10 +1013,10 @@ function BookingContent() {
                                           }
                                           setShowGameModal(true);
                                         }}
-                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1"
+                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
                                       >
                                         <Gamepad2 className="w-3 h-3" />
-                                        <span>Games ({station.games.length})</span>
+                                        <span>Browse Games ({station.games.length})</span>
                                       </button>
                                     ) : (
                                       <div />
@@ -2049,164 +2130,309 @@ function BookingContent() {
           </div>
         </div>
 
-        {/* ─── OPTIONAL GAME SELECTION MODAL ─── */}
-        {showGameModal && selectedStation && selectedStation.games && selectedStation.games.length > 0 && (
+        {/* ─── OPTIONAL GAME SELECTION MODAL (FULL VIEW WITH SWIPE) ─── */}
+        {showGameModal && selectedStation && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in"
             onClick={() => setShowGameModal(false)}
           >
             <div
-              className="relative w-full max-w-lg rounded-2xl bg-ds-dark border border-ds-border shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95"
+              className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl bg-ds-dark border border-ds-border shadow-2xl shadow-ds-accent/15 overflow-hidden animate-in zoom-in-95"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
-              <div className="flex items-start justify-between gap-3 border-b border-ds-border/60 pb-3 shrink-0">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-ds-accent/15 border border-ds-accent/30 text-ds-cyan">
-                      <Gamepad2 className="w-4 h-4" />
-                    </span>
-                    <h3 className="font-heading font-black text-base sm:text-lg uppercase text-ds-text">
-                      Select Game
-                    </h3>
-                    <Badge variant="outline" size="sm" className="text-[10px] uppercase font-mono tracking-wider text-ds-cyan border-ds-cyan/40">
-                      Optional
-                    </Badge>
+              {/* Modal Top Header */}
+              <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-ds-border/60 bg-ds-surface/50 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-ds-cyan shrink-0">
+                    <Gamepad2 className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-ds-text-muted">
-                    Installed on <span className="text-ds-ice font-semibold">{selectedStation.name}</span>. Pick a title to have it pre-loaded, or close to decide at the arena.
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-heading font-black text-base sm:text-lg uppercase text-ds-text truncate">
+                        Select Game
+                      </h3>
+                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-ds-accent/15 border border-ds-accent/30 text-ds-cyan font-bold tracking-wider shrink-0">
+                        Optional
+                      </span>
+                    </div>
+                    <p className="text-xs text-ds-text-muted mt-0.5 truncate">
+                      Installed on <span className="text-ds-ice font-semibold">{selectedStation.name}</span> • Swipe to pre-load or decide at the venue
+                    </p>
+                  </div>
                 </div>
 
-                {/* X Close Button */}
+                {/* Prominent X Close Button */}
                 <button
                   type="button"
                   onClick={() => setShowGameModal(false)}
-                  aria-label="Close modal"
-                  className="p-1.5 rounded-xl bg-ds-surface/80 hover:bg-ds-surface border border-ds-border text-ds-text-muted hover:text-white transition-colors"
+                  aria-label="Close game selector"
+                  className="w-10 h-10 rounded-xl bg-ds-surface border border-ds-border hover:border-ds-accent text-ds-text-dim hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-sm shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Game Search Bar */}
-              {selectedStation.games.length > 4 && (
-                <div className="relative shrink-0">
+              {/* Sub-Header: Search & Carousel Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 sm:px-6 pt-3.5 pb-2 shrink-0 border-b border-ds-border/30 bg-ds-dark">
+                {/* Search Bar */}
+                <div className="relative flex-1 max-w-xs">
                   <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={gameSearchQuery}
                     onChange={(e) => setGameSearchQuery(e.target.value)}
-                    placeholder="Search available games..."
-                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-ds-surface border border-ds-border text-xs text-ds-text placeholder:text-ds-text-dim focus:outline-none focus:border-ds-accent transition-colors"
+                    placeholder="Search titles (e.g. Tekken, FC 24)..."
+                    className="w-full pl-9 pr-7 py-1.5 rounded-xl bg-ds-surface border border-ds-border text-xs text-ds-text placeholder:text-ds-text-dim focus:outline-none focus:border-ds-accent transition-colors"
                   />
                   {gameSearchQuery && (
                     <button
                       type="button"
                       onClick={() => setGameSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ds-text-dim hover:text-ds-text text-xs"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ds-text-dim hover:text-white text-xs cursor-pointer"
                     >
                       ✕
                     </button>
                   )}
                 </div>
-              )}
 
-              {/* Games List / Grid */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[45vh] custom-scrollbar">
-                {/* Option to clear / play anything */}
+                {/* Swipe Helper & Chevron Navigation */}
+                <div className="flex items-center justify-between sm:justify-end gap-3">
+                  <div className="flex items-center gap-1.5 text-xs font-mono text-ds-text-dim">
+                    <span className="w-2 h-2 rounded-full bg-ds-accent animate-pulse" />
+                    <span>Swipe or click arrows to browse ({displayedGames.length} games)</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => scrollGameCarousel('left')}
+                      disabled={!canScrollLeft}
+                      className="w-8 h-8 rounded-lg border border-ds-border bg-ds-surface/80 hover:bg-ds-surface hover:border-ds-accent/60 text-ds-text-dim hover:text-ds-ice flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      title="Scroll left"
+                      aria-label="Previous game"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollGameCarousel('right')}
+                      disabled={!canScrollRight}
+                      className="w-8 h-8 rounded-lg border border-ds-border bg-ds-surface/80 hover:bg-ds-surface hover:border-ds-accent/60 text-ds-text-dim hover:text-ds-ice flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      title="Scroll right"
+                      aria-label="Next game"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── HORIZONTAL SWIPEABLE CAROUSEL ─── */}
+              <div
+                ref={gameCarouselRef}
+                onScroll={checkCarouselScroll}
+                onWheel={(e) => {
+                  if (e.deltaY !== 0 && gameCarouselRef.current) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+                className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 p-4 sm:p-6 snap-x snap-mandatory scroll-smooth touch-pan-x [scrollbar-width:thin] select-none"
+              >
+                {/* CARD 1: "Decide at Venue / Any Game" Option */}
                 <div
                   onClick={() => setSelectedGame(null)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                  className={`snap-center shrink-0 w-[240px] sm:w-[270px] rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group select-none relative ${
                     selectedGame === null
-                      ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-sm shadow-ds-accent/10'
-                      : 'bg-ds-surface/40 border-ds-border/60 hover:border-ds-accent/40 text-ds-text-muted hover:text-ds-text'
+                      ? 'bg-ds-surface/90 border-ds-accent shadow-xl shadow-ds-accent/25 ring-2 ring-ds-accent'
+                      : 'bg-ds-surface/40 border-ds-border hover:border-ds-accent/50 hover:bg-ds-surface/70'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-ds-dark border border-ds-border/60 flex items-center justify-center text-xs">
+                  {/* Poster Area */}
+                  <div className="relative h-48 sm:h-56 w-full bg-gradient-to-br from-slate-900 via-ds-darker to-black flex flex-col items-center justify-center p-6 text-center overflow-hidden border-b border-ds-border/40">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-ds-accent/15 via-transparent to-transparent" />
+                    <div
+                      className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 border transition-transform duration-300 group-hover:scale-110 ${
+                        selectedGame === null
+                          ? 'bg-ds-accent/20 border-ds-accent text-ds-cyan'
+                          : 'bg-ds-dark border-ds-border text-ds-text-dim'
+                      }`}
+                    >
                       🎮
                     </div>
-                    <div>
-                      <span className="text-xs font-heading font-bold uppercase block">
-                        Decide at Venue / Any Game
-                      </span>
-                      <span className="text-[10px] text-ds-text-dim block">
-                        Choose or switch games freely when you sit at the station
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-ds-accent font-bold">
+                      Open Choice
+                    </span>
+                    <h4 className="font-heading font-black text-base uppercase text-ds-text mt-1">
+                      Decide at Venue
+                    </h4>
+                    <span className="text-[10px] text-emerald-400 font-mono mt-0.5">
+                      Switch games anytime
+                    </span>
+
+                    {selectedGame === null && (
+                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 animate-in zoom-in-75">
+                        ✓
+                      </div>
+                    )}
                   </div>
-                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-black transition-colors ${
-                    selectedGame === null
-                      ? 'border-ds-accent bg-ds-accent text-ds-darker'
-                      : 'border-ds-border text-transparent'
-                  }`}>
-                    ✓
+
+                  {/* Card Description & Action */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <p className="text-xs text-ds-text-dim leading-relaxed">
+                      Don't want to lock in a title right now? Choose from our full game library or swap games whenever you want at the arena.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedGame(null);
+                      }}
+                      className={`w-full py-2 px-3 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        selectedGame === null
+                          ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/30'
+                          : 'bg-ds-surface border border-ds-border hover:border-ds-accent/60 text-ds-text hover:text-white'
+                      }`}
+                    >
+                      {selectedGame === null ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Selected ✓</span>
+                        </>
+                      ) : (
+                        <span>Choose at Venue</span>
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                {/* Filtered Games */}
-                {selectedStation.games
-                  .filter((g) => g.toLowerCase().includes(gameSearchQuery.toLowerCase()))
-                  .map((gameTitle, idx) => {
-                    const isGameSelected = selectedGame === gameTitle;
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedGame(gameTitle)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                          isGameSelected
-                            ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-md shadow-ds-accent/20 ring-1 ring-ds-accent'
-                            : 'bg-ds-surface/40 border-ds-border/60 hover:border-ds-accent/40 hover:bg-ds-surface/70 text-ds-text'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-ds-dark border border-ds-border/70 flex items-center justify-center text-ds-accent shrink-0">
-                            <Gamepad2 className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-xs font-heading font-bold text-ds-text block truncate">
-                              {gameTitle}
-                            </span>
-                            <span className="text-[10px] text-emerald-400 font-mono block">
-                              Installed & Ready to play
-                            </span>
-                          </div>
+                {/* CARDS 2..N: Full-View Game Posters */}
+                {displayedGames.map((game, idx) => {
+                  const isGameSelected = selectedGame === game.title;
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedGame(game.title)}
+                      className={`snap-center shrink-0 w-[240px] sm:w-[270px] rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group select-none relative ${
+                        isGameSelected
+                          ? 'bg-ds-surface/90 border-ds-accent shadow-xl shadow-ds-accent/25 ring-2 ring-ds-accent scale-[1.01]'
+                          : 'bg-ds-surface/40 border-ds-border hover:border-ds-accent/50 hover:bg-ds-surface/70'
+                      }`}
+                    >
+                      {/* Full Game Cover Poster Image */}
+                      <div className="relative h-48 sm:h-56 w-full bg-ds-dark overflow-hidden border-b border-ds-border/40">
+                        <Image
+                          src={game.coverImage}
+                          alt={game.title}
+                          fill
+                          sizes="(max-width: 768px) 240px, 270px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-ds-darker via-black/35 to-black/50" />
+
+                        {/* Top Badges */}
+                        <div className="absolute top-2.5 left-2.5">
+                          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-ds-cyan font-bold">
+                            {game.genre}
+                          </span>
                         </div>
-                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-                          isGameSelected
-                            ? 'border-ds-accent bg-ds-accent text-ds-darker'
-                            : 'border-ds-border text-transparent'
-                        }`}>
-                          ✓
+
+                        <div className="absolute top-2.5 right-2.5">
+                          {isGameSelected ? (
+                            <div className="w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 animate-in zoom-in-75">
+                              ✓
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-mono text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 font-bold">
+                              {game.maxPlayers}P Max
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title Overlay on Poster */}
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 mb-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>Installed & Ready</span>
+                          </div>
+                          <h4 className="font-heading font-black text-sm sm:text-base text-white truncate drop-shadow-md">
+                            {game.title}
+                          </h4>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Description & Selection Button */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                        <p className="text-xs text-ds-text-dim line-clamp-2 leading-relaxed">
+                          {game.description}
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedGame(game.title);
+                          }}
+                          className={`w-full py-2 px-3 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            isGameSelected
+                              ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/30'
+                              : 'bg-ds-surface border border-ds-border hover:border-ds-accent/60 text-ds-text hover:text-white'
+                          }`}
+                        >
+                          {isGameSelected ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Selected ✓</span>
+                            </>
+                          ) : (
+                            <span>Select Game</span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Modal Actions Footer */}
-              <div className="pt-3 border-t border-ds-border/60 flex items-center justify-between gap-3 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedGame(null);
-                    setShowGameModal(false);
-                  }}
-                  className="text-xs"
-                >
-                  Skip / No Game
-                </Button>
+              {/* Modal Bottom Action Bar */}
+              <div className="p-4 sm:p-5 border-t border-ds-border/60 bg-ds-surface/60 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2 text-xs w-full sm:w-auto">
+                  <span className="text-ds-text-dim font-mono">Current choice:</span>
+                  {selectedGame ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ds-accent/15 border border-ds-accent/30 text-ds-cyan font-heading font-bold">
+                      <Gamepad2 className="w-3.5 h-3.5" />
+                      <span>{selectedGame}</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ds-surface border border-ds-border text-ds-text-muted font-mono">
+                      <span>Decide at Venue (Any Game)</span>
+                    </span>
+                  )}
+                </div>
 
-                <Button
-                  variant="accent"
-                  size="sm"
-                  onClick={() => setShowGameModal(false)}
-                  className="text-xs font-heading font-bold uppercase tracking-wider"
-                >
-                  {selectedGame ? `Select ${selectedGame}` : 'Confirm & Continue'}
-                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedGame(null);
+                      setShowGameModal(false);
+                    }}
+                    className="text-xs flex-1 sm:flex-initial"
+                  >
+                    Decide at Venue
+                  </Button>
+
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    onClick={() => setShowGameModal(false)}
+                    className="text-xs font-heading font-bold uppercase tracking-wider flex-1 sm:flex-initial shadow-md shadow-ds-accent/25"
+                  >
+                    {selectedGame ? `Confirm ${selectedGame}` : 'Confirm & Continue'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

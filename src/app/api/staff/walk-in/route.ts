@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
             isWalkIn: true,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
+            gameTitle: data.gameTitle || null,
             notes:
               (data.gameTitle ? `Game: ${data.gameTitle}. ` : '') +
               (cleanEmail ? `Email: ${cleanEmail}. ` : '') +

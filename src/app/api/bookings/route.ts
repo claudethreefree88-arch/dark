@@ -22,6 +22,7 @@ const createBookingSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters').optional(),
   customerEmail: z.string().email('Invalid email address').optional(),
   customerPhone: z.string().min(10, 'Valid phone number is required').optional(),
+  gameTitle: z.string().optional(),
   notes: z.string().max(500).optional(),
   playerCount: z.number().int().min(1).max(10).default(1),
   couponCode: z.string().optional(),
@@ -299,6 +300,7 @@ export async function POST(req: NextRequest) {
             qrToken,
             customerName: data.customerName || (session ? `${session.firstName} ${session.lastName}` : null),
             customerPhone: data.customerPhone || null,
+            gameTitle: data.gameTitle || null,
             notes: data.notes
               ? `${data.notes} • [Players: ${data.playerCount}]`
               : `Players: ${data.playerCount}`,

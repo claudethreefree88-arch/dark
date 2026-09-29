@@ -393,6 +393,12 @@ export default function AdminBookingsPage() {
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-ds-text">{b.stationName}</div>
                       <div className="text-[10px] text-ds-accent">{b.facilityName}</div>
+                      {b.gameTitle && (
+                        <div className="inline-flex items-center gap-1 text-[11px] text-ds-cyan font-mono mt-0.5">
+                          <span>🎮</span>
+                          <span className="truncate max-w-[130px] font-medium">{b.gameTitle}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-ds-text">
                       <div>
