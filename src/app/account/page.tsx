@@ -13,6 +13,9 @@ import {
   Award,
   Shield,
   AlertCircle,
+  ChevronRight,
+  CheckCircle2,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -23,19 +26,32 @@ import { useAuth } from '@/hooks/useAuth';
 export default function AccountDashboardPage() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
+  const [membershipData, setMembershipData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedQrBooking, setSelectedQrBooking] = useState<any | null>(null);
+  const [showTierModal, setShowTierModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetch('/api/customer/bookings');
-        const json = await res.json();
-        if (json.success) {
-          setBookings(json.data);
+        const [bookingsRes, memberRes] = await Promise.all([
+          fetch('/api/customer/bookings'),
+          fetch('/api/customer/membership').catch(() => null),
+        ]);
+
+        const bookingsJson = await bookingsRes.json();
+        if (bookingsJson.success) {
+          setBookings(bookingsJson.data);
+        }
+
+        if (memberRes) {
+          const memberJson = await memberRes.json();
+          if (memberJson.success && memberJson.data) {
+            setMembershipData(memberJson.data);
+          }
         }
       } catch (err) {
-        console.error('Error fetching customer bookings:', err);
+        console.error('Error fetching dashboard data:', err);
       } finally {
         setLoading(false);
       }
@@ -43,14 +59,58 @@ export default function AccountDashboardPage() {
     loadData();
   }, []);
 
+  const activeMembership = membershipData?.activeMembership;
+
   const upcomingBooking = bookings.find(
     (b) => b.status === 'CONFIRMED' || b.status === 'CHECKED_IN' || b.status === 'IN_PROGRESS'
   );
 
   return (
-    <div className="space-y-5 sm:space-y-8">
-      {/* ─── Metric Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+    <div className="space-y-4 sm:space-y-6">
+      {/* ─── Top Syndicate Tier Card (Positioned directly below headerbar, interactive) ─── */}
+      <div
+        onClick={() => setShowTierModal(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowTierModal(true)}
+        className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-ds-surface/90 via-ds-surface to-amber-950/25 border border-amber-500/40 hover:border-amber-400/80 shadow-lg hover:shadow-amber-500/10 cursor-pointer active:scale-[0.99] transition-all group relative overflow-hidden"
+      >
+        {/* Ambient Amber Glow in corner */}
+        <div className="absolute -top-12 -right-12 w-28 h-28 bg-amber-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/20 transition-all" />
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-glow-sm">
+              <Award className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-ds-text-dim">
+                  Syndicate Tier
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-heading font-black uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                  Active
+                </span>
+              </div>
+              <div className="text-base sm:text-2xl font-heading font-black text-amber-400 tracking-wide uppercase truncate mt-0.5">
+                {activeMembership?.planNameSnapshot || activeMembership?.tierSnapshot || 'GLACIER ELITE'}
+              </div>
+              <p className="text-[11px] text-ds-accent font-medium truncate mt-0.5">
+                {activeMembership ? `${activeMembership.discountPercent}% Discount Active on Bookings` : 'Eligible for Happy Hour Perks & Member Discounts'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-heading font-bold uppercase tracking-wider shrink-0 group-hover:bg-amber-500/20 transition-colors">
+            <span className="hidden sm:inline">Member Details</span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Metric Cards (Total Sessions & Hours Logged) ─────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-5">
         <Card glass className="p-4 sm:p-5 border-ds-border">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
@@ -79,23 +139,6 @@ export default function AccountDashboardPage() {
           <span className="text-[10px] sm:text-[11px] text-ds-text-muted font-medium block mt-1 truncate">
             Arena play time
           </span>
-        </Card>
-
-        <Card glass className="p-3.5 sm:p-5 border-ds-border col-span-2 sm:col-span-1 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
-              Syndicate Tier
-            </span>
-            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-          </div>
-          <div className="mt-2 sm:mt-3 flex items-baseline justify-between sm:block">
-            <div className="text-lg sm:text-2xl font-heading font-black text-amber-400 uppercase">
-              GLACIER ELITE
-            </div>
-            <span className="text-[10px] sm:text-[11px] text-ds-accent font-medium block truncate">
-              Eligible for Happy Hour Perks
-            </span>
-          </div>
         </Card>
       </div>
 
@@ -222,6 +265,105 @@ export default function AccountDashboardPage() {
         </div>
       </div>
 
+      {/* ─── Syndicate Member Details Modal ──────────────────────── */}
+      {showTierModal && (
+        <Modal
+          isOpen={showTierModal}
+          onClose={() => setShowTierModal(false)}
+          title="Syndicate Membership Details"
+          size="md"
+        >
+          <div className="space-y-5 py-2">
+            {/* Tier Card Header */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-500/20 via-ds-surface to-ds-dark border-2 border-amber-500/50 shadow-xl flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-glow-sm">
+                  <Award className="w-7 h-7" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase font-bold block">
+                    CURRENT MEMBER TIER
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-heading font-black text-ds-text uppercase truncate">
+                    {activeMembership?.planNameSnapshot || activeMembership?.tierSnapshot || 'GLACIER ELITE'}
+                  </h3>
+                  <p className="text-xs text-ds-text-dim truncate mt-0.5">
+                    Member ID: #{user?.id ? user.id.slice(0, 8).toUpperCase() : 'DS-MEMBER'}
+                  </p>
+                </div>
+              </div>
+
+              <Badge variant="warning" size="md" className="font-heading font-black uppercase text-xs shrink-0">
+                ACTIVE
+              </Badge>
+            </div>
+
+            {/* Tier Perks & Privileges */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                Active Member Privileges
+              </h4>
+
+              <div className="grid grid-cols-1 gap-2.5">
+                <div className="p-3 rounded-xl bg-ds-dark/60 border border-ds-border flex items-start gap-3">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 mt-0.5">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-heading font-bold text-xs text-ds-text">
+                      {activeMembership?.discountPercent ? `${activeMembership.discountPercent}% Automatic Booking Discount` : 'Happy Hour & Member Discounts'}
+                    </p>
+                    <p className="text-[11px] text-ds-text-muted mt-0.5">
+                      Discount is automatically applied at checkout across PS5, PS5 Pro, and Pool table stations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-ds-dark/60 border border-ds-border flex items-start gap-3">
+                  <div className="p-1.5 rounded-lg bg-ds-accent/10 text-ds-accent shrink-0 mt-0.5">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-heading font-bold text-xs text-ds-text">Priority Station Allocation</p>
+                    <p className="text-[11px] text-ds-text-muted mt-0.5">
+                      Enjoy high-priority queue during peak evening & weekend hours and early access to newly installed titles.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-ds-dark/60 border border-ds-border flex items-start gap-3">
+                  <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400 shrink-0 mt-0.5">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-heading font-bold text-xs text-ds-text">Digital Venue Pass & Walk-In Rates</p>
+                    <p className="text-[11px] text-ds-text-muted mt-0.5">
+                      Show your registered phone number or pass QR code at the desk to unlock member rates on walk-in play.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+              <Link href="/account/membership" className="w-full sm:flex-1" onClick={() => setShowTierModal(false)}>
+                <Button variant="accent" size="sm" className="w-full justify-center">
+                  <span>View Full Pass & QR Card</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+
+              <Link href="/membership" className="w-full sm:flex-1" onClick={() => setShowTierModal(false)}>
+                <Button variant="outline" size="sm" className="w-full justify-center text-xs">
+                  <span>Upgrade / Browse Passes</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* ─── QR Code Modal ────────────────────────────────────────── */}
       {selectedQrBooking && (
         <Modal
@@ -232,7 +374,6 @@ export default function AccountDashboardPage() {
         >
           <div className="text-center space-y-4 py-2">
             <div className="p-4 bg-white rounded-2xl inline-block shadow-xl border-2 border-ds-accent">
-              {/* High contrast QR code preview representation */}
               <div className="w-48 h-48 bg-black flex flex-col items-center justify-center p-2 rounded-lg text-white">
                 <QrCode className="w-32 h-32 text-white" />
                 <span className="font-mono text-[9px] text-gray-300 mt-1 truncate max-w-[180px]">
