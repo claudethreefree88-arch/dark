@@ -81,19 +81,21 @@ export default function AccountDashboardPage() {
           </span>
         </Card>
 
-        <Card glass className="p-4 sm:p-5 border-ds-border">
+        <Card glass className="p-3.5 sm:p-5 border-ds-border col-span-2 sm:col-span-1 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
               Syndicate Tier
             </span>
             <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-heading font-black text-amber-400 mt-2 sm:mt-3 uppercase">
-            GLACIER ELITE
+          <div className="mt-2 sm:mt-3 flex items-baseline justify-between sm:block">
+            <div className="text-lg sm:text-2xl font-heading font-black text-amber-400 uppercase">
+              GLACIER ELITE
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-ds-accent font-medium block truncate">
+              Eligible for Happy Hour Perks
+            </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] text-ds-accent font-medium block mt-1 truncate">
-            Eligible for Happy Hour Perks
-          </span>
         </Card>
       </div>
 
