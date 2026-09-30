@@ -19,8 +19,13 @@ const rajdhani = Rajdhani({
   display: 'swap',
 });
 
+const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dark-beta-two.vercel.app';
+const appBaseUrl = rawAppUrl.startsWith('http://') || rawAppUrl.startsWith('https://')
+  ? rawAppUrl
+  : `https://${rawAppUrl}`;
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://dark-beta-two.vercel.app'),
+  metadataBase: new URL(appBaseUrl),
   title: {
     default: 'DARK SYNDICATE GAMING WORLD',
     template: '%s | DARK SYNDICATE',
