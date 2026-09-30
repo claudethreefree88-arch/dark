@@ -307,8 +307,8 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
                 type="submit"
                 isLoading={isLoginSubmitting}
                 fullWidth
-                size="lg"
-                className="mt-2"
+                size="md"
+                className="mt-3 h-11 sm:h-12 text-sm sm:text-base font-heading font-bold"
                 id="login-submit"
               >
                 {portalDetails.title}
@@ -423,13 +423,13 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
                 type="submit"
                 isLoading={isSignUpSubmitting}
                 fullWidth
-                size="lg"
+                size="md"
                 variant="accent"
-                className="mt-3 font-heading font-bold"
+                className="mt-4 h-11 sm:h-12 text-sm sm:text-base font-heading font-bold whitespace-nowrap"
                 id="register-submit"
               >
                 <span>Create Account & Continue</span>
-                <ArrowRight className="w-4 h-4 ml-1.5" />
+                <ArrowRight className="w-4 h-4 ml-1.5 shrink-0" />
               </Button>
 
               <div className="mt-4 pt-3 border-t border-ds-border/60 text-center">

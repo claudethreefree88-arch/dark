@@ -128,7 +128,8 @@ export default function ForgotPasswordPage() {
                   type="submit"
                   isLoading={isSubmitting}
                   fullWidth
-                  size="lg"
+                  size="md"
+                  className="mt-3 h-11 sm:h-12 text-sm sm:text-base font-heading font-bold"
                   id="forgot-submit"
                 >
                   Send Reset Link
