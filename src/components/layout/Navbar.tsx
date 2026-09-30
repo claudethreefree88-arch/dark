@@ -249,12 +249,9 @@ export function Navbar() {
 
           {/* Mobile Menu Toggle Button */}
           <div className="flex md:hidden items-center gap-2">
-            <Link
-              href="/booking"
-              className="inline-flex items-center justify-center font-heading font-semibold tracking-wide rounded-lg text-xs px-2.5 py-1 bg-ds-accent text-ds-bg hover:bg-ds-accent-hover transition-all active:scale-[0.98]"
-            >
-              Book
-            </Link>
+            {isAuthenticated && user && (
+              <NotificationBell role={user.role} />
+            )}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

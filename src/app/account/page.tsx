@@ -48,50 +48,50 @@ export default function AccountDashboardPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       {/* ─── Metric Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <Card glass className="p-5 border-ds-border">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+        <Card glass className="p-4 sm:p-5 border-ds-border">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+            <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
               Total Sessions
             </span>
-            <Gamepad2 className="w-5 h-5 text-ds-accent" />
+            <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-ds-accent" />
           </div>
-          <div className="text-3xl font-heading font-black text-ds-text mt-3">
+          <div className="text-2xl sm:text-3xl font-heading font-black text-ds-text mt-2 sm:mt-3">
             {bookings.length}
           </div>
-          <span className="text-[11px] text-emerald-400 font-medium block mt-1">
+          <span className="text-[10px] sm:text-[11px] text-emerald-400 font-medium block mt-1 truncate">
             Active Syndicate Member
           </span>
         </Card>
 
-        <Card glass className="p-5 border-ds-border">
+        <Card glass className="p-4 sm:p-5 border-ds-border">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+            <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
               Hours Logged
             </span>
-            <Clock className="w-5 h-5 text-ds-ice" />
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-ds-ice" />
           </div>
-          <div className="text-3xl font-heading font-black text-ds-text mt-3">
+          <div className="text-2xl sm:text-3xl font-heading font-black text-ds-text mt-2 sm:mt-3">
             {bookings.reduce((acc, b) => acc + (b.durationMinutes || 60) / 60, 0)}h
           </div>
-          <span className="text-[11px] text-ds-text-muted font-medium block mt-1">
+          <span className="text-[10px] sm:text-[11px] text-ds-text-muted font-medium block mt-1 truncate">
             Arena play time
           </span>
         </Card>
 
-        <Card glass className="p-5 border-ds-border">
+        <Card glass className="p-4 sm:p-5 border-ds-border col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+            <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
               Syndicate Tier
             </span>
-            <Award className="w-5 h-5 text-amber-400" />
+            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
           </div>
-          <div className="text-2xl font-heading font-black text-amber-400 mt-3 uppercase">
+          <div className="text-xl sm:text-2xl font-heading font-black text-amber-400 mt-2 sm:mt-3 uppercase">
             GLACIER ELITE
           </div>
-          <span className="text-[11px] text-ds-accent font-medium block mt-1">
+          <span className="text-[10px] sm:text-[11px] text-ds-accent font-medium block mt-1 truncate">
             Eligible for Happy Hour Perks
           </span>
         </Card>
