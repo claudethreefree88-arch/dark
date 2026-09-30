@@ -81,7 +81,7 @@ export default function AccountDashboardPage() {
           </span>
         </Card>
 
-        <Card glass className="p-4 sm:p-5 border-ds-border col-span-2 sm:col-span-1">
+        <Card glass className="p-4 sm:p-5 border-ds-border">
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
               Syndicate Tier
@@ -99,7 +99,7 @@ export default function AccountDashboardPage() {
 
       {/* ─── Upcoming Session Hero Card ──────────────────────────── */}
       {upcomingBooking ? (
-        <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-ds-surface via-ds-surface to-ds-primary/20 border border-ds-accent/40 shadow-glow relative overflow-hidden">
+        <div className="p-4 sm:p-8 rounded-2xl bg-gradient-to-r from-ds-surface via-ds-surface to-ds-primary/20 border border-ds-accent/40 shadow-glow relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function AccountDashboardPage() {
                 </span>
               </div>
 
-              <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-ds-text">
+              <h3 className="text-xl sm:text-3xl font-heading font-extrabold text-ds-text">
                 {upcomingBooking.station?.name || 'PS5 Battle Station'}
               </h3>
 
@@ -140,7 +140,7 @@ export default function AccountDashboardPage() {
           </div>
         </div>
       ) : (
-        <Card glass className="p-8 text-center border-dashed border-ds-border space-y-4">
+        <Card glass className="p-5 sm:p-8 text-center border-dashed border-ds-border space-y-4">
           <Gamepad2 className="w-12 h-12 text-ds-text-dim mx-auto" />
           <h3 className="text-lg font-heading font-bold text-ds-text">
             No Upcoming Sessions Scheduled
@@ -159,7 +159,7 @@ export default function AccountDashboardPage() {
       {/* ─── Quick Actions & Bookings History ─────────────────────── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-heading font-bold text-ds-text uppercase">
+          <h3 className="text-base sm:text-xl font-heading font-bold text-ds-text uppercase">
             Recent Reservations
           </h3>
           <Link
@@ -195,7 +195,7 @@ export default function AccountDashboardPage() {
                     {b.status}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-ds-text-dim font-mono">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs text-ds-text-dim font-mono">
                   <span>{b.bookingRef}</span>
                   <span>•</span>
                   <span>{b.date} ({b.startTime} - {b.endTime})</span>

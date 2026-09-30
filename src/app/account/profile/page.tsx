@@ -126,7 +126,7 @@ export default function ProfileSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-heading font-extrabold text-ds-text uppercase">
+        <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-ds-text uppercase">
           PROFILE & <span className="gradient-text">SECURITY SETTINGS</span>
         </h2>
         <p className="text-xs text-ds-text-muted mt-0.5">

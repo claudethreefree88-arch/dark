@@ -55,26 +55,38 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-ds-dark text-ds-text selection:bg-ds-accent selection:text-ds-dark flex flex-col">
       <Navbar />
 
-      <main className="flex-1 pt-24 sm:pt-32 pb-24 sm:pb-16">
+      <main className="flex-1 pt-20 sm:pt-28 pb-20 sm:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Welcome Header */}
           <div className="mb-4 sm:mb-6 p-4 sm:p-6 rounded-2xl bg-ds-surface/60 border border-ds-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-ds-primary to-ds-accent flex items-center justify-center text-lg sm:text-xl font-heading font-extrabold text-ds-text shadow-glow-sm shrink-0">
-                {user?.firstName ? user.firstName[0].toUpperCase() : 'P'}
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-ds-primary to-ds-accent flex items-center justify-center text-lg sm:text-xl font-heading font-extrabold text-ds-text shadow-glow-sm shrink-0">
+                  {user?.firstName ? user.firstName[0].toUpperCase() : 'P'}
+                </div>
+                <div className="min-w-0">
+                  <span className="hidden sm:block text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-accent">
+                    Syndicate Member Portal
+                  </span>
+                  <h2 className="text-lg sm:text-2xl font-heading font-bold text-ds-text truncate">
+                    Welcome back, {user?.firstName || 'Player'}
+                  </h2>
+                  <p className="text-xs text-ds-text-muted mt-0.5 truncate">{user?.email}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <span className="text-[10px] sm:text-xs font-heading font-bold uppercase tracking-wider text-ds-accent">
-                  Syndicate Member Portal
-                </span>
-                <h2 className="text-xl sm:text-2xl font-heading font-bold text-ds-text truncate">
-                  Welcome back, {user?.firstName || 'Player'}
-                </h2>
-                <p className="text-xs text-ds-text-muted mt-0.5 truncate">{user?.email}</p>
-              </div>
+
+              {/* Mobile Sign Out (Right Aligned in Avatar Row) */}
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="sm:hidden p-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition-colors shrink-0 ml-4"
+                title="Sign out of your account"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-ds-border/40">
+            <div className="hidden sm:flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => logout()}
@@ -87,7 +99,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
 
               <Link
                 href="/booking"
-                className="hidden sm:inline-flex px-4 py-2 rounded-xl bg-ds-accent hover:bg-ds-ice text-ds-dark font-heading font-bold text-xs uppercase tracking-wider transition-colors shadow-glow-sm items-center gap-1.5"
+                className="inline-flex px-4 py-2 rounded-xl bg-ds-accent hover:bg-ds-ice text-ds-dark font-heading font-bold text-xs uppercase tracking-wider transition-colors shadow-glow-sm items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 Book Station
@@ -111,7 +123,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{item.name}</span>
+                  <span>{item.shortName}</span>
                 </Link>
               );
             })}
@@ -197,7 +209,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
               {children}
 
               {/* Mobile Assistance Banner (At the bottom of content) */}
-              <div className="mt-8 lg:hidden p-4 rounded-2xl bg-ds-surface/40 border border-ds-border/60 text-xs flex items-center justify-between gap-3 text-ds-text-muted">
+              <div className="mt-8 mb-4 lg:hidden p-4 rounded-2xl bg-ds-surface/40 border border-ds-border/60 text-xs flex items-center justify-between gap-3 text-ds-text-muted">
                 <div>
                   <p className="font-heading font-bold text-ds-text uppercase">Need Assistance?</p>
                   <p className="text-[11px] text-ds-text-dim">Front desk hotline (10 AM – 12 AM)</p>
@@ -216,7 +228,9 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <Footer />
+      <div className="hidden lg:block">
+        <Footer />
+      </div>
     </div>
   );
 }

@@ -80,7 +80,7 @@ export default function MyBookingsPage() {
       {/* Header & Filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-extrabold text-ds-text uppercase">
+          <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-ds-text uppercase">
             MY <span className="gradient-text">BOOKINGS & PASSES</span>
           </h2>
           <p className="text-xs text-ds-text-muted mt-0.5">
@@ -88,13 +88,13 @@ export default function MyBookingsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-ds-surface border border-ds-border">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-ds-surface border border-ds-border overflow-x-auto no-scrollbar">
           {(['ALL', 'UPCOMING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase transition-all shrink-0 whitespace-nowrap ${
                 filter === tab
                   ? 'bg-ds-accent text-ds-dark shadow-glow-sm'
                   : 'text-ds-text-muted hover:text-ds-text'
@@ -113,7 +113,7 @@ export default function MyBookingsPage() {
             <Card
               key={booking.id}
               glass
-              className="p-6 border-ds-border hover:border-ds-border-light transition-all space-y-4"
+              className="p-4 sm:p-6 border-ds-border hover:border-ds-border-light transition-all space-y-4"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ds-border/60">
                 <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export default function MyBookingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs">
                 <div>
                   <span className="text-ds-text-dim block font-heading uppercase text-[10px]">
                     Gaming Station

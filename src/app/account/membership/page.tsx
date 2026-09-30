@@ -95,9 +95,9 @@ export default function AccountMembershipPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-black uppercase text-ds-text">
+          <h1 className="text-xl sm:text-2xl font-heading font-black uppercase text-ds-text">
             Syndicate Member Pass
           </h1>
           <p className="text-xs text-ds-text-muted mt-0.5">
@@ -105,8 +105,8 @@ export default function AccountMembershipPage() {
           </p>
         </div>
 
-        <Link href="/membership">
-          <Button variant="accent" size="sm">
+        <Link href="/membership" className="w-full sm:w-auto">
+          <Button variant="accent" size="sm" className="w-full sm:w-auto">
             <span>{activeMembership ? 'Upgrade / Extend Pass' : 'Browse Syndicate Passes'}</span>
             <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
           </Button>
@@ -276,12 +276,12 @@ export default function AccountMembershipPage() {
                 <thead className="bg-ds-dark/60 text-ds-text-dim uppercase text-[10px] font-mono border-b border-ds-border">
                   <tr>
                     <th className="py-3 px-4">Pass Plan</th>
-                    <th className="py-3 px-4">Tier</th>
+                    <th className="py-3 px-4 hidden sm:table-cell">Tier</th>
                     <th className="py-3 px-4">Discount</th>
                     <th className="py-3 px-4">Price Paid</th>
-                    <th className="py-3 px-4">Method</th>
-                    <th className="py-3 px-4">Activated</th>
-                    <th className="py-3 px-4">Expires</th>
+                    <th className="py-3 px-4 hidden sm:table-cell">Method</th>
+                    <th className="py-3 px-4 hidden sm:table-cell">Activated</th>
+                    <th className="py-3 px-4 hidden sm:table-cell">Expires</th>
                     <th className="py-3 px-4 text-right">Status</th>
                   </tr>
                 </thead>
@@ -291,24 +291,24 @@ export default function AccountMembershipPage() {
                       <td className="py-3.5 px-4 font-heading font-bold text-ds-text">
                         {item.planNameSnapshot}
                       </td>
-                      <td className="py-3.5 px-4 font-mono">{item.tierSnapshot}</td>
+                      <td className="py-3.5 px-4 font-mono hidden sm:table-cell">{item.tierSnapshot}</td>
                       <td className="py-3.5 px-4 font-heading font-bold text-emerald-400">
                         {item.discountPercent}% OFF
                       </td>
                       <td className="py-3.5 px-4 font-mono">
                         ₹{(item.pricePaidPaise / 100).toLocaleString('en-IN')}
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-ds-text-dim">
+                      <td className="py-3.5 px-4 font-mono text-ds-text-dim hidden sm:table-cell">
                         {item.paymentMethod}
                       </td>
-                      <td className="py-3.5 px-4 text-ds-text-dim">
+                      <td className="py-3.5 px-4 text-ds-text-dim hidden sm:table-cell">
                         {new Date(item.createdAt).toLocaleDateString([], {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
                         })}
                       </td>
-                      <td className="py-3.5 px-4 text-ds-text-dim">
+                      <td className="py-3.5 px-4 text-ds-text-dim hidden sm:table-cell">
                         {new Date(item.expiresAt).toLocaleDateString([], {
                           month: 'short',
                           day: 'numeric',
