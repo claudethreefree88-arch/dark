@@ -20,6 +20,7 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://dark-beta-two.vercel.app'),
   title: {
     default: 'DARK SYNDICATE GAMING WORLD',
     template: '%s | DARK SYNDICATE',
@@ -42,6 +43,21 @@ export const metadata: Metadata = {
       'Premium gaming zone — PS5, pool tables, and more. Enter the game. Own the night.',
     type: 'website',
     locale: 'en_IN',
+    siteName: 'Dark Syndicate Gaming World',
+    images: [
+      {
+        url: '/logo-1024.png',
+        width: 1024,
+        height: 1024,
+        alt: 'Dark Syndicate Gaming World',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'DARK SYNDICATE GAMING WORLD',
+    description: 'Premium gaming zone — PS5, pool tables, and more.',
+    images: ['/logo-1024.png'],
   },
 };
 

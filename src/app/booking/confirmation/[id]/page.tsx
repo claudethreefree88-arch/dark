@@ -105,7 +105,7 @@ export default function BookingConfirmationPage() {
     }
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = async () => {
     if (!booking) return;
 
     // Human-readable date: e.g. "Mon, Oct 5, 2026"
@@ -168,6 +168,33 @@ export default function BookingConfirmationPage() {
     ];
 
     const message = lines.join('\n');
+
+    // On mobile devices supporting navigator.canShare with image files, share with logo image attached
+    if (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.canShare === 'function' &&
+      /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')
+    ) {
+      try {
+        const logoRes = await fetch('/logo-1024.png');
+        if (logoRes.ok) {
+          const blob = await logoRes.blob();
+          const imageFile = new File([blob], 'dark-syndicate-pass.png', { type: blob.type || 'image/png' });
+          if (navigator.canShare({ files: [imageFile] })) {
+            await navigator.share({
+              title: 'DARK SYNDICATE · Digital Check-in Pass',
+              text: message,
+              files: [imageFile],
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+
+    // Direct WhatsApp API endpoint (WhatsApp displays the logo preview card automatically via Open Graph)
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 
     try {
