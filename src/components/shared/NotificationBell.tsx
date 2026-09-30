@@ -145,42 +145,60 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-xl bg-ds-surface/60 hover:bg-ds-surface border border-ds-border hover:border-ds-accent/40 text-ds-text-muted hover:text-ds-text transition-all"
+        className={`relative p-2 rounded-xl border transition-all ${
+          open
+            ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-glow-sm'
+            : 'bg-ds-surface/60 hover:bg-ds-surface border-ds-border hover:border-ds-accent/40 text-ds-text-muted hover:text-ds-text'
+        }`}
         aria-label="View notifications"
         aria-expanded={open}
         aria-haspopup="true"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-ds-accent text-[10px] font-heading font-black text-white shadow-glow">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-ds-accent text-[10px] font-heading font-black text-ds-dark shadow-glow">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Mobile Backdrop to prevent clipping & dismiss easily */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 flex w-[min(22rem,calc(100vw-3rem))] max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-xl border border-ds-border-light bg-ds-surface shadow-2xl shadow-black/90 z-50 animate-fade-in-down" role="region" aria-label="Notifications">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 sm:hidden animate-fade-in"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Dropdown Menu Panel: Fixed full-width on mobile to prevent clipping; absolute anchored on desktop */}
+      {open && (
+        <div
+          className="fixed inset-x-3.5 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[22rem] flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-2xl border border-ds-border-light bg-ds-surface/98 backdrop-blur-2xl shadow-2xl shadow-black/90 z-50 animate-fade-in-down"
+          role="region"
+          aria-label="Notifications"
+        >
           {/* Header */}
-          <div className="shrink-0 px-3 py-2.5 border-b border-ds-border flex items-center justify-between gap-2 bg-ds-surface-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span className="font-heading font-black text-[11px] uppercase tracking-wide text-ds-text whitespace-nowrap">
-                Notifications
+          <div className="shrink-0 px-4 py-3 border-b border-ds-border flex items-center justify-between gap-2 bg-ds-surface-2/90">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-ds-accent animate-pulse shrink-0" />
+              <span className="font-heading font-black text-xs uppercase tracking-wider text-ds-text whitespace-nowrap">
+                Notification Center
               </span>
               {unreadCount > 0 && (
-                <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-ds-accent/20 text-ds-ice text-[10px] font-bold">
+                <span className="shrink-0 px-2 py-0.5 rounded-full bg-ds-accent text-ds-dark text-[10px] font-heading font-black shadow-glow-sm">
                   {unreadCount} new
                 </span>
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1.5">
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
                   aria-label="Mark all notifications as read"
-                  className="flex items-center gap-1 whitespace-nowrap text-[10px] text-ds-accent hover:text-ds-accent-hover font-semibold px-1.5 py-1 rounded-lg hover:bg-ds-surface-3 transition-colors"
+                  className="flex items-center gap-1 whitespace-nowrap text-[10px] text-ds-accent hover:text-ds-ice font-heading font-bold uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-ds-surface-3 transition-colors"
                 >
                   <CheckCheck className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden min-[360px]:inline">Mark all read</span>
@@ -190,27 +208,33 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close notifications"
-                className="p-1 text-ds-text-dim hover:text-ds-text rounded-md hover:bg-ds-surface-3"
+                className="p-1.5 text-ds-text-dim hover:text-ds-text rounded-lg hover:bg-ds-surface-3 transition-colors"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {error && (
-            <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+            <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[11px] text-rose-300">
               <span>{error}</span>
               <button type="button" onClick={() => { setLoading(true); void fetchNotifications(); }} className="shrink-0 font-semibold underline">Retry</button>
             </div>
           )}
 
           {/* List */}
-          <div className="min-h-0 max-h-64 flex-1 overflow-y-auto divide-y divide-ds-border/40 bg-ds-surface">
+          <div className="min-h-0 max-h-72 flex-1 overflow-y-auto divide-y divide-ds-border/40 bg-ds-surface">
             {loading && notifications.length === 0 ? (
-              <div className="p-6 text-center text-xs text-ds-text-dim">Loading notifications…</div>
+              <div className="p-8 text-center text-xs text-ds-text-dim">Loading alerts…</div>
             ) : notifications.length === 0 ? (
-              <div className="p-6 text-center text-xs text-ds-text-dim">
-                {error ? 'Notifications are unavailable right now.' : 'No notifications yet.'}
+              <div className="p-8 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-ds-dark/80 border border-ds-border flex items-center justify-center mx-auto text-ds-accent shadow-glow-sm">
+                  <Bell className="w-6 h-6 opacity-75" />
+                </div>
+                <p className="font-heading font-bold text-sm text-ds-text">All Caught Up</p>
+                <p className="text-xs text-ds-text-muted max-w-[200px] mx-auto leading-relaxed">
+                  {error ? 'Notifications are unavailable right now.' : 'You have no new alerts or activity updates.'}
+                </p>
               </div>
             ) : (
               notifications.map((notif) => (
@@ -226,7 +250,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                   role={notif.isRead ? undefined : 'button'}
                   tabIndex={notif.isRead ? undefined : 0}
                   aria-label={notif.isRead ? undefined : `Mark ${notif.title} as read`}
-                  className={`px-3 py-2.5 transition-colors flex items-start gap-2.5 ${
+                  className={`px-4 py-3 transition-colors flex items-start gap-3 ${
                     notif.isRead
                       ? 'bg-ds-surface hover:bg-ds-surface-2/70'
                       : 'cursor-pointer bg-ds-surface-2/90 hover:bg-ds-surface-2 border-l-2 border-ds-accent'
@@ -238,7 +262,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="min-w-0 font-heading font-bold text-[11px] leading-snug text-ds-text line-clamp-2">
+                      <span className="min-w-0 font-heading font-bold text-xs leading-snug text-ds-text line-clamp-2">
                         {notif.title}
                       </span>
                       <span className="text-[10px] text-ds-text-dim font-mono shrink-0 whitespace-nowrap">
@@ -246,7 +270,7 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-ds-text-muted leading-snug line-clamp-2">
+                    <p className="text-xs text-ds-text-muted leading-relaxed line-clamp-2">
                       {notif.message}
                     </p>
 
@@ -254,10 +278,10 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
                       <Link
                         href={notif.metadata.path}
                         onClick={() => setOpen(false)}
-                        className="inline-flex items-center gap-1 text-[10px] text-ds-ice hover:text-ds-accent font-semibold mt-1"
+                        className="inline-flex items-center gap-1 text-[11px] text-ds-ice hover:text-ds-accent font-semibold mt-1.5"
                       >
                         <span>View Details</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
+                        <ExternalLink className="w-3 h-3" />
                       </Link>
                     )}
                   </div>
@@ -267,30 +291,33 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-3 py-2.5 border-t border-ds-border bg-ds-surface-2 text-center">
+          <div className="shrink-0 p-3 border-t border-ds-border bg-ds-surface-2/90 text-center">
             {role === 'CUSTOMER' ? (
               <Link
                 href="/account/notifications"
                 onClick={() => setOpen(false)}
-                className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent hover:text-ds-accent-hover transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-ds-accent/15 border border-ds-accent/30 text-xs font-heading font-bold uppercase tracking-wider text-ds-ice hover:bg-ds-accent hover:text-ds-dark transition-all shadow-glow-sm"
               >
-                View Full Notification Center →
+                <span>Open Full Notification Center</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             ) : role === 'STAFF' ? (
               <Link
                 href="/staff"
                 onClick={() => setOpen(false)}
-                className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent hover:text-ds-accent-hover transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-ds-accent/15 border border-ds-accent/30 text-xs font-heading font-bold uppercase tracking-wider text-ds-ice hover:bg-ds-accent hover:text-ds-dark transition-all shadow-glow-sm"
               >
-                Open Staff Operations →
+                <span>Open Staff Operations</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             ) : (
               <Link
                 href="/admin/notifications"
                 onClick={() => setOpen(false)}
-                className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent hover:text-ds-accent-hover transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-ds-accent/15 border border-ds-accent/30 text-xs font-heading font-bold uppercase tracking-wider text-ds-ice hover:bg-ds-accent hover:text-ds-dark transition-all shadow-glow-sm"
               >
-                Manage Broadcast Alerts →
+                <span>Manage Broadcast Alerts</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             )}
           </div>
@@ -299,3 +326,5 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
     </div>
   );
 }
+
+export default NotificationBell;
