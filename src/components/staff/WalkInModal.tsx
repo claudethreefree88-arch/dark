@@ -379,19 +379,19 @@ export function WalkInModal({
                         setSelectedStationId(st.id);
                         setSelectedGameTitle('');
                       }}
-                      className={`p-3 rounded-xl border text-left transition-all relative flex items-center gap-3 group ${
+                      className={`p-2.5 rounded-xl border text-left transition-all relative flex items-center gap-2.5 group h-[52px] sm:h-[54px] ${
                         isSelected
-                          ? 'bg-cyan-950/40 border-cyan-400 text-white ring-2 ring-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
+                          ? 'bg-cyan-950/40 border-cyan-400 text-white ring-1 ring-cyan-400/80 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
                           : isAvailable
-                          ? 'bg-ds-dark/90 border-ds-border text-ds-text hover:border-cyan-400/50 hover:bg-ds-surface/60'
+                          ? 'bg-[#08101a] border-cyan-950/70 text-ds-text hover:border-cyan-400/50 hover:bg-[#0c1827]'
                           : 'bg-ds-surface/20 border-ds-border/40 text-ds-text-dim opacity-50 cursor-not-allowed'
                       }`}
                     >
                       {/* Console / Station Icon */}
                       <div
-                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
                           isSelected
-                            ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                            ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
                             : 'bg-ds-surface border-ds-border group-hover:border-cyan-500/40'
                         }`}
                       >
@@ -399,25 +399,25 @@ export function WalkInModal({
                       </div>
 
                       {/* Station Details */}
-                      <div className="flex-1 min-w-0 pr-8">
-                        <div className="font-heading font-bold text-xs sm:text-sm text-ds-ice group-hover:text-white truncate">
+                      <div className="flex-1 min-w-0 pr-6">
+                        <div className="font-heading font-bold text-xs text-ds-ice group-hover:text-white truncate">
                           {st.name}
                         </div>
-                        <div className="text-cyan-400 font-mono font-bold text-xs mt-0.5">
+                        <div className="text-cyan-400 font-mono font-bold text-[11px] mt-0.5">
                           ₹{(st.pricePerHourPaise / 100).toFixed(0)}/hr
                         </div>
                       </div>
 
-                      {/* Status indicator on top/right */}
+                      {/* Status indicator on right */}
                       <div className="absolute top-2.5 right-2.5 flex items-center">
                         {isSelected ? (
-                          <div className="w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center font-black text-xs shadow-md shadow-cyan-400/50">
-                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <div className="w-4 h-4 rounded-full bg-cyan-400 text-black flex items-center justify-center font-black text-xs shadow-sm shadow-cyan-400/50">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">
                             <span
-                              className={`w-2 h-2 rounded-full shrink-0 ${
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                 isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
                               }`}
                             />
@@ -474,14 +474,14 @@ export function WalkInModal({
                         type="button"
                         key={game.slug || game.title}
                         onClick={() => setSelectedGameTitle(isSelected ? '' : game.title)}
-                        className={`relative flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all group overflow-hidden ${
+                        className={`relative flex items-center gap-2 p-1.5 sm:p-2 rounded-xl border text-left transition-all group h-[44px] sm:h-[46px] overflow-hidden ${
                           isSelected
-                            ? 'bg-cyan-950/40 border-cyan-400 ring-2 ring-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
-                            : 'bg-ds-dark/90 border-ds-border hover:border-cyan-400/50 hover:bg-ds-surface/60'
+                            ? 'bg-cyan-950/40 border-cyan-400 ring-1 ring-cyan-400/80 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                            : 'bg-[#08101a] border-cyan-950/70 hover:border-cyan-500/40 hover:bg-[#0c1827]'
                         }`}
                       >
-                        {/* Cover Thumbnail */}
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 relative bg-black/40 border border-ds-border/40">
+                        {/* Cover Thumbnail: Compact landscape matching reference */}
+                        <div className="w-10 sm:w-12 h-7 sm:h-8 rounded-md overflow-hidden shrink-0 relative bg-black/50 border border-cyan-900/40">
                           <img
                             src={game.coverImage}
                             alt={game.title}
@@ -490,20 +490,17 @@ export function WalkInModal({
                           />
                         </div>
 
-                        {/* Title & Genre */}
+                        {/* Title: Centered, bold, clean without genre clutter */}
                         <div className="flex-1 min-w-0 pr-1">
-                          <div className="font-heading font-bold text-xs text-ds-ice group-hover:text-white leading-snug line-clamp-2">
+                          <div className="font-heading font-bold text-[11px] sm:text-xs text-ds-ice group-hover:text-white leading-tight line-clamp-2">
                             {game.title}
-                          </div>
-                          <div className="text-[10px] text-ds-text-dim font-mono mt-0.5 truncate">
-                            {game.genre}
                           </div>
                         </div>
 
-                        {/* Selected Checkmark Badge */}
+                        {/* Selected Checkmark Badge: Inside card on right, matching reference */}
                         {isSelected && (
-                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center font-black text-xs shadow-md shadow-cyan-400/50 z-10">
-                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <div className="w-4 h-4 rounded-full bg-cyan-400 text-black flex items-center justify-center shrink-0 ml-auto mr-0.5 shadow-sm shadow-cyan-400/50">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                         )}
                       </button>
