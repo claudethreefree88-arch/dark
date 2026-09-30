@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Gamepad2, Banknote, CreditCard, Sparkles, QrCode, Copy, Check } from 'lucide-react';
+import { Gamepad2, Banknote, CreditCard, Sparkles, QrCode, Copy, Check, Search, Monitor } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useToast } from '@/components/ui/Toast';
+import { ARENA_GAMES, lookupGame, type GameCatalogItem } from '@/lib/gameCatalog';
 
 interface StationGame {
   id: string;
@@ -43,6 +44,42 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   VR: { label: 'VR Arena', icon: '🥽' },
   OTHER: { label: 'Other Stations', icon: '🎯' },
 };
+
+function PlayStationLogo({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.669 17.217c-.38-.975-1.474-1.74-2.883-2.062l-3.83-.872v2.709l2.842.663c.691.162.918.47.918.777 0 .428-.488.752-1.283.752-.942 0-2.327-.406-3.864-1.118v2.771c1.554.673 3.125 1.007 4.549 1.007 2.274 0 3.905-1.082 3.905-2.827 0-.616-.201-1.242-.754-1.8m-8.988-7.397v10.513l-3.08-1.033v-4.004l-3.151.71v-2.736l3.151-.71V3.12l3.08 1.042v5.658zm-5.748 6.471l-2.842-.663c-.691-.162-.918-.47-.918-.777 0-.428.488-.752 1.283-.752.942 0 2.327.406 3.864 1.118v-2.771c-1.554-.673-3.125-1.007-4.549-1.007-2.274 0-3.905 1.082-3.905 2.827 0 .616.201 1.242.754 1.8.38.975 1.474 1.74 2.883 2.062l3.83.872v-2.709z" />
+    </svg>
+  );
+}
+
+function PoolTableIcon({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="7" cy="11" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="13" r="1.5" fill="currentColor" />
+      <circle cx="17" cy="10" r="1.5" fill="currentColor" />
+      <path d="M4 18v2" />
+      <path d="M20 18v2" />
+      <path d="M4 6V4" />
+      <path d="M20 6V4" />
+    </svg>
+  );
+}
+
+function getStationIcon(type: string) {
+  switch (type) {
+    case 'PS5':
+      return <PlayStationLogo className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />;
+    case 'POOL_TABLE':
+      return <PoolTableIcon className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" />;
+    case 'PC':
+      return <Monitor className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />;
+    default:
+      return <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />;
+  }
+}
 
 export function WalkInModal({
   isOpen,
@@ -142,6 +179,50 @@ export function WalkInModal({
     }
     setSelectedGameTitle('');
   };
+
+  // Base catalog games for current category
+  const isPoolCategory = activeCategory === 'POOL_TABLE';
+  const platformGames = useMemo(() => {
+    return ARENA_GAMES.filter((g) =>
+      isPoolCategory ? g.platform === 'POOL_TABLE' : g.platform === 'PS5'
+    );
+  }, [isPoolCategory]);
+
+  // Merge station games with catalog games to ensure rich cover images and all top 8 games
+  const popularGames = useMemo(() => {
+    const list: GameCatalogItem[] = [];
+    const seen = new Set<string>();
+
+    // 1. Top platform games from catalog (e.g. FC 24, Tekken 8, Spider-Man 2, MK1, GTA V, WWE 2K24, It Takes Two, COD MW3)
+    for (const g of platformGames) {
+      if (!seen.has(g.title.toLowerCase())) {
+        seen.add(g.title.toLowerCase());
+        list.push(g);
+      }
+    }
+
+    // 2. Any additional games configured on the station in DB
+    if (selectedStation?.games && selectedStation.games.length > 0) {
+      for (const sg of selectedStation.games) {
+        if (!seen.has(sg.title.toLowerCase())) {
+          seen.add(sg.title.toLowerCase());
+          const lookedUp = lookupGame(sg.title);
+          list.push({
+            slug: lookedUp?.slug || sg.id,
+            title: sg.title,
+            platform: (selectedStation.stationType === 'POOL_TABLE' ? 'POOL_TABLE' : 'PS5') as 'PS5' | 'POOL_TABLE',
+            genre: sg.genre || lookedUp?.genre || 'Action',
+            description: lookedUp?.description || '',
+            coverImage: sg.coverImage || lookedUp?.coverImage || 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&auto=format&fit=crop&q=80',
+            maxPlayers: sg.maxPlayers || lookedUp?.maxPlayers || 2,
+            isFeatured: sg.isFeatured ?? lookedUp?.isFeatured,
+          });
+        }
+      }
+    }
+
+    return list.slice(0, 8);
+  }, [platformGames, selectedStation]);
 
   // Generate dynamic QR fallback if admin has not uploaded a static QR image
   useEffect(() => {
@@ -272,14 +353,19 @@ export function WalkInModal({
               </div>
             </div>
 
-            {/* 2. Choose Station (1-click Cards) */}
+            {/* 2. Choose Station (1-click Cards with Console Logo) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-heading font-black text-ds-ice uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-ds-accent/20 border border-ds-accent text-ds-accent text-[11px] flex items-center justify-center font-mono">2</span>
-                <span>Choose {CATEGORY_META[activeCategory]?.label || 'Station'}</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-heading font-black text-ds-ice uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-[11px] flex items-center justify-center font-mono">2</span>
+                  <span>Choose {CATEGORY_META[activeCategory]?.label || 'Station'}</span>
+                </label>
+                <span className="text-[11px] font-mono text-ds-text-dim">
+                  {categoryStations.filter((s) => s.status === 'AVAILABLE').length} Available
+                </span>
+              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
                 {categoryStations.map((st) => {
                   const isSelected = selectedStationId === st.id;
                   const isAvailable = st.status === 'AVAILABLE';
@@ -293,27 +379,57 @@ export function WalkInModal({
                         setSelectedStationId(st.id);
                         setSelectedGameTitle('');
                       }}
-                      className={`p-3 rounded-xl border text-left transition-all relative ${
+                      className={`p-3 rounded-xl border text-left transition-all relative flex items-center gap-3 group ${
                         isSelected
-                          ? 'bg-ds-accent/20 border-ds-accent text-white ring-2 ring-ds-accent shadow-md shadow-ds-accent/20'
+                          ? 'bg-cyan-950/40 border-cyan-400 text-white ring-2 ring-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
                           : isAvailable
-                          ? 'bg-ds-dark/90 border-ds-border text-ds-text hover:border-ds-accent/60'
+                          ? 'bg-ds-dark/90 border-ds-border text-ds-text hover:border-cyan-400/50 hover:bg-ds-surface/60'
                           : 'bg-ds-surface/20 border-ds-border/40 text-ds-text-dim opacity-50 cursor-not-allowed'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-heading font-bold text-xs truncate">{st.name}</span>
-                        <span
-                          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                            isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
-                          }`}
-                        />
+                      {/* Console / Station Icon */}
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
+                          isSelected
+                            ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                            : 'bg-ds-surface border-ds-border group-hover:border-cyan-500/40'
+                        }`}
+                      >
+                        {getStationIcon(st.stationType)}
                       </div>
-                      <div className="flex items-center justify-between mt-1.5 text-[11px] font-mono">
-                        <span className="text-ds-ice font-bold">₹{(st.pricePerHourPaise / 100).toFixed(0)}/hr</span>
-                        <span className={isAvailable ? 'text-emerald-400 text-[10px] font-bold uppercase' : 'text-rose-400 text-[10px]'}>
-                          {isAvailable ? 'Ready' : 'Occupied'}
-                        </span>
+
+                      {/* Station Details */}
+                      <div className="flex-1 min-w-0 pr-8">
+                        <div className="font-heading font-bold text-xs sm:text-sm text-ds-ice group-hover:text-white truncate">
+                          {st.name}
+                        </div>
+                        <div className="text-cyan-400 font-mono font-bold text-xs mt-0.5">
+                          ₹{(st.pricePerHourPaise / 100).toFixed(0)}/hr
+                        </div>
+                      </div>
+
+                      {/* Status indicator on top/right */}
+                      <div className="absolute top-2.5 right-2.5 flex items-center">
+                        {isSelected ? (
+                          <div className="w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center font-black text-xs shadow-md shadow-cyan-400/50">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                              }`}
+                            />
+                            <span
+                              className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
+                                isAvailable ? 'text-emerald-400' : 'text-rose-400'
+                              }`}
+                            >
+                              {isAvailable ? 'READY' : 'BUSY'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -323,82 +439,106 @@ export function WalkInModal({
 
             {/* 3. Game Selection (Consoles Only — Automatically Hidden for Snooker/Pool) */}
             {isConsoleStation && (
-              <div className="space-y-2.5 p-3.5 rounded-xl bg-ds-surface/50 border border-ds-border">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-heading font-black text-ds-text uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-ds-accent/20 border border-ds-accent text-ds-accent text-[11px] flex items-center justify-center font-mono">3</span>
-                    <Gamepad2 className="w-4 h-4 text-ds-accent" />
-                    <span>Select Game To Play</span>
-                    <span className="text-[10px] text-ds-text-dim normal-case font-normal">(optional)</span>
-                  </label>
+              <div className="space-y-3 p-3.5 rounded-xl bg-ds-surface/50 border border-ds-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <label className="text-xs font-heading font-black text-ds-ice uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-[11px] flex items-center justify-center font-mono">3</span>
+                      <Gamepad2 className="w-4 h-4 text-cyan-400" />
+                      <span>Select Game To Play</span>
+                      <span className="text-[10px] text-ds-text-dim normal-case font-normal">(optional)</span>
+                    </label>
+                    <p className="text-[11px] text-ds-text-dim mt-0.5">
+                      Choose from our popular games or search for your favorite.
+                    </p>
+                  </div>
+
                   {selectedGameTitle && (
                     <button
                       type="button"
                       onClick={() => setSelectedGameTitle('')}
-                      className="text-[11px] font-mono text-rose-400 hover:underline"
+                      className="text-[11px] font-mono text-rose-400 hover:text-rose-300 hover:underline self-start sm:self-auto"
                     >
                       Clear choice
                     </button>
                   )}
                 </div>
 
-                {selectedStation?.games && selectedStation.games.length > 0 ? (
-                  <div className="space-y-2.5">
-                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
+                {/* 8-Card Popular Game Grid (4 cols on desktop, 2 cols on mobile) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+                  {popularGames.map((game) => {
+                    const isSelected = selectedGameTitle.trim().toLowerCase() === game.title.trim().toLowerCase();
+
+                    return (
                       <button
                         type="button"
-                        onClick={() => setSelectedGameTitle('')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-heading font-medium transition-all border ${
-                          !selectedGameTitle
-                            ? 'bg-ds-surface border-ds-accent text-white ring-1 ring-ds-accent'
-                            : 'bg-ds-dark/80 border-ds-border text-ds-text-muted hover:text-white'
+                        key={game.slug || game.title}
+                        onClick={() => setSelectedGameTitle(isSelected ? '' : game.title)}
+                        className={`relative flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all group overflow-hidden ${
+                          isSelected
+                            ? 'bg-cyan-950/40 border-cyan-400 ring-2 ring-cyan-400/60 shadow-[0_0_16px_rgba(6,182,212,0.25)]'
+                            : 'bg-ds-dark/90 border-ds-border hover:border-cyan-400/50 hover:bg-ds-surface/60'
                         }`}
                       >
-                        🎮 Decide Later / Open Play
+                        {/* Cover Thumbnail */}
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 relative bg-black/40 border border-ds-border/40">
+                          <img
+                            src={game.coverImage}
+                            alt={game.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* Title & Genre */}
+                        <div className="flex-1 min-w-0 pr-1">
+                          <div className="font-heading font-bold text-xs text-ds-ice group-hover:text-white leading-snug line-clamp-2">
+                            {game.title}
+                          </div>
+                          <div className="text-[10px] text-ds-text-dim font-mono mt-0.5 truncate">
+                            {game.genre}
+                          </div>
+                        </div>
+
+                        {/* Selected Checkmark Badge */}
+                        {isSelected && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-cyan-400 text-black flex items-center justify-center font-black text-xs shadow-md shadow-cyan-400/50 z-10">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        )}
                       </button>
+                    );
+                  })}
+                </div>
 
-                      {selectedStation.games.map((g) => {
-                        const isSelected = selectedGameTitle.toLowerCase() === g.title.toLowerCase();
-                        return (
-                          <button
-                            type="button"
-                            key={g.id}
-                            onClick={() => setSelectedGameTitle(isSelected ? '' : g.title)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
-                              isSelected
-                                ? 'bg-ds-accent text-white border-ds-accent shadow-md shadow-ds-accent/20'
-                                : 'bg-ds-dark/90 border-ds-border text-ds-text-muted hover:text-white hover:border-ds-border/80'
-                            }`}
-                          >
-                            <Gamepad2 className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-ds-accent'}`} />
-                            <span>{g.title}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="Or type other game title (e.g. Call of Duty, Mortal Kombat)..."
-                      value={selectedGameTitle}
-                      onChange={(e) => setSelectedGameTitle(e.target.value)}
-                      className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text placeholder:text-ds-text-dim focus:border-ds-accent focus:outline-none"
-                    />
-                  </div>
-                ) : (
+                {/* Search / Custom input for other games */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-ds-text-dim absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Type game title (e.g. Tekken 8, FC 24)..."
+                    placeholder="Or type other game title (e.g. Call of Duty, Mortal Kombat)..."
                     value={selectedGameTitle}
                     onChange={(e) => setSelectedGameTitle(e.target.value)}
-                    className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2.5 text-xs text-ds-text placeholder:text-ds-text-dim focus:border-ds-accent focus:outline-none"
+                    className="w-full bg-ds-dark border border-ds-border rounded-xl pl-9 pr-3 py-2 text-xs text-ds-text placeholder:text-ds-text-dim focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:outline-none transition-all"
                   />
-                )}
+                </div>
 
+                {/* Selected Game Confirmation Pill */}
                 {selectedGameTitle && (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
-                    <Check className="w-3.5 h-3.5 shrink-0" />
-                    <span>Selected: <strong className="text-white font-semibold">{selectedGameTitle}</strong></span>
+                  <div className="flex items-center justify-between gap-2 text-xs text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-500/30 px-3 py-1.5 rounded-lg">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">
+                        Selected: <strong className="text-white font-semibold">{selectedGameTitle}</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGameTitle('')}
+                      className="text-[10px] text-rose-400 hover:underline shrink-0"
+                    >
+                      Clear
+                    </button>
                   </div>
                 )}
               </div>
