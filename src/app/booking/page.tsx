@@ -2340,7 +2340,8 @@ function BookingContent() {
                     e.currentTarget.scrollLeft += e.deltaY;
                   }
                 }}
-                className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 p-4 sm:p-6 snap-x snap-mandatory scroll-smooth touch-pan-x [scrollbar-width:thin] select-none"
+                className="flex-1 overflow-x-auto overflow-y-hidden flex gap-4 p-4 sm:p-6 snap-x snap-mandatory scroll-smooth touch-pan-x no-scrollbar select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {/* CARD 1: "Decide at Venue / Any Game" Option */}
                 <div
