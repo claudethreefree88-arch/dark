@@ -179,11 +179,11 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
           aria-label="Notifications"
         >
           {/* Header */}
-          <div className="shrink-0 px-4 py-3 border-b border-ds-border flex items-center justify-between gap-2 bg-ds-surface-2/90">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="shrink-0 px-4 py-3 border-b border-ds-border flex items-center justify-between gap-3 bg-ds-surface-2/95">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-2 h-2 rounded-full bg-ds-accent animate-pulse shrink-0" />
-              <span className="font-heading font-black text-xs uppercase tracking-wider text-ds-text whitespace-nowrap">
-                Notification Center
+              <span className="font-heading font-black text-xs uppercase tracking-wider text-ds-text truncate">
+                Notifications
               </span>
               {unreadCount > 0 && (
                 <span className="shrink-0 px-2 py-0.5 rounded-full bg-ds-accent text-ds-dark text-[10px] font-heading font-black shadow-glow-sm">
@@ -192,23 +192,25 @@ export function NotificationBell({ role = 'CUSTOMER' }: { role?: string }) {
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
                   aria-label="Mark all notifications as read"
-                  className="flex items-center gap-1 whitespace-nowrap text-[10px] text-ds-accent hover:text-ds-ice font-heading font-bold uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-ds-surface-3 transition-colors"
+                  title="Mark all as read"
+                  className="flex items-center gap-1 text-[10px] text-ds-accent hover:text-ds-ice font-heading font-bold uppercase tracking-wider px-2 py-1 rounded-lg hover:bg-ds-surface-3 transition-colors shrink-0"
                 >
                   <CheckCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden min-[360px]:inline">Mark all read</span>
+                  <span className="hidden sm:inline">Mark read</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close notifications"
-                className="p-1.5 text-ds-text-dim hover:text-ds-text rounded-lg hover:bg-ds-surface-3 transition-colors"
+                title="Close notifications"
+                className="p-1.5 text-ds-text-dim hover:text-ds-text rounded-lg hover:bg-ds-surface-3 transition-colors shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
