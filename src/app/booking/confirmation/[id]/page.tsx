@@ -107,8 +107,77 @@ export default function BookingConfirmationPage() {
 
   const handleShareWhatsApp = () => {
     if (!booking) return;
-    const text = `🎮 *DARK SYNDICATE GAMING PASS*\n\nRef: *${booking.bookingRef}*\nStation: ${booking.station?.name || 'PS5 Arena'}\nDate: ${booking.date}\nTime: ${new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nAmount: ₹${(booking.totalPricePaise / 100).toFixed(0)}\n\nSee you at the Arena! 🚀`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+
+    // Human-readable date: e.g. "Mon, Oct 5, 2026"
+    const parsedDate = new Date(booking.date);
+    const dateFormatted = !isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : booking.date;
+
+    // Human-readable start and end times: e.g. "01:00 PM – 03:00 PM"
+    const parsedStart = new Date(booking.startTime);
+    const parsedEnd = new Date(booking.endTime);
+    const startTimeFormatted = !isNaN(parsedStart.getTime())
+      ? parsedStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      : booking.startTime;
+    const endTimeFormatted = !isNaN(parsedEnd.getTime())
+      ? parsedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      : booking.endTime;
+
+    const durationHrs = booking.durationMinutes ? booking.durationMinutes / 60 : 0;
+    const durationStr = durationHrs > 0 ? (durationHrs === 1 ? '1 Hour' : `${durationHrs} Hours`) : '';
+
+    const stationName = booking.station?.name || 'PS5 Pro Station';
+    const facilityName = booking.station?.facility?.name ? ` (${booking.station.facility.name})` : '';
+
+    const passUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/booking/confirmation/${booking.id}`
+      : `https://dark-beta-two.vercel.app/booking/confirmation/${booking.id}`;
+
+    const latestPay = booking.payments?.[0];
+    const isBookingPaid = latestPay?.status === 'COMPLETED' || booking.status === 'CONFIRMED';
+    const paymentStatus = isBookingPaid ? 'Paid' : 'Pay at Venue';
+    const amount = `₹${(booking.totalPricePaise / 100).toFixed(0)}`;
+
+    const lines = [
+      `🎮 *DARK SYNDICATE GAMING WORLD*`,
+      `*Digital Check-in Pass*`,
+      ``,
+      `👤 *Player:* ${booking.customerName}`,
+      `🔖 *Booking Ref:* ${booking.bookingRef}`,
+      `🕹️ *Station:* ${stationName}${facilityName}`,
+      booking.gameTitle ? `🎯 *Game:* ${booking.gameTitle}` : `🎯 *Game Choice:* Decide at Venue`,
+      `📅 *Date:* ${dateFormatted}`,
+      durationStr
+        ? `⏰ *Time Slot:* ${startTimeFormatted} – ${endTimeFormatted} (${durationStr})`
+        : `⏰ *Time Slot:* ${startTimeFormatted} – ${endTimeFormatted}`,
+      `💳 *Amount:* ${amount} (${paymentStatus})`,
+      ``,
+      `🎟️ *Open Your Digital Pass & QR:*`,
+      passUrl,
+      ``,
+      `📍 *Venue:* Dark Syndicate Arena · 4th Floor, Nexus Mall, Velachery, Chennai`,
+      `⚡ *Note:* Please arrive 5–10 minutes early to scan in at the desk.`,
+      ``,
+      `See you at the Arena! 🚀`,
+    ];
+
+    const message = lines.join('\n');
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    try {
+      const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = whatsappUrl;
+      }
+    } catch {
+      window.location.href = whatsappUrl;
+    }
   };
 
   // Google Calendar Integration
@@ -381,8 +450,12 @@ export default function BookingConfirmationPage() {
               <span>Print / Save Pass</span>
             </Button>
 
-            <Button variant="secondary" onClick={handleShareWhatsApp} className="flex items-center gap-2">
-              <Share2 className="w-4 h-4" />
+            <Button
+              variant="secondary"
+              onClick={handleShareWhatsApp}
+              className="flex items-center gap-2 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-400 shadow-sm"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400" />
               <span>Share on WhatsApp</span>
             </Button>
 
