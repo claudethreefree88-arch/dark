@@ -256,12 +256,24 @@ export default function AdminMembershipsPage() {
     e.preventDefault();
     if (!editingPlan) return;
 
-    if (!planForm.name.trim()) {
-      toast.error('Plan name is required');
+    if (!planForm.name.trim() || planForm.name.trim().length < 2) {
+      toast.error('Plan name must be at least 2 characters');
       return;
     }
-    if (planForm.priceRupees < 0) {
-      toast.error('Price cannot be negative');
+    if (isNaN(Number(planForm.priceRupees)) || Number(planForm.priceRupees) < 0) {
+      toast.error('Please enter a valid price (cannot be negative)');
+      return;
+    }
+    if (isNaN(Number(planForm.discountPercent)) || Number(planForm.discountPercent) < 0 || Number(planForm.discountPercent) > 100) {
+      toast.error('Discount percentage must be between 0% and 100%');
+      return;
+    }
+    if (isNaN(Number(planForm.durationDays)) || Number(planForm.durationDays) < 1) {
+      toast.error('Duration must be at least 1 day');
+      return;
+    }
+    if (isNaN(Number(planForm.freeHours)) || Number(planForm.freeHours) < 0) {
+      toast.error('Free hours cannot be negative');
       return;
     }
 

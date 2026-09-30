@@ -79,12 +79,40 @@ export default function AdminCouponsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const cleanCode = formCode.trim().toUpperCase();
+    if (!cleanCode) {
+      toast.error('Promo code is required');
+      return;
+    }
+    if (cleanCode.length < 3) {
+      toast.error('Promo code must be at least 3 characters');
+      return;
+    }
+    if (!/^[A-Z0-9_-]+$/.test(cleanCode)) {
+      toast.error('Promo code must only contain letters, numbers, and dashes');
+      return;
+    }
+    if (!formName.trim()) {
+      toast.error('Campaign name is required');
+      return;
+    }
+    const parsedVal = parseInt(formValue, 10);
+    if (isNaN(parsedVal) || parsedVal <= 0) {
+      toast.error('Discount value must be greater than 0');
+      return;
+    }
+    if (formType === 'PERCENTAGE' && parsedVal > 100) {
+      toast.error('Percentage discount cannot exceed 100%');
+      return;
+    }
+
     setSubmitting(true);
 
     const discountVal =
       formType === 'PERCENTAGE'
-        ? parseInt(formValue, 10) * 100 // store percentage * 100
-        : parseInt(formValue, 10) * 100; // paise
+        ? parsedVal * 100 // store percentage * 100
+        : parsedVal * 100; // paise
 
     const minOrderPaise = formMinOrder ? parseInt(formMinOrder, 10) * 100 : undefined;
     const maxDiscountPaise = formMaxDiscount ? parseInt(formMaxDiscount, 10) * 100 : undefined;

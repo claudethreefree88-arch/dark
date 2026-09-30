@@ -158,8 +158,14 @@ export default function AdminGamesPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle.trim()) {
-      toast.error('Game title is required');
+    if (!formTitle.trim() || formTitle.trim().length < 2) {
+      toast.error('Game title must be at least 2 characters');
+      return;
+    }
+
+    const maxPlayers = Number(formMaxPlayers);
+    if (isNaN(maxPlayers) || maxPlayers < 1 || maxPlayers > 16) {
+      toast.error('Max players must be between 1 and 16');
       return;
     }
 

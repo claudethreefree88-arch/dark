@@ -121,13 +121,24 @@ export default function AdminCmsPage() {
 
   const handleCreateTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!newCustomerName.trim() || newCustomerName.trim().length < 2) {
+      toast.error('Customer name must be at least 2 characters');
+      return;
+    }
+
+    if (!newContent.trim() || newContent.trim().length < 5) {
+      toast.error('Review content must be at least 5 characters');
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/cms/testimonials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: newCustomerName,
-          content: newContent,
+          customerName: newCustomerName.trim(),
+          content: newContent.trim(),
           rating: parseInt(newRating, 10),
           isApproved: true,
         }),
@@ -148,6 +159,12 @@ export default function AdminCmsPage() {
   // Gallery Handlers
   const handleCreateGallery = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!newImageUrl.trim() || (!newImageUrl.startsWith('http://') && !newImageUrl.startsWith('https://') && !newImageUrl.startsWith('/'))) {
+      toast.error('Please enter a valid image URL (http/https or relative path)');
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/cms/gallery', {
         method: 'POST',

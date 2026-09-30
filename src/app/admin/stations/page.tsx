@@ -91,10 +91,27 @@ export default function AdminStationsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formName.trim() || formName.trim().length < 2) {
+      toast.error('Station name must be at least 2 characters');
+      return;
+    }
+
+    const priceNum = parseInt(formPriceINR, 10);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error('Hourly rate must be a valid number greater than 0');
+      return;
+    }
+
+    const capacityNum = parseInt(formCapacity, 10);
+    if (isNaN(capacityNum) || capacityNum <= 0 || capacityNum > 32) {
+      toast.error('Player capacity must be between 1 and 32');
+      return;
+    }
+
     setSubmitting(true);
 
-    const pricePaise = parseInt(formPriceINR, 10) * 100;
-    const capacityNum = parseInt(formCapacity, 10) || 2;
+    const pricePaise = priceNum * 100;
 
     try {
       if (editingStation) {

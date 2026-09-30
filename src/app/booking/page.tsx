@@ -142,6 +142,44 @@ function BookingContent() {
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
+  // Gamer Info Validation State & Helpers
+  const [formErrors, setFormErrors] = useState<{
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+  }>({});
+  const [formTouched, setFormTouched] = useState<{
+    customerName?: boolean;
+    customerPhone?: boolean;
+    customerEmail?: boolean;
+  }>({});
+
+  const validateCustomerName = (val: string): string | undefined => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Full name is required';
+    if (trimmed.length < 2) return 'Name must be at least 2 characters';
+    if (!/^[a-zA-Z\s.'-]+$/.test(trimmed)) return 'Name contains invalid characters';
+    return undefined;
+  };
+
+  const validateCustomerPhone = (val: string): string | undefined => {
+    const rawDigits = val.replace(/\D/g, '');
+    if (!rawDigits) return 'WhatsApp phone number is required';
+    const digits = rawDigits.length === 12 && rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
+    if (digits.length !== 10) return 'Must be a 10-digit mobile number';
+    if (!/^[6-9]/.test(digits)) return 'Indian mobile numbers start with 6, 7, 8, or 9';
+    return undefined;
+  };
+
+  const validateCustomerEmail = (val: string): string | undefined => {
+    const trimmed = val.trim();
+    if (!trimmed) return undefined; // Optional field
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return 'Please enter a valid email address';
+    }
+    return undefined;
+  };
+
   // Game Selection State (Optional)
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [showGameModal, setShowGameModal] = useState<boolean>(false);
@@ -456,11 +494,24 @@ function BookingContent() {
       return;
     }
 
-    if (!customerName || !customerPhone) {
-      toast.error('Please provide your name and WhatsApp phone number');
+    const nameErr = validateCustomerName(customerName);
+    const phoneErr = validateCustomerPhone(customerPhone);
+    const emailErr = validateCustomerEmail(customerEmail);
+
+    if (nameErr || phoneErr || emailErr) {
+      setFormTouched({ customerName: true, customerPhone: true, customerEmail: true });
+      setFormErrors({
+        customerName: nameErr,
+        customerPhone: phoneErr,
+        customerEmail: emailErr,
+      });
+      toast.error(nameErr || phoneErr || emailErr || 'Please check your player details');
       goToStep(3);
       return;
     }
+
+    const rawDigits = customerPhone.replace(/\D/g, '');
+    const cleanPhone = rawDigits.length === 12 && rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
 
     setSubmitting(true);
     try {
@@ -476,9 +527,9 @@ function BookingContent() {
         startTime: selectedSlot.time,
         durationMinutes,
         playerCount,
-        customerName,
-        customerEmail: customerEmail || undefined,
-        customerPhone,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim() || undefined,
+        customerPhone: cleanPhone,
         gameTitle: selectedGame || undefined,
         notes: combinedNotes || undefined,
         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
@@ -598,8 +649,19 @@ function BookingContent() {
       return;
     }
     if (currentStep === 3) {
-      if (!customerName.trim() || !customerPhone.trim()) {
-        toast.error('Please enter your full name and phone number');
+      const nameErr = validateCustomerName(customerName);
+      const phoneErr = validateCustomerPhone(customerPhone);
+      const emailErr = validateCustomerEmail(customerEmail);
+
+      setFormTouched({ customerName: true, customerPhone: true, customerEmail: true });
+      setFormErrors({
+        customerName: nameErr,
+        customerPhone: phoneErr,
+        customerEmail: emailErr,
+      });
+
+      if (nameErr || phoneErr || emailErr) {
+        toast.error(nameErr || phoneErr || emailErr || 'Please fill in all required fields correctly');
         return;
       }
       goToStep(4);
@@ -1428,7 +1490,17 @@ function BookingContent() {
                       <Input
                         placeholder="Alex Mercer"
                         value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
+                        onChange={(e) => {
+                          setCustomerName(e.target.value);
+                          if (formTouched.customerName) {
+                            setFormErrors((prev) => ({ ...prev, customerName: validateCustomerName(e.target.value) }));
+                          }
+                        }}
+                        onBlur={() => {
+                          setFormTouched((prev) => ({ ...prev, customerName: true }));
+                          setFormErrors((prev) => ({ ...prev, customerName: validateCustomerName(customerName) }));
+                        }}
+                        error={formTouched.customerName ? formErrors.customerName : undefined}
                         required
                       />
                     </div>
@@ -1439,8 +1511,19 @@ function BookingContent() {
                       </label>
                       <Input
                         placeholder="+91 98765 43210"
+                        type="tel"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => {
+                          setCustomerPhone(e.target.value);
+                          if (formTouched.customerPhone) {
+                            setFormErrors((prev) => ({ ...prev, customerPhone: validateCustomerPhone(e.target.value) }));
+                          }
+                        }}
+                        onBlur={() => {
+                          setFormTouched((prev) => ({ ...prev, customerPhone: true }));
+                          setFormErrors((prev) => ({ ...prev, customerPhone: validateCustomerPhone(customerPhone) }));
+                        }}
+                        error={formTouched.customerPhone ? formErrors.customerPhone : undefined}
                         required
                       />
                     </div>
@@ -1453,7 +1536,17 @@ function BookingContent() {
                         type="email"
                         placeholder="alex@example.com"
                         value={customerEmail}
-                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        onChange={(e) => {
+                          setCustomerEmail(e.target.value);
+                          if (formTouched.customerEmail) {
+                            setFormErrors((prev) => ({ ...prev, customerEmail: validateCustomerEmail(e.target.value) }));
+                          }
+                        }}
+                        onBlur={() => {
+                          setFormTouched((prev) => ({ ...prev, customerEmail: true }));
+                          setFormErrors((prev) => ({ ...prev, customerEmail: validateCustomerEmail(customerEmail) }));
+                        }}
+                        error={formTouched.customerEmail ? formErrors.customerEmail : undefined}
                       />
                     </div>
 
@@ -1495,8 +1588,19 @@ function BookingContent() {
                       variant="accent"
                       size="sm"
                       onClick={() => {
-                        if (!customerName || !customerPhone) {
-                          toast.error('Please enter your full name and phone number');
+                        const nameErr = validateCustomerName(customerName);
+                        const phoneErr = validateCustomerPhone(customerPhone);
+                        const emailErr = validateCustomerEmail(customerEmail);
+
+                        setFormTouched({ customerName: true, customerPhone: true, customerEmail: true });
+                        setFormErrors({
+                          customerName: nameErr,
+                          customerPhone: phoneErr,
+                          customerEmail: emailErr,
+                        });
+
+                        if (nameErr || phoneErr || emailErr) {
+                          toast.error(nameErr || phoneErr || emailErr || 'Please check the highlighted errors');
                           return;
                         }
                         goToStep(4);

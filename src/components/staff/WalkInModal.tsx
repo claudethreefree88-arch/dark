@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Gamepad2, Banknote, CreditCard, Sparkles, QrCode, Copy, Check, Search, Monitor } from 'lucide-react';
+import { Gamepad2, Banknote, CreditCard, Sparkles, QrCode, Copy, Check, Search, Monitor, AlertCircle } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useToast } from '@/components/ui/Toast';
 import { ARENA_GAMES, lookupGame, type GameCatalogItem } from '@/lib/gameCatalog';
@@ -114,6 +114,45 @@ export function WalkInModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const toast = useToast();
 
+  // Form Validation State & Helpers
+  const [formErrors, setFormErrors] = useState<{
+    station?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+  }>({});
+  const [touched, setTouched] = useState<{
+    customerName?: boolean;
+    customerPhone?: boolean;
+    customerEmail?: boolean;
+  }>({});
+
+  const validateName = (name: string): string | undefined => {
+    const trimmed = name.trim();
+    if (!trimmed) return 'Gamer name is required';
+    if (trimmed.length < 2) return 'Name must be at least 2 characters';
+    if (!/^[a-zA-Z\s.'-]+$/.test(trimmed)) return 'Name contains invalid characters';
+    return undefined;
+  };
+
+  const validatePhone = (phone: string): string | undefined => {
+    const rawDigits = phone.replace(/\D/g, '');
+    if (!rawDigits) return 'WhatsApp phone number is required';
+    const digits = rawDigits.length === 12 && rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
+    if (digits.length !== 10) return 'Must be a 10-digit mobile number';
+    if (!/^[6-9]/.test(digits)) return 'Indian mobile numbers start with 6, 7, 8, or 9';
+    return undefined;
+  };
+
+  const validateEmail = (email: string): string | undefined => {
+    const trimmed = email.trim();
+    if (!trimmed) return undefined; // Optional field
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return 'Please enter a valid email address';
+    }
+    return undefined;
+  };
+
   // Admin QR & UPI Details
   const [adminQrUrl, setAdminQrUrl] = useState<string>('');
   const [upiId, setUpiId] = useState<string>('darksyndicate@icici');
@@ -136,6 +175,8 @@ export function WalkInModal({
       setCustomerName('');
       setCustomerPhone('');
       setCustomerEmail('');
+      setFormErrors({});
+      setTouched({});
     }
   }, [isOpen, preselectedStationId, stations]);
 
@@ -249,15 +290,32 @@ export function WalkInModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStationId) {
-      toast.error('Please select a station');
+
+    const nameErr = validateName(customerName);
+    const phoneErr = validatePhone(customerPhone);
+    const emailErr = validateEmail(customerEmail);
+    const stationErr = !selectedStationId ? 'Please choose an available station to continue' : undefined;
+
+    setTouched({ customerName: true, customerPhone: true, customerEmail: true });
+    setFormErrors({
+      customerName: nameErr,
+      customerPhone: phoneErr,
+      customerEmail: emailErr,
+      station: stationErr,
+    });
+
+    if (stationErr) {
+      toast.error(stationErr);
       return;
     }
 
-    if (!customerName || !customerPhone) {
-      toast.error('Please provide customer name and phone');
+    if (nameErr || phoneErr || emailErr) {
+      toast.error(nameErr || phoneErr || emailErr || 'Please check the highlighted errors');
       return;
     }
+
+    const rawDigits = customerPhone.replace(/\D/g, '');
+    const cleanPhone = rawDigits.length === 12 && rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
 
     setSubmitting(true);
     try {
@@ -267,8 +325,8 @@ export function WalkInModal({
         body: JSON.stringify({
           stationId: selectedStationId,
           durationMinutes,
-          customerName,
-          customerPhone,
+          customerName: customerName.trim(),
+          customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
           paymentMethod,
           gameTitle: selectedGameTitle.trim() || undefined,
@@ -300,7 +358,7 @@ export function WalkInModal({
       description="Quickly assign available gaming consoles and snooker tables to walk-in players."
       size="full"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col justify-between">
+      <form onSubmit={handleSubmit} className="flex flex-col justify-between" noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* ─── LEFT COLUMN: CATEGORY, STATION & GAME (7 COLS) ─── */}
           <div className="lg:col-span-7 space-y-4">
@@ -365,6 +423,13 @@ export function WalkInModal({
                 </span>
               </div>
 
+              {formErrors.station && (
+                <div className="flex items-center gap-1.5 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-lg font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{formErrors.station}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
                 {categoryStations.map((st) => {
                   const isSelected = selectedStationId === st.id;
@@ -378,6 +443,7 @@ export function WalkInModal({
                       onClick={() => {
                         setSelectedStationId(st.id);
                         setSelectedGameTitle('');
+                        setFormErrors((prev) => ({ ...prev, station: undefined }));
                       }}
                       className={`p-2.5 rounded-xl border text-left transition-all relative flex items-center gap-2.5 group h-[52px] sm:h-[54px] ${
                         isSelected
@@ -586,22 +652,47 @@ export function WalkInModal({
               <div className="space-y-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase font-mono text-ds-text-muted block">Gamer Name *</span>
+                    <span className="text-[10px] uppercase font-mono text-ds-text-muted block">
+                      Gamer Name <span className="text-rose-400">*</span>
+                    </span>
                     <Input
                       placeholder="e.g. Rahul Verma"
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        if (touched.customerName) {
+                          setFormErrors((prev) => ({ ...prev, customerName: validateName(e.target.value) }));
+                        }
+                      }}
+                      onBlur={() => {
+                        setTouched((prev) => ({ ...prev, customerName: true }));
+                        setFormErrors((prev) => ({ ...prev, customerName: validateName(customerName) }));
+                      }}
+                      error={touched.customerName ? formErrors.customerName : undefined}
                       required
                       className="text-xs"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase font-mono text-ds-text-muted block">WhatsApp Phone *</span>
+                    <span className="text-[10px] uppercase font-mono text-ds-text-muted block">
+                      WhatsApp Phone <span className="text-rose-400">*</span>
+                    </span>
                     <Input
                       placeholder="9876543210"
+                      type="tel"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value);
+                        if (touched.customerPhone) {
+                          setFormErrors((prev) => ({ ...prev, customerPhone: validatePhone(e.target.value) }));
+                        }
+                      }}
+                      onBlur={() => {
+                        setTouched((prev) => ({ ...prev, customerPhone: true }));
+                        setFormErrors((prev) => ({ ...prev, customerPhone: validatePhone(customerPhone) }));
+                      }}
+                      error={touched.customerPhone ? formErrors.customerPhone : undefined}
                       required
                       className="text-xs"
                     />
@@ -616,7 +707,17 @@ export function WalkInModal({
                     type="email"
                     placeholder="gamer@gmail.com"
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    onChange={(e) => {
+                      setCustomerEmail(e.target.value);
+                      if (touched.customerEmail) {
+                        setFormErrors((prev) => ({ ...prev, customerEmail: validateEmail(e.target.value) }));
+                      }
+                    }}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, customerEmail: true }));
+                      setFormErrors((prev) => ({ ...prev, customerEmail: validateEmail(customerEmail) }));
+                    }}
+                    error={touched.customerEmail ? formErrors.customerEmail : undefined}
                     className="text-xs"
                   />
                 </div>

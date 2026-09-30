@@ -284,6 +284,36 @@ export default function AdminStaffPage() {
   // Onboard Staff Submission
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!firstName.trim() || firstName.trim().length < 2) {
+      toast.error('First name must be at least 2 characters');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone)) {
+      toast.error('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      toast.error('Temporary password must be at least 6 characters');
+      return;
+    }
+
+    if (aadhaarNumber.trim()) {
+      const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
+      if (cleanAadhaar.length !== 12) {
+        toast.error('Aadhaar number must be exactly 12 digits');
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -291,15 +321,15 @@ export default function AdminStaffPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          phone,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: cleanPhone,
           password,
-          address,
-          aadhaarNumber,
+          address: address.trim(),
+          aadhaarNumber: aadhaarNumber.trim(),
           aadhaarDocumentUrl,
-          emergencyContact,
+          emergencyContact: emergencyContact.trim(),
         }),
       });
 
@@ -404,6 +434,11 @@ export default function AdminStaffPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStaff || !newPassword) return;
+
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
 
     setResetting(true);
     try {

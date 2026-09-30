@@ -41,6 +41,7 @@ export default function ContactPage() {
     reset,
     formState: { errors },
   } = useForm<ContactFormData>({
+    mode: 'onTouched',
     defaultValues: {
       inquiryType: 'GENERAL',
     },
@@ -223,7 +224,10 @@ export default function ContactPage() {
                     <Input
                       label="Your Name *"
                       placeholder="e.g. Rahul Sharma"
-                      {...register('name', { required: 'Name is required' })}
+                      {...register('name', {
+                        required: 'Full name is required',
+                        minLength: { value: 2, message: 'Name must be at least 2 characters' },
+                      })}
                       error={errors.name?.message}
                     />
 
@@ -245,8 +249,14 @@ export default function ContactPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Phone Number"
+                      type="tel"
                       placeholder="e.g. 9876543210"
-                      {...register('phone')}
+                      {...register('phone', {
+                        pattern: {
+                          value: /^(\+91[\-\s]?)?[6-9]\d{9}$/,
+                          message: 'Please enter a valid 10-digit mobile number',
+                        },
+                      })}
                       error={errors.phone?.message}
                     />
 
@@ -270,7 +280,10 @@ export default function ContactPage() {
                   <Input
                     label="Subject *"
                     placeholder="e.g. Private booking for weekend tournament"
-                    {...register('subject', { required: 'Subject is required' })}
+                    {...register('subject', {
+                      required: 'Subject is required',
+                      minLength: { value: 3, message: 'Subject must be at least 3 characters' },
+                    })}
                     error={errors.subject?.message}
                   />
 

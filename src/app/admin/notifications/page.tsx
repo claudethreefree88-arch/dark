@@ -58,8 +58,13 @@ export default function AdminNotificationsPage() {
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !message) {
-      toast.error('Please enter both title and message');
+    if (!title.trim() || title.trim().length < 3) {
+      toast.error('Announcement title must be at least 3 characters');
+      return;
+    }
+
+    if (!message.trim() || message.trim().length < 5) {
+      toast.error('Announcement message must be at least 5 characters');
       return;
     }
 

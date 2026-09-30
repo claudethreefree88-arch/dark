@@ -101,6 +101,7 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
     formState: { errors: loginErrors, isSubmitting: isLoginSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
     defaultValues: { email: '', password: '' },
   });
 
@@ -133,6 +134,7 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
     formState: { errors: signUpErrors, isSubmitting: isSignUpSubmitting },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
+    mode: 'onTouched',
     defaultValues: {
       firstName: '',
       lastName: '',

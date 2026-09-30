@@ -44,14 +44,19 @@ export default function ProfileSettingsPage() {
     handleSubmit: handleProfileSubmit,
     reset: resetProfile,
     formState: { errors: profileErrors },
-  } = useForm<ProfileFormData>();
+  } = useForm<ProfileFormData>({
+    mode: 'onTouched',
+  });
 
   const {
     register: regPassword,
     handleSubmit: handlePasswordSubmit,
     reset: resetPassword,
+    watch: watchPassword,
     formState: { errors: passwordErrors },
-  } = useForm<PasswordFormData>();
+  } = useForm<PasswordFormData>({
+    mode: 'onTouched',
+  });
 
   useEffect(() => {
     async function fetchProfile() {
@@ -150,7 +155,10 @@ export default function ProfileSettingsPage() {
             <Input
               label="First Name *"
               placeholder="e.g. Hariharan"
-              {...regProfile('firstName', { required: 'First name is required' })}
+              {...regProfile('firstName', {
+                required: 'First name is required',
+                minLength: { value: 2, message: 'First name must be at least 2 characters' },
+              })}
               error={profileErrors.firstName?.message}
             />
 
@@ -182,8 +190,8 @@ export default function ProfileSettingsPage() {
               placeholder="e.g. 9876543210"
               {...regProfile('phone', {
                 pattern: {
-                  value: /^[6-9]\d{9}$/,
-                  message: 'Enter a valid 10-digit Indian phone number',
+                  value: /^(\+91[\-\s]?)?[6-9]\d{9}$/,
+                  message: 'Must be a valid 10-digit Indian phone number (starts with 6-9)',
                 },
               })}
               error={profileErrors.phone?.message}
@@ -260,6 +268,7 @@ export default function ProfileSettingsPage() {
             placeholder="••••••••"
             {...regPassword('confirmPassword', {
               required: 'Please confirm your new password',
+              validate: (val) => val === watchPassword('newPassword') || 'Passwords do not match',
             })}
             error={passwordErrors.confirmPassword?.message}
           />
