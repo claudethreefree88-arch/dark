@@ -77,8 +77,8 @@ function BookingContent() {
 
   const preselectedStationId = searchParams.get('stationId') || '';
 
-  // Wizard Step (1: Station, 2: Date & Time, 3: Gamer Info, 4: Payment)
-  const [currentStep, setCurrentStep] = useState<number>(preselectedStationId ? 2 : 1);
+  // Wizard Step (1: Date & Slot, 2: Arena & Station, 3: Gamer Info, 4: Payment)
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSummaryOpen, setIsSummaryOpen] = useState<boolean>(false);
 
   const goToStep = (step: number) => {
@@ -332,7 +332,6 @@ function BookingContent() {
           if (matched) {
             setSelectedStation(matched);
             setSelectedZone(matched.stationType);
-            setCurrentStep(2);
           }
         }
       } catch (err) {
@@ -344,13 +343,12 @@ function BookingContent() {
 
   // Fetch slots whenever station, date, or duration changes
   useEffect(() => {
-    if (!selectedStation) return;
-
     async function fetchSlots() {
       setLoadingSlots(true);
       try {
+        const stationParam = selectedStation?.id ? `&stationId=${selectedStation.id}` : '';
         const res = await fetch(
-          `/api/bookings/availability?stationId=${selectedStation?.id}&date=${selectedDate}&duration=${durationMinutes}`
+          `/api/bookings/availability?date=${selectedDate}&duration=${durationMinutes}${stationParam}`
         );
         const json = await res.json();
         if (json.success && json.data) {
@@ -375,7 +373,11 @@ function BookingContent() {
 
   // Calculate dynamic hourly rate based on station and player count
   const getHourlyRatePaise = () => {
-    if (!selectedStation) return 0;
+    if (!selectedStation) {
+      if (playerCount === 1) return 15000;
+      if (playerCount === 2) return 20000;
+      return 25000;
+    }
     const isPs5 =
       selectedStation.stationType === 'PS5' ||
       selectedStation.name.toUpperCase().includes('PS5');
@@ -401,10 +403,10 @@ function BookingContent() {
 
   const hourlyRatePaise = getHourlyRatePaise();
   const hours = durationMinutes / 60;
-  const subtotalPaise = selectedStation ? Math.round(hourlyRatePaise * hours) : 0;
+  const subtotalPaise = Math.round(hourlyRatePaise * hours);
 
   // Multi-hour discount: 3+ hours gives 10%
-  const multiHourDiscountPaise = (selectedStation && durationMinutes >= 180) ? Math.round(subtotalPaise * 0.1) : 0;
+  const multiHourDiscountPaise = durationMinutes >= 180 ? Math.round(subtotalPaise * 0.1) : 0;
 
   // Coupon discount
   const couponDiscountPaise = appliedCoupon ? appliedCoupon.discountPaise : 0;
@@ -412,12 +414,12 @@ function BookingContent() {
   // Active Syndicate Member discount
   const membershipDiscountPercent = activeMembership?.discountPercent || 0;
   const membershipDiscountPaise =
-    selectedStation && membershipDiscountPercent > 0
+    membershipDiscountPercent > 0
       ? Math.round((subtotalPaise * membershipDiscountPercent) / 100)
       : 0;
 
   const totalDiscountPaise = multiHourDiscountPaise + couponDiscountPaise + membershipDiscountPaise;
-  const finalPricePaise = selectedStation ? Math.max(0, subtotalPaise - totalDiscountPaise) : 0;
+  const finalPricePaise = Math.max(0, subtotalPaise - totalDiscountPaise);
 
   // Handle Coupon Apply
   const handleApplyCoupon = async (codeToApply?: string) => {
@@ -482,14 +484,14 @@ function BookingContent() {
 
   // Handle Booking Submission
   const handleConfirmBooking = async () => {
-    if (!selectedStation) {
-      toast.error('Please select a gaming station');
+    if (!selectedSlot) {
+      toast.error('Please pick an available time slot');
       goToStep(1);
       return;
     }
 
-    if (!selectedSlot) {
-      toast.error('Please pick an available time slot');
+    if (!selectedStation) {
+      toast.error('Please select a gaming station');
       goToStep(2);
       return;
     }
@@ -548,7 +550,7 @@ function BookingContent() {
       if (!res.ok || !json.success) {
         if (res.status === 409) {
           toast.error('This time slot was just booked by another player. Please select another slot.');
-          setCurrentStep(2);
+          setCurrentStep(1);
           // Refresh slots
           const reloadRes = await fetch(
             `/api/bookings/availability?stationId=${selectedStation.id}&date=${selectedDate}&duration=${durationMinutes}`
@@ -616,15 +618,19 @@ function BookingContent() {
   };
 
   // Mobile Sticky Navigation Handlers
-  const isMobileBackDisabled = (currentStep === 1 && !selectedZone) || submitting;
+  const isMobileBackDisabled = currentStep === 1 || submitting;
 
   const handleMobileBack = () => {
     setIsSummaryOpen(false);
     if (currentStep === 1) {
+      return;
+    }
+    if (currentStep === 2) {
       if (selectedZone) {
         setSelectedZone(null);
         setSelectedStation(null);
       }
+      goToStep(1);
       return;
     }
     goToStep(currentStep - 1);
@@ -633,16 +639,16 @@ function BookingContent() {
   const handleMobileContinue = () => {
     setIsSummaryOpen(false);
     if (currentStep === 1) {
-      if (!selectedStation) {
-        toast.error('Please choose a gaming station or table to continue');
+      if (!selectedSlot) {
+        toast.error('Please pick an available time slot to continue');
         return;
       }
       goToStep(2);
       return;
     }
     if (currentStep === 2) {
-      if (!selectedSlot) {
-        toast.error('Please pick an available time slot');
+      if (!selectedStation) {
+        toast.error('Please choose a gaming station or table to continue');
         return;
       }
       goToStep(3);
@@ -675,8 +681,8 @@ function BookingContent() {
 
   const getMobileContinueText = () => {
     if (submitting) return 'Processing...';
-    if (currentStep === 1) return 'Continue';
-    if (currentStep === 2) return 'Continue';
+    if (currentStep === 1) return 'Choose Arena';
+    if (currentStep === 2) return 'Player Details';
     if (currentStep === 3) return 'Proceed to Checkout';
     if (currentStep === 4) {
       return paymentOption === 'ONLINE'
@@ -710,8 +716,8 @@ function BookingContent() {
           <div id="booking-stepper-header" className="max-w-4xl mx-auto mb-8 sm:mb-12">
             <div className="grid grid-cols-4 gap-1.5 sm:gap-3 md:gap-4 relative">
               {[
-                { step: 1, title: 'Arena & Station', icon: Gamepad2 },
-                { step: 2, title: 'Date & Slot', icon: CalendarIcon },
+                { step: 1, title: 'Date & Slot', icon: CalendarIcon },
+                { step: 2, title: 'Arena & Station', icon: Gamepad2 },
                 { step: 3, title: 'Player Details', icon: UserIcon },
                 { step: 4, title: 'Pass & Pay', icon: CreditCard },
               ].map(({ step, title, icon: Icon }) => {
@@ -722,7 +728,7 @@ function BookingContent() {
                   <button
                     key={step}
                     onClick={() => {
-                      if (step < currentStep || (step === 2 && selectedStation)) {
+                      if (step < currentStep || (step === 2 && selectedSlot) || (step === 3 && selectedStation && selectedSlot)) {
                         goToStep(step);
                       }
                     }}
@@ -761,403 +767,22 @@ function BookingContent() {
           <div id="booking-step-container" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Main Form / Stepper Canvas */}
             <div className="lg:col-span-8 space-y-8 min-h-[640px]">
-              {/* STEP 1: ARENA ZONE & STATION SELECTION */}
+              {/* STEP 1: DATE, DURATION & TIME SLOT */}
               {currentStep === 1 && (
-                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
-                  {/* ─── STAGE 1: ONLY SHOW ARENA ZONE IMAGE CARDS INITIALLY ─── */}
-                  {!selectedZone ? (
-                    <div className="space-y-6">
-                      <div className="border-b border-ds-border pb-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-2">
-                          <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
-                          <span>Step 1: Choose Your Zone</span>
-                        </div>
-                        <h2 className="text-2xl font-heading font-black uppercase text-ds-text">
-                          Choose Your Gaming Zone
-                        </h2>
-                        <p className="text-xs sm:text-sm text-ds-text-muted mt-1">
-                          Tap an arena below to explore available gaming consoles and championship snooker tables.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* 1. PlayStation 5 Arena Card */}
-                        <div
-                          onClick={() => {
-                            setSelectedZone('PS5');
-                            setSelectedStation(null);
-                          }}
-                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-ds-accent transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between"
-                        >
-                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
-                            <Image
-                              src="/ps5-station.jpg"
-                              alt="PlayStation 5 Gaming Station"
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
-                            <div className="absolute top-3 right-3">
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
-                                {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-2xl">🎮</span>
-                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
-                                  PlayStation 5 Arena
-                                </h3>
-                              </div>
-                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                                From ₹150/hr
-                              </span>
-                            </div>
-
-                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                              <span className="text-[11px] font-mono text-ds-text-dim">Single, Duo & Squad</span>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
-                                <span>Explore PS5 Consoles</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 2. Snooker Lounge Card */}
-                        <div
-                          onClick={() => {
-                            setSelectedZone('POOL_TABLE');
-                            setSelectedStation(null);
-                          }}
-                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-emerald-500 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between"
-                        >
-                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
-                            <Image
-                              src="/snooker-table.jpg"
-                              alt="Championship Snooker Table"
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
-                            <div className="absolute top-3 right-3">
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
-                                {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-2xl">🎱</span>
-                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-emerald-400 transition-colors">
-                                  Snooker Lounge
-                                </h3>
-                              </div>
-                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                                ₹250/hr (Table)
-                              </span>
-                            </div>
-
-                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                              <span className="text-[11px] font-mono text-ds-text-dim">Up to 4 Players Included</span>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
-                                <span>Explore Snooker Tables</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* ─── STAGE 2: DISPLAY SPECIFIC STATIONS ONCE ZONE IS CLICKED ─── */
-                    <div className="space-y-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ds-border pb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedZone(null);
-                                setSelectedStation(null);
-                              }}
-                              className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border hover:border-ds-accent transition-colors"
-                            >
-                              <ArrowLeft className="w-3.5 h-3.5" />
-                              <span>All Arenas</span>
-                            </button>
-                            <span className="text-ds-text-dim">•</span>
-                            <span className="text-xs font-mono uppercase text-ds-accent font-bold">
-                              {selectedZone === 'PS5' ? 'PlayStation 5' : 'Snooker & Pool'}
-                            </span>
-                          </div>
-                          <h2 className="text-xl font-heading font-black uppercase text-ds-text">
-                            {selectedZone === 'PS5'
-                              ? 'Choose Your PlayStation 5 Station'
-                              : 'Choose Your Snooker Table'}
-                          </h2>
-                          <p className="text-xs text-ds-text-muted mt-0.5">
-                            Click a station to select it for your session.
-                          </p>
-                        </div>
-
-                        {/* Quick Zone Toggle Pills */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedZone('PS5');
-                              setSelectedStation(null);
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
-                              selectedZone === 'PS5'
-                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
-                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
-                            }`}
-                          >
-                            <span>🎮</span>
-                            <span>PS5 Arena</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedZone('POOL_TABLE');
-                              setSelectedStation(null);
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
-                              selectedZone === 'POOL_TABLE'
-                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
-                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
-                            }`}
-                          >
-                            <span>🎱</span>
-                            <span>Snooker</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Stations Grid for Selected Zone */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {stations
-                          .filter((st) => st.stationType === selectedZone)
-                          .map((station) => {
-                            const isSelected = selectedStation?.id === station.id;
-                            const isAvailable = station.status === 'AVAILABLE';
-
-                            return (
-                              <div
-                                key={station.id}
-                                onClick={() => {
-                                  if (isAvailable) {
-                                    const isDifferent = selectedStation?.id !== station.id;
-                                    setSelectedStation(station);
-                                    if (isDifferent) {
-                                      setSelectedGame(null);
-                                    }
-                                    if (station.games && station.games.length > 0) {
-                                      setShowGameModal(true);
-                                    }
-                                  } else {
-                                    toast.error(`${station.name} is currently occupied`);
-                                  }
-                                }}
-                                className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
-                                  isSelected
-                                    ? 'bg-ds-surface border-ds-accent shadow-xl shadow-ds-accent/20 ring-2 ring-ds-accent'
-                                    : isAvailable
-                                    ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
-                                    : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
-                                }`}
-                              >
-                                <div>
-                                  {/* Station Image Banner */}
-                                  <div className="relative w-full h-36 bg-ds-dark overflow-hidden">
-                                    <Image
-                                      src={station.stationType === 'PS5' ? '/ps5-station.jpg' : '/snooker-table.jpg'}
-                                      alt={station.name}
-                                      fill
-                                      sizes="(max-width: 768px) 100vw, 33vw"
-                                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-transparent to-black/50" />
-                                    <div className="absolute top-2.5 left-2.5">
-                                      <Badge
-                                        variant={isAvailable ? 'success' : 'warning'}
-                                        size="sm"
-                                        className="backdrop-blur-md shadow-md text-[10px]"
-                                      >
-                                        {isAvailable ? '🟢 Ready' : '🟡 In Use'}
-                                      </Badge>
-                                    </div>
-
-                                    {/* Top-Right Circular Checkmark Badge when Selected (App Theme) */}
-                                    {isSelected && (
-                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 z-10 animate-in zoom-in-75">
-                                        ✓
-                                      </div>
-                                    )}
-
-                                    <div className="absolute bottom-2 left-2.5 flex items-center gap-1 text-[10px] text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10 font-mono">
-                                      <span>{station.capacity} Max Players</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent">
-                                        {station.facilityName}
-                                      </span>
-                                      <span className="text-ds-ice font-bold text-xs">
-                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr'}
-                                      </span>
-                                    </div>
-
-                                    <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
-                                      {station.name}
-                                    </h3>
-
-                                    <div className="text-[11px] text-ds-text-dim px-2.5 py-1.5 rounded-lg bg-ds-dark/60 border border-ds-border/40">
-                                      {station.stationType === 'PS5'
-                                        ? 'Single: ₹150 · Duo: ₹200 · Squad: ₹250'
-                                        : '3-4 players included · +₹50/extra player'}
-                                    </div>
-
-                                    {/* Optional selected game display on card */}
-                                    {isSelected && selectedGame && (
-                                      <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          {lookupGame(selectedGame)?.coverImage ? (
-                                            <div className="w-6 h-6 rounded-md overflow-hidden relative shrink-0 border border-ds-border/60">
-                                              <Image
-                                                src={lookupGame(selectedGame)!.coverImage}
-                                                alt={selectedGame}
-                                                fill
-                                                className="object-cover"
-                                              />
-                                            </div>
-                                          ) : (
-                                            <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
-                                          )}
-                                          <span className="truncate max-w-[130px] sm:max-w-[170px] font-semibold">{selectedGame}</span>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowGameModal(true);
-                                          }}
-                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5 cursor-pointer"
-                                        >
-                                          Change
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="p-4 pt-0">
-                                  <div className="pt-3 flex justify-between items-center border-t border-ds-border/30">
-                                    {station.games && station.games.length > 0 ? (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (selectedStation?.id !== station.id) {
-                                            setSelectedStation(station);
-                                            setSelectedGame(null);
-                                          }
-                                          setShowGameModal(true);
-                                        }}
-                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Gamepad2 className="w-3 h-3" />
-                                        <span>Browse Games ({station.games.length})</span>
-                                      </button>
-                                    ) : (
-                                      <div />
-                                    )}
-                                    <span
-                                      className={`text-xs font-semibold inline-flex items-center gap-1 ${
-                                        isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
-                                      }`}
-                                    >
-                                      {isSelected ? 'Selected ✓' : 'Click to Select'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      {/* Bottom Navigation */}
-                      <div className="space-y-3 pt-4 border-t border-ds-border mt-2">
-                        {selectedStation && (
-                          <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
-                            <span className="text-[10px] text-ds-text-dim uppercase font-mono">Selected Station</span>
-                            <span className="text-xs font-bold text-ds-ice font-heading truncate max-w-[200px]">{selectedStation.name}</span>
-                          </div>
-                        )}
-
-                        <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedZone(null);
-                              setSelectedStation(null);
-                            }}
-                            className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
-                          >
-                            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                            <span>Change Arena</span>
-                          </Button>
-
-                          <Button
-                            variant="accent"
-                            size="sm"
-                            onClick={() => {
-                              if (selectedStation) goToStep(2);
-                              else toast.error('Please select a station or table to continue');
-                            }}
-                            disabled={!selectedStation}
-                            className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
-                          >
-                            <span>Continue to Date & Slot</span>
-                            <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              )}
-
-              {/* STEP 2: DATE, DURATION & TIME SLOT */}
-              {currentStep === 2 && (
                 <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 sm:space-y-8 min-h-[580px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-ds-border pb-4">
                     <div>
-                      <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                        2. Pick Date & Session Duration
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
+                        <span>Step 1: Pick Date & Slot</span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-heading font-black uppercase text-ds-text">
+                        1. Pick Date & Session Duration
                       </h2>
                       <p className="text-xs text-ds-text-muted mt-0.5">
-                        Selected: <span className="text-ds-ice font-semibold">{selectedStation?.name}</span>
+                        Choose your session date, duration, player count, and time slot.
                       </p>
                     </div>
-                    <button
-                      onClick={() => goToStep(1)}
-                      className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold cursor-pointer"
-                    >
-                      Change Station
-                    </button>
                   </div>
 
                   {/* 1. Date Selector Carousel */}
@@ -1409,34 +1034,435 @@ function BookingContent() {
                       </div>
                     )}
 
-                    <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => goToStep(1)}
-                        className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                        <span>Back to Stations</span>
-                      </Button>
-
+                    <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full justify-end">
                       <Button
                         variant="accent"
                         size="sm"
                         onClick={() => {
-                          if (selectedSlot) goToStep(3);
+                          if (selectedSlot) goToStep(2);
                           else toast.error('Please pick an available time slot');
                         }}
                         disabled={!selectedSlot}
                         className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                       >
-                        <span>Proceed to Gamer Info</span>
+                        <span>Continue to Arena & Station</span>
                         <ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Button>
                     </div>
                   </div>
                 </Card>
               )}
+
+
+              {/* STEP 2: ARENA ZONE & STATION SELECTION */}
+              {currentStep === 2 && (
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
+                  {/* ─── STAGE 1: ONLY SHOW ARENA ZONE IMAGE CARDS INITIALLY ─── */}
+                  {!selectedZone ? (
+                    <div className="space-y-6">
+                      <div className="border-b border-ds-border pb-4 flex items-center justify-between">
+                        <div>
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-2">
+                            <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
+                            <span>Step 2: Choose Your Zone</span>
+                          </div>
+                          <h2 className="text-2xl font-heading font-black uppercase text-ds-text">
+                            2. Choose Your Gaming Zone
+                          </h2>
+                          <p className="text-xs sm:text-sm text-ds-text-muted mt-1">
+                            Slot chosen: <span className="text-ds-ice font-semibold">{selectedDate} ({selectedSlot?.label || selectedSlot?.time || 'Pending'})</span>. Tap an arena below to choose your station.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => goToStep(1)}
+                          className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold cursor-pointer shrink-0"
+                        >
+                          Change Date/Slot
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 1. PlayStation 5 Arena Card */}
+                        <div
+                          onClick={() => {
+                            setSelectedZone('PS5');
+                            setSelectedStation(null);
+                          }}
+                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-ds-accent transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between"
+                        >
+                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                            <Image
+                              src="/ps5-station.jpg"
+                              alt="PlayStation 5 Gaming Station"
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              priority
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                            <div className="absolute top-3 right-3">
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                                {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-2xl">🎮</span>
+                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
+                                  PlayStation 5 Arena
+                                </h3>
+                              </div>
+                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                                From ₹150/hr
+                              </span>
+                            </div>
+
+                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                              <span className="text-[11px] font-mono text-ds-text-dim">Single, Duo & Squad</span>
+                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
+                                <span>Explore PS5 Consoles</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Snooker Lounge Card */}
+                        <div
+                          onClick={() => {
+                            setSelectedZone('POOL_TABLE');
+                            setSelectedStation(null);
+                          }}
+                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-emerald-500 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between"
+                        >
+                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                            <Image
+                              src="/snooker-table.jpg"
+                              alt="Championship Snooker Table"
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              priority
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                            <div className="absolute top-3 right-3">
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                                {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-2xl">🎱</span>
+                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-emerald-400 transition-colors">
+                                  Snooker Lounge
+                                </h3>
+                              </div>
+                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                                ₹250/hr (Table)
+                              </span>
+                            </div>
+
+                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                              <span className="text-[11px] font-mono text-ds-text-dim">Up to 4 Players Included</span>
+                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
+                                <span>Explore Snooker Tables</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Navigation for Stage 1 */}
+                      <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full justify-between pt-4 border-t border-ds-border">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToStep(1)}
+                          className="text-xs sm:text-sm py-2 px-3 sm:px-4"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                          <span>Back to Date & Slot</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ─── STAGE 2: DISPLAY SPECIFIC STATIONS ONCE ZONE IS CLICKED ─── */
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ds-border pb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedZone(null);
+                                setSelectedStation(null);
+                              }}
+                              className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice hover:text-white bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border hover:border-ds-accent transition-colors"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                              <span>All Arenas</span>
+                            </button>
+                            <span className="text-ds-text-dim">•</span>
+                            <span className="text-xs font-mono uppercase text-ds-accent font-bold">
+                              {selectedZone === 'PS5' ? 'PlayStation 5' : 'Snooker & Pool'}
+                            </span>
+                          </div>
+                          <h2 className="text-xl font-heading font-black uppercase text-ds-text">
+                            {selectedZone === 'PS5'
+                              ? 'Choose Your PlayStation 5 Station'
+                              : 'Choose Your Snooker Table'}
+                          </h2>
+                          <p className="text-xs text-ds-text-muted mt-0.5">
+                            Click a station to select it for your session.
+                          </p>
+                        </div>
+
+                        {/* Quick Zone Toggle Pills */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => goToStep(1)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-heading font-semibold text-ds-accent hover:underline flex items-center gap-1 cursor-pointer mr-1"
+                          >
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Change Slot</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedZone('PS5');
+                              setSelectedStation(null);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
+                              selectedZone === 'PS5'
+                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
+                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
+                            }`}
+                          >
+                            <span>🎮</span>
+                            <span>PS5 Arena</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedZone('POOL_TABLE');
+                              setSelectedStation(null);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
+                              selectedZone === 'POOL_TABLE'
+                                ? 'bg-ds-accent text-white border-ds-accent shadow-sm'
+                                : 'bg-ds-surface/60 border-ds-border text-ds-text-muted hover:text-white'
+                            }`}
+                          >
+                            <span>🎱</span>
+                            <span>Snooker</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Stations Grid for Selected Zone */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {stations
+                          .filter((st) => st.stationType === selectedZone)
+                          .map((station) => {
+                            const isSelected = selectedStation?.id === station.id;
+                            const isAvailable = station.status === 'AVAILABLE';
+
+                            return (
+                              <div
+                                key={station.id}
+                                onClick={() => {
+                                  if (isAvailable) {
+                                    const isDifferent = selectedStation?.id !== station.id;
+                                    setSelectedStation(station);
+                                    if (isDifferent) {
+                                      setSelectedGame(null);
+                                    }
+                                    if (station.games && station.games.length > 0) {
+                                      setShowGameModal(true);
+                                    }
+                                  } else {
+                                    toast.error(`${station.name} is currently occupied`);
+                                  }
+                                }}
+                                className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
+                                  isSelected
+                                    ? 'bg-ds-surface border-ds-accent shadow-xl shadow-ds-accent/20 ring-2 ring-ds-accent'
+                                    : isAvailable
+                                    ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
+                                    : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
+                                }`}
+                              >
+                                <div>
+                                  {/* Station Image Banner */}
+                                  <div className="relative w-full h-36 bg-ds-dark overflow-hidden">
+                                    <Image
+                                      src={station.stationType === 'PS5' ? '/ps5-station.jpg' : '/snooker-table.jpg'}
+                                      alt={station.name}
+                                      fill
+                                      sizes="(max-width: 768px) 100vw, 33vw"
+                                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-transparent to-black/50" />
+                                    <div className="absolute top-2.5 left-2.5">
+                                      <Badge
+                                        variant={isAvailable ? 'success' : 'warning'}
+                                        size="sm"
+                                        className="backdrop-blur-md shadow-md text-[10px]"
+                                      >
+                                        {isAvailable ? '🟢 Ready' : '🟡 In Use'}
+                                      </Badge>
+                                    </div>
+
+                                    {/* Top-Right Circular Checkmark Badge when Selected (App Theme) */}
+                                    {isSelected && (
+                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 z-10 animate-in zoom-in-75">
+                                        ✓
+                                      </div>
+                                    )}
+
+                                    <div className="absolute bottom-2 left-2.5 flex items-center gap-1 text-[10px] text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10 font-mono">
+                                      <span>{station.capacity} Max Players</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent">
+                                        {station.facilityName}
+                                      </span>
+                                      <span className="text-ds-ice font-bold text-xs">
+                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr'}
+                                      </span>
+                                    </div>
+
+                                    <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
+                                      {station.name}
+                                    </h3>
+
+                                    <div className="text-[11px] text-ds-text-dim px-2.5 py-1.5 rounded-lg bg-ds-dark/60 border border-ds-border/40">
+                                      {station.stationType === 'PS5'
+                                        ? 'Single: ₹150 · Duo: ₹200 · Squad: ₹250'
+                                        : '3-4 players included · +₹50/extra player'}
+                                    </div>
+
+                                    {/* Optional selected game display on card */}
+                                    {isSelected && selectedGame && (
+                                      <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {lookupGame(selectedGame)?.coverImage ? (
+                                            <div className="w-6 h-6 rounded-md overflow-hidden relative shrink-0 border border-ds-border/60">
+                                              <Image
+                                                src={lookupGame(selectedGame)!.coverImage}
+                                                alt={selectedGame}
+                                                fill
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
+                                          )}
+                                          <span className="truncate max-w-[130px] sm:max-w-[170px] font-semibold">{selectedGame}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowGameModal(true);
+                                          }}
+                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5 cursor-pointer"
+                                        >
+                                          Change
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="p-4 pt-0">
+                                  <div className="pt-3 flex justify-between items-center border-t border-ds-border/30">
+                                    {station.games && station.games.length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (selectedStation?.id !== station.id) {
+                                            setSelectedStation(station);
+                                            setSelectedGame(null);
+                                          }
+                                          setShowGameModal(true);
+                                        }}
+                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Gamepad2 className="w-3 h-3" />
+                                        <span>Browse Games ({station.games.length})</span>
+                                      </button>
+                                    ) : (
+                                      <div />
+                                    )}
+                                    <span
+                                      className={`text-xs font-semibold inline-flex items-center gap-1 ${
+                                        isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
+                                      }`}
+                                    >
+                                      {isSelected ? 'Selected ✓' : 'Click to Select'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Bottom Navigation */}
+                      <div className="space-y-3 pt-4 border-t border-ds-border mt-2">
+                        {selectedStation && (
+                          <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-lg bg-ds-surface/50 border border-ds-border/60">
+                            <span className="text-[10px] text-ds-text-dim uppercase font-mono">Selected Station</span>
+                            <span className="text-xs font-bold text-ds-ice font-heading truncate max-w-[200px]">{selectedStation.name}</span>
+                          </div>
+                        )}
+
+                        <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedZone(null);
+                              setSelectedStation(null);
+                            }}
+                            className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                            <span>Change Arena</span>
+                          </Button>
+
+                          <Button
+                            variant="accent"
+                            size="sm"
+                            onClick={() => {
+                              if (selectedStation) goToStep(3);
+                              else toast.error('Please select a station or table to continue');
+                            }}
+                            disabled={!selectedStation}
+                            className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
+                          >
+                            <span>Proceed to Gamer Info</span>
+                            <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
+
 
               {/* STEP 3: GAMER DETAILS */}
               {currentStep === 3 && (
@@ -1581,7 +1607,7 @@ function BookingContent() {
                       className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span>Back to Date & Slot</span>
+                      <span>Back to Arena & Station</span>
                     </Button>
 
                     <Button

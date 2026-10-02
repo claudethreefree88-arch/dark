@@ -47,19 +47,20 @@ function getPeriod(hour: number): 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT' 
  * Compute availability for a station on a given date.
  */
 export async function getStationAvailability(
-  stationId: string,
-  dateStr: string,
+  stationId?: string | null,
+  dateStr: string = new Date().toISOString().split('T')[0],
   durationMinutes: number = 60
 ): Promise<AvailabilityResult> {
   // Query station from database
   let station = null;
   let existingBookings: any[] = [];
 
-  try {
-    station = await prisma.gamingStation.findUnique({
-      where: { id: stationId },
-      include: { facility: true },
-    });
+  if (stationId && stationId !== 'all') {
+    try {
+      station = await prisma.gamingStation.findUnique({
+        where: { id: stationId },
+        include: { facility: true },
+      });
 
     if (station) {
       // Find all active bookings for this station on this date in IST
@@ -90,6 +91,7 @@ export async function getStationAvailability(
     }
   } catch (err) {
     console.warn('Availability service running with fallback demo data:', err);
+  }
   }
 
   const durationHours = Math.ceil(durationMinutes / 60);
@@ -169,7 +171,7 @@ export async function getStationAvailability(
   }
 
   return {
-    stationId,
+    stationId: stationId || 'all',
     date: dateStr,
     durationMinutes,
     operatingHours: { open: '10:00', close: '24:00' },
