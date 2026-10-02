@@ -165,7 +165,7 @@ export default function MembershipPlansPage() {
             <span>Loading Syndicate Passes...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6">
             {plans.map((plan) => {
               const isGold = plan.tier === 'GOLD';
               const isVip = plan.tier === 'VIP';
@@ -174,7 +174,7 @@ export default function MembershipPlansPage() {
                 <Card
                   key={plan.id}
                   variant="glass"
-                  className={`overflow-hidden p-0 flex flex-col justify-between relative transition-all duration-300 hover:scale-[1.02] group ${
+                  className={`p-0 flex flex-col justify-between relative transition-all duration-300 hover:scale-[1.02] group rounded-2xl ${
                     isGold
                       ? 'border-amber-500/60 shadow-xl shadow-amber-500/10'
                       : isVip
@@ -183,16 +183,16 @@ export default function MembershipPlansPage() {
                   }`}
                 >
                   {isGold && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-                      <span className="bg-gradient-to-r from-amber-500 to-amber-400 text-black text-[10px] font-heading font-black uppercase px-3.5 py-1 rounded-full shadow-lg font-mono">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                      <span className="bg-gradient-to-r from-amber-500 to-amber-400 text-black text-[11px] font-heading font-black uppercase px-4 py-1.5 rounded-full shadow-lg shadow-amber-500/20 font-mono tracking-wider whitespace-nowrap">
                         MOST POPULAR
                       </span>
                     </div>
                   )}
 
                   {isVip && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-                      <span className="bg-ds-accent text-white text-[10px] font-heading font-black uppercase px-3.5 py-1 rounded-full shadow-glow font-mono">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                      <span className="bg-ds-accent text-white text-[11px] font-heading font-black uppercase px-4 py-1.5 rounded-full shadow-glow font-mono tracking-wider whitespace-nowrap">
                         PRO GAMER ELITE
                       </span>
                     </div>
@@ -200,7 +200,7 @@ export default function MembershipPlansPage() {
 
                   <div>
                     {/* 3D Cybernetic Pass Showcase Banner */}
-                    <div className="relative w-full h-52 sm:h-56 bg-ds-dark overflow-hidden">
+                    <div className="relative w-full h-52 sm:h-56 bg-ds-dark rounded-t-2xl overflow-hidden">
                       <Image
                         src={getPassImage(plan.tier)}
                         alt={plan.name}
@@ -208,34 +208,30 @@ export default function MembershipPlansPage() {
                         sizes="(max-width: 768px) 100vw, 33vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-ds-surface/95 via-transparent to-black/40" />
-
-                      <div className="absolute top-3.5 left-3.5">
-                        <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 font-bold text-white shadow-sm">
-                          {plan.tier} TIER
-                        </span>
-                      </div>
-
-                      <div className="absolute top-3.5 right-3.5">
-                        {isVip ? (
-                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-cyan-400/40 text-ds-ice shadow-sm">
-                            <Crown className="w-4 h-4" />
-                          </div>
-                        ) : isGold ? (
-                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-amber-400/40 text-amber-400 shadow-sm">
-                            <Sparkles className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-slate-400/40 text-slate-300 shadow-sm">
-                            <Shield className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-ds-surface/90 via-transparent to-black/20" />
                     </div>
 
                     <div className="p-6 sm:p-8 space-y-6">
                       {/* Header */}
                       <div className="space-y-1.5">
+                        <div className="flex items-center justify-between pb-1">
+                          <span className="text-xs font-mono uppercase tracking-widest text-ds-accent font-bold">
+                            {plan.tier} TIER
+                          </span>
+                          {isVip ? (
+                            <div className="flex items-center gap-1 text-ds-ice">
+                              <Crown className="w-4 h-4" />
+                            </div>
+                          ) : isGold ? (
+                            <div className="flex items-center gap-1 text-amber-400">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-slate-400">
+                              <Shield className="w-4 h-4" />
+                            </div>
+                          )}
+                        </div>
                         <h3 className="text-xl font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
                           {plan.name}
                         </h3>
