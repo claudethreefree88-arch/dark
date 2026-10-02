@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
+import { formatBookingDate, formatBookingTime } from '@/lib/utils';
 
 export default function AccountDashboardPage() {
   const { user } = useAuth();
@@ -163,11 +164,11 @@ export default function AccountDashboardPage() {
               <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-ds-text-muted">
                 <span className="flex items-center gap-1.5 text-ds-text font-semibold">
                   <Calendar className="w-4 h-4 text-ds-accent" />
-                  {upcomingBooking.date}
+                  {formatBookingDate(upcomingBooking.date)}
                 </span>
                 <span className="flex items-center gap-1.5 text-ds-text font-semibold">
                   <Clock className="w-4 h-4 text-ds-accent" />
-                  {upcomingBooking.startTime} – {upcomingBooking.endTime} ({upcomingBooking.durationMinutes} mins)
+                  {formatBookingTime(upcomingBooking.startTime)} – {formatBookingTime(upcomingBooking.endTime)} ({upcomingBooking.durationMinutes} mins)
                 </span>
               </div>
             </div>
@@ -243,7 +244,7 @@ export default function AccountDashboardPage() {
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs text-ds-text-dim font-mono">
                   <span>{b.bookingRef}</span>
                   <span>•</span>
-                  <span>{b.date} ({b.startTime} - {b.endTime})</span>
+                  <span>{formatBookingDate(b.date)} ({formatBookingTime(b.startTime)} - {formatBookingTime(b.endTime)})</span>
                 </div>
               </div>
 
@@ -387,10 +388,10 @@ export default function AccountDashboardPage() {
                 {selectedQrBooking.bookingRef}
               </span>
               <p className="text-xs text-ds-text-muted">
-                {selectedQrBooking.station?.name} • {selectedQrBooking.date}
+                {selectedQrBooking.station?.name} • {formatBookingDate(selectedQrBooking.date)}
               </p>
               <p className="text-[11px] text-ds-text-dim">
-                Slot: {selectedQrBooking.startTime} – {selectedQrBooking.endTime}
+                Slot: {formatBookingTime(selectedQrBooking.startTime)} – {formatBookingTime(selectedQrBooking.endTime)}
               </p>
             </div>
 

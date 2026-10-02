@@ -36,16 +36,20 @@ export function paiseToRupees(paise: number): number {
 }
 
 // ─── Date/Time Formatting ───────────────────────────────────────────────────
-const IST_TIMEZONE = 'Asia/Kolkata';
+export const IST_TIMEZONE = 'Asia/Kolkata';
 
 /**
- * Format a UTC Date to IST display string.
+ * Format a UTC Date to IST display string safely.
  */
 export function formatDateIST(
-  date: Date | string,
+  date: Date | string | null | undefined,
   options?: Intl.DateTimeFormatOptions
 ): string {
+  if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (!(d instanceof Date) || isNaN(d.getTime())) {
+    return String(date);
+  }
   return d.toLocaleString('en-IN', {
     timeZone: IST_TIMEZONE,
     ...options,
@@ -53,31 +57,80 @@ export function formatDateIST(
 }
 
 /**
- * Format a date for display: "23 Sep 2026"
+ * Safely format a booking date (ISO string, Date object, or YYYY-MM-DD string) to IST display.
+ * Example: "Fri, Oct 2, 2026" or "Oct 2, 2026"
  */
-export function formatDate(date: Date | string): string {
-  return formatDateIST(date, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+export function formatBookingDate(
+  date: Date | string | null | undefined,
+  includeWeekday = true
+): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-US', {
+      timeZone: IST_TIMEZONE,
+      ...(includeWeekday ? { weekday: 'short' } : {}),
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  return String(date);
 }
 
 /**
- * Format time for display: "2:30 PM"
+ * Safely format a booking time (ISO timestamp, HH:mm string, or Date object) to IST display.
+ * Example: "6:00 PM"
  */
-export function formatTime(date: Date | string): string {
-  return formatDateIST(date, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+export function formatBookingTime(time: Date | string | null | undefined): string {
+  if (!time) return '';
+  if (typeof time === 'string') {
+    // Check if it's already a plain time string (e.g., "18:00" or "18:00:00")
+    const plainMatch = time.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (plainMatch) {
+      const hours = parseInt(plainMatch[1], 10);
+      const minutes = parseInt(plainMatch[2], 10);
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const h12 = hours % 12 || 12;
+      const mStr = minutes.toString().padStart(2, '0');
+      return `${h12}:${mStr} ${ampm}`;
+    }
+  }
+  const d = typeof time === 'string' ? new Date(time) : time;
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    return d.toLocaleTimeString('en-US', {
+      timeZone: IST_TIMEZONE,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
+  return String(time);
 }
 
 /**
- * Format datetime: "23 Sep 2026, 2:30 PM"
+ * Format a date for display: "02 Oct 2026"
  */
-export function formatDateTime(date: Date | string): string {
+export function formatDate(date: Date | string | null | undefined): string {
+  return formatBookingDate(date, false);
+}
+
+/**
+ * Format time for display: "6:00 PM"
+ */
+export function formatTime(date: Date | string | null | undefined): string {
+  return formatBookingTime(date);
+}
+
+/**
+ * Format datetime: "02 Oct 2026, 6:00 PM"
+ */
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (!(d instanceof Date) || isNaN(d.getTime())) {
+    return String(date);
+  }
   return formatDateIST(date, {
     day: '2-digit',
     month: 'short',

@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { formatBookingDate, formatBookingTime } from '@/lib/utils';
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -165,7 +166,7 @@ export default function MyBookingsPage() {
                   </span>
                   <p className="font-bold text-ds-text text-sm mt-0.5 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-ds-accent" />
-                    {booking.date}
+                    {formatBookingDate(booking.date)}
                   </p>
                 </div>
 
@@ -175,7 +176,7 @@ export default function MyBookingsPage() {
                   </span>
                   <p className="font-bold text-ds-text text-sm mt-0.5 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-ds-accent" />
-                    {booking.startTime} – {booking.endTime} ({booking.durationMinutes} mins)
+                    {formatBookingTime(booking.startTime)} – {formatBookingTime(booking.endTime)} ({booking.durationMinutes} mins)
                   </p>
                 </div>
               </div>
@@ -248,10 +249,10 @@ export default function MyBookingsPage() {
                 {selectedQr.bookingRef}
               </span>
               <p className="text-xs text-ds-text-muted">
-                {selectedQr.station?.name} • {selectedQr.date}
+                {selectedQr.station?.name} • {formatBookingDate(selectedQr.date)}
               </p>
               <p className="text-xs text-ds-ice font-semibold">
-                Slot: {selectedQr.startTime} – {selectedQr.endTime}
+                Slot: {formatBookingTime(selectedQr.startTime)} – {formatBookingTime(selectedQr.endTime)}
               </p>
             </div>
 
@@ -284,7 +285,7 @@ export default function MyBookingsPage() {
             <div className="p-4 rounded-xl bg-ds-dark border border-ds-border text-xs space-y-1">
               <p className="text-ds-text-muted">Booking Reference: <span className="font-mono font-bold text-ds-text">{cancellingBooking.bookingRef}</span></p>
               <p className="text-ds-text-muted">Station: <span className="text-ds-text font-bold">{cancellingBooking.station?.name}</span></p>
-              <p className="text-ds-text-muted">Timing: <span className="text-ds-text font-bold">{cancellingBooking.date} ({cancellingBooking.startTime} – {cancellingBooking.endTime})</span></p>
+              <p className="text-ds-text-muted">Timing: <span className="text-ds-text font-bold">{formatBookingDate(cancellingBooking.date)} ({formatBookingTime(cancellingBooking.startTime)} – {formatBookingTime(cancellingBooking.endTime)})</span></p>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">

@@ -26,6 +26,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { formatBookingDate, formatBookingTime } from '@/lib/utils';
 
 interface BookingDetail {
   id: string;
@@ -109,25 +110,11 @@ export default function BookingConfirmationPage() {
     if (!booking) return;
 
     // Human-readable date: e.g. "Mon, Oct 5, 2026"
-    const parsedDate = new Date(booking.date);
-    const dateFormatted = !isNaN(parsedDate.getTime())
-      ? parsedDate.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
-      : booking.date;
+    const dateFormatted = formatBookingDate(booking.date);
 
     // Human-readable start and end times: e.g. "01:00 PM – 03:00 PM"
-    const parsedStart = new Date(booking.startTime);
-    const parsedEnd = new Date(booking.endTime);
-    const startTimeFormatted = !isNaN(parsedStart.getTime())
-      ? parsedStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-      : booking.startTime;
-    const endTimeFormatted = !isNaN(parsedEnd.getTime())
-      ? parsedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-      : booking.endTime;
+    const startTimeFormatted = formatBookingTime(booking.startTime);
+    const endTimeFormatted = formatBookingTime(booking.endTime);
 
     const durationHrs = booking.durationMinutes ? booking.durationMinutes / 60 : 0;
     const durationStr = durationHrs > 0 ? (durationHrs === 1 ? '1 Hour' : `${durationHrs} Hours`) : '';
@@ -388,12 +375,7 @@ export default function BookingConfirmationPage() {
                     <div>
                       <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Date</span>
                       <span className="text-sm font-heading font-bold text-ds-text print:text-black">
-                        {new Date(booking.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
+                        {formatBookingDate(booking.date)}
                       </span>
                     </div>
                   </div>
@@ -405,8 +387,7 @@ export default function BookingConfirmationPage() {
                     <div>
                       <span className="text-[10px] uppercase font-mono text-ds-text-dim block">Time Window</span>
                       <span className="text-sm font-heading font-bold text-ds-ice print:text-black">
-                        {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                        {new Date(booking.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatBookingTime(booking.startTime)} – {formatBookingTime(booking.endTime)}
                       </span>
                     </div>
                   </div>
