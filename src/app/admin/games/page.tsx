@@ -49,13 +49,14 @@ interface Game {
 }
 
 const PRESET_COVERS = [
-  { name: 'Football / FC 24', url: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Tekken / Combat', url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Action Adventure', url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Racing / GT7', url: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Mortal Kombat', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Snooker Table', url: 'https://images.unsplash.com/photo-1615655406736-b37c4fabf923?w=600&auto=format&fit=crop&q=80' },
-  { name: '8-Ball Pool', url: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=600&auto=format&fit=crop&q=80' },
+  { name: 'EA Sports FC 24', url: '/games/ea-sports-fc-24.jpg' },
+  { name: 'Tekken 8', url: '/games/tekken-8.jpg' },
+  { name: "Spider-Man 2", url: '/games/spiderman-2.jpg' },
+  { name: 'Gran Turismo 7', url: '/games/gran-turismo-7.jpg' },
+  { name: 'Mortal Kombat 1', url: '/games/mortal-kombat-1.jpg' },
+  { name: 'God of War Ragnarök', url: '/games/god-of-war-ragnarok.jpg' },
+  { name: 'Snooker Table', url: '/snooker-table.jpg' },
+  { name: 'PS5 Station', url: '/ps5-station.jpg' },
 ];
 
 export default function AdminGamesPage() {

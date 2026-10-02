@@ -28,12 +28,48 @@ import { LiveStatsBar } from '@/components/home/LiveStatsBar';
 
 export default function HomePage() {
   const flagshipGames = [
-    { name: 'EA Sports FC 24', genre: 'Sports / Soccer', players: '1-4 Players', tag: 'Top Played' },
-    { name: 'Tekken 8', genre: 'Fighting / Versus', players: '1-2 Players', tag: 'Tournament' },
-    { name: 'Marvel’s Spider-Man 2', genre: 'Action / Adventure', players: '1 Player', tag: 'Story Pick' },
-    { name: 'God of War Ragnarök', genre: 'Mythic Action', players: '1 Player', tag: '4K 120Hz' },
-    { name: 'Mortal Kombat 1', genre: 'Versus Fighter', players: '1-2 Players', tag: 'Competitive' },
-    { name: 'Gran Turismo 7', genre: 'Racing Simulator', players: '1 Player', tag: 'Wheel Rig' },
+    {
+      name: 'EA Sports FC 24',
+      genre: 'Sports / Soccer',
+      players: '1-4 Players',
+      tag: 'Top Played',
+      image: '/games/ea-sports-fc-24.jpg',
+    },
+    {
+      name: 'Tekken 8',
+      genre: 'Fighting / Versus',
+      players: '1-2 Players',
+      tag: 'Tournament',
+      image: '/games/tekken-8.jpg',
+    },
+    {
+      name: 'Marvel’s Spider-Man 2',
+      genre: 'Action / Adventure',
+      players: '1 Player',
+      tag: 'Story Pick',
+      image: '/games/spiderman-2.jpg',
+    },
+    {
+      name: 'God of War Ragnarök',
+      genre: 'Mythic Action',
+      players: '1 Player',
+      tag: '4K 120Hz',
+      image: '/games/god-of-war-ragnarok.jpg',
+    },
+    {
+      name: 'Mortal Kombat 1',
+      genre: 'Versus Fighter',
+      players: '1-2 Players',
+      tag: 'Competitive',
+      image: '/games/mortal-kombat-1.jpg',
+    },
+    {
+      name: 'Gran Turismo 7',
+      genre: 'Racing Simulator',
+      players: '1 Player',
+      tag: 'Wheel Rig',
+      image: '/games/gran-turismo-7.jpg',
+    },
   ];
 
   const testimonials = [
@@ -87,110 +123,140 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Zone 1: PS5 Pro Arena */}
-            <Card hover glass className="p-8 border-ds-accent/30 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Gamepad2 className="w-36 h-36 text-ds-accent" />
+            <Card hover glass className="overflow-hidden p-0 border-ds-accent/30 relative group flex flex-col justify-between">
+              <div>
+                <div className="relative w-full h-52 sm:h-60 bg-ds-dark overflow-hidden">
+                  <Image
+                    src="/ps5-station.jpg"
+                    alt="PS5 Pro Battle Stations"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-black/25 to-black/60" />
+                  <div className="absolute top-4 left-4">
+                    <Badge variant="accent" className="backdrop-blur-md shadow-md text-xs font-heading font-bold">
+                      PlayStation 5
+                    </Badge>
+                  </div>
+                  <div className="absolute top-4 right-4">
+                    <span className="text-sm font-heading font-extrabold text-ds-ice bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-sm">
+                      From ₹150 / hr
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-heading font-bold text-ds-text group-hover:text-ds-ice transition-colors">
+                      PS5 Pro Battle Stations
+                    </h3>
+                    <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
+                      3 PlayStation 5 consoles paired with 55-inch LG OLED TVs at 4K 120FPS. Single player ₹150/hr, duo ₹200/hr, squad (3-4) ₹250/hr.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs text-ds-text-muted">
+                    <div className="flex items-center gap-2">
+                      <Tv className="w-4 h-4 text-ds-accent" />
+                      <span>55" 4K 120Hz OLEDs</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-ds-accent" />
+                      <span>DualSense Wireless</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Headphones className="w-4 h-4 text-ds-accent" />
+                      <span>SteelSeries 3D Audio</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-ds-accent" />
+                      <span>1 to 4 Players / Station</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="relative z-10 space-y-6">
-                <div className="flex items-center justify-between">
-                  <Badge variant="accent">PlayStation 5</Badge>
-                  <span className="text-lg font-heading font-bold text-ds-ice">From ₹150 / hr</span>
-                </div>
 
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-heading font-bold text-ds-text">
-                    PS5 Pro Battle Stations
-                  </h3>
-                  <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
-                    3 PlayStation 5 consoles paired with 55-inch LG OLED TVs at 4K 120FPS. Single player ₹150/hr, duo ₹200/hr, squad (3-4) ₹250/hr.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs text-ds-text-muted">
-                  <div className="flex items-center gap-2">
-                    <Tv className="w-4 h-4 text-ds-accent" />
-                    <span>55" 4K 120Hz OLEDs</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Gamepad2 className="w-4 h-4 text-ds-accent" />
-                    <span>DualSense Wireless</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Headphones className="w-4 h-4 text-ds-accent" />
-                    <span>SteelSeries 3D Audio</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-ds-accent" />
-                    <span>1 to 4 Players / Station</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between">
-                  <Link href="/facilities">
-                    <Button variant="outline" size="sm">
-                      View Stations
-                    </Button>
-                  </Link>
-                  <Link href="/booking">
-                    <Button variant="accent" size="sm">
-                      Book PS5 Zone <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
+              <div className="p-6 sm:p-8 pt-0 flex items-center justify-between border-t border-ds-border/40 mt-2">
+                <Link href="/facilities">
+                  <Button variant="outline" size="sm">
+                    View Stations
+                  </Button>
+                </Link>
+                <Link href="/booking">
+                  <Button variant="accent" size="sm">
+                    Book PS5 Zone <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
               </div>
             </Card>
 
             {/* Zone 2: Snooker Lounge */}
-            <Card hover glass className="p-8 border-ds-border relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Sparkles className="w-36 h-36 text-ds-ice" />
+            <Card hover glass className="overflow-hidden p-0 border-ds-border relative group flex flex-col justify-between">
+              <div>
+                <div className="relative w-full h-52 sm:h-60 bg-ds-dark overflow-hidden">
+                  <Image
+                    src="/snooker-table.jpg"
+                    alt="Championship Snooker Lounge"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-black/25 to-black/60" />
+                  <div className="absolute top-4 left-4">
+                    <Badge variant="info" className="backdrop-blur-md shadow-md text-xs font-heading font-bold">
+                      Snooker
+                    </Badge>
+                  </div>
+                  <div className="absolute top-4 right-4">
+                    <span className="text-sm font-heading font-extrabold text-ds-ice bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-sm">
+                      ₹250 / hr per table
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-heading font-bold text-ds-text group-hover:text-ds-ice transition-colors">
+                      Championship Snooker Lounge
+                    </h3>
+                    <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
+                      3 championship snooker tables. ₹250/hr for 3-4 players per table, +₹50 per extra person beyond 4.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs text-ds-text-muted">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-4 h-4 text-ds-ice" />
+                      <span>Italian Slate Bed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-ds-ice" />
+                      <span>Aramith Pro Balls</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-ds-ice" />
+                      <span>Shadowless LED Canopy</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-ds-ice" />
+                      <span>3-4 Players / Table (+₹50 extra)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="relative z-10 space-y-6">
-                <div className="flex items-center justify-between">
-                  <Badge variant="info">Snooker</Badge>
-                  <span className="text-lg font-heading font-bold text-ds-ice">₹250 / hr per table</span>
-                </div>
 
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-heading font-bold text-ds-text">
-                    Championship Snooker Lounge
-                  </h3>
-                  <p className="text-ds-text-muted text-sm mt-2 leading-relaxed">
-                    3 championship snooker tables. ₹250/hr for 3-4 players per table, +₹50 per extra person beyond 4.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs text-ds-text-muted">
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-ds-ice" />
-                    <span>Italian Slate Bed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-ds-ice" />
-                    <span>Aramith Pro Balls</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-ds-ice" />
-                    <span>Shadowless LED Canopy</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-ds-ice" />
-                    <span>3-4 Players / Table (+₹50 extra)</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between">
-                  <Link href="/facilities">
-                    <Button variant="outline" size="sm">
-                      View Tables
-                    </Button>
-                  </Link>
-                  <Link href="/booking">
-                    <Button variant="secondary" size="sm">
-                      Book Snooker Table <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
+              <div className="p-6 sm:p-8 pt-0 flex items-center justify-between border-t border-ds-border/40 mt-2">
+                <Link href="/facilities">
+                  <Button variant="outline" size="sm">
+                    View Tables
+                  </Button>
+                </Link>
+                <Link href="/booking">
+                  <Button variant="secondary" size="sm">
+                    Book Snooker Table <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
               </div>
             </Card>
           </div>
@@ -217,24 +283,41 @@ export default function HomePage() {
               {flagshipGames.map((game) => (
                 <div
                   key={game.name}
-                  className="p-5 rounded-xl bg-ds-dark/70 border border-ds-border hover:border-ds-accent/40 transition-all group"
+                  className="rounded-xl bg-ds-dark/70 border border-ds-border hover:border-ds-accent/40 transition-all group overflow-hidden flex flex-col justify-between shadow-lg hover:shadow-cyan-500/10"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div>
+                    {/* Game Cover Image Banner */}
+                    <div className="relative w-full h-48 bg-ds-surface/50 overflow-hidden">
+                      <Image
+                        src={game.image}
+                        alt={game.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/30 to-transparent" />
+                      <div className="absolute top-3 right-3">
+                        <Badge variant="accent" size="sm" className="backdrop-blur-md shadow-md text-[10px] font-heading font-bold">
+                          {game.tag}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-1.5">
                       <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-accent">
                         {game.genre}
                       </span>
-                      <h4 className="text-lg font-heading font-bold text-ds-text group-hover:text-ds-ice transition-colors mt-0.5">
+                      <h4 className="text-lg font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors truncate">
                         {game.name}
                       </h4>
                     </div>
-                    <Badge variant="accent" size="sm">
-                      {game.tag}
-                    </Badge>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-ds-border/60 flex items-center justify-between text-xs text-ds-text-dim">
-                    <span>{game.players}</span>
-                    <span className="text-ds-ice font-medium">Ready on all stations</span>
+
+                  <div className="px-5 pb-5 pt-0">
+                    <div className="pt-3 border-t border-ds-border/60 flex items-center justify-between text-xs text-ds-text-dim">
+                      <span>{game.players}</span>
+                      <span className="text-ds-ice font-medium">Ready on all stations</span>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -254,7 +254,7 @@ export function WalkInModal({
             platform: (selectedStation.stationType === 'POOL_TABLE' ? 'POOL_TABLE' : 'PS5') as 'PS5' | 'POOL_TABLE',
             genre: sg.genre || lookedUp?.genre || 'Action',
             description: lookedUp?.description || '',
-            coverImage: sg.coverImage || lookedUp?.coverImage || 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&auto=format&fit=crop&q=80',
+            coverImage: sg.coverImage || lookedUp?.coverImage || '/games/ea-sports-fc-24.jpg',
             maxPlayers: sg.maxPlayers || lookedUp?.maxPlayers || 2,
             isFeatured: sg.isFeatured ?? lookedUp?.isFeatured,
           });
