@@ -56,11 +56,11 @@ export function HeroSection() {
             </Link>
 
             <Link
-              href="/facilities"
+              href="/pricing"
               className="inline-flex items-center gap-2 rounded-full border border-ds-border-light/70 bg-ds-dark/60 px-5 py-3 font-heading text-sm font-semibold text-ds-text backdrop-blur-md transition hover:border-ds-accent hover:text-ds-ice hover:bg-ds-surface/70"
             >
               <CirclePlay className="h-4 w-4 text-ds-accent" />
-              Explore the arena
+              View Pricing & Rates
             </Link>
           </div>
         </div>

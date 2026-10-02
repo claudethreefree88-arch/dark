@@ -66,7 +66,6 @@ export function Navbar() {
 
   const navLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Gaming Zones', href: '/facilities' },
     { name: 'Pricing', href: '/pricing' },
     { name: 'Passes', href: '/membership' },
     { name: 'Contact', href: '/contact' },

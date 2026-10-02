@@ -178,9 +178,9 @@ export default function HomePage() {
               </div>
 
               <div className="p-6 sm:p-8 pt-0 flex items-center justify-between border-t border-ds-border/40 mt-2">
-                <Link href="/facilities">
+                <Link href="/pricing">
                   <Button variant="outline" size="sm">
-                    View Stations
+                    View Pricing
                   </Button>
                 </Link>
                 <Link href="/booking">
@@ -247,9 +247,9 @@ export default function HomePage() {
               </div>
 
               <div className="p-6 sm:p-8 pt-0 flex items-center justify-between border-t border-ds-border/40 mt-2">
-                <Link href="/facilities">
+                <Link href="/pricing">
                   <Button variant="outline" size="sm">
-                    View Tables
+                    View Pricing
                   </Button>
                 </Link>
                 <Link href="/booking">

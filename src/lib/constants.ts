@@ -108,8 +108,8 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 export const PUBLIC_NAV_LINKS = [
   { label: 'Home', href: '/' },
-  { label: 'Gaming Zones', href: '/facilities' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Passes', href: '/membership' },
   { label: 'Book Now', href: '/booking' },
   { label: 'Contact', href: '/contact' },
 ];

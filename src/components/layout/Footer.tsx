@@ -103,45 +103,45 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Col 2: Gaming Zones */}
+          {/* Col 2: Gaming World */}
           <div>
             <h4 className="font-heading font-bold text-sm uppercase tracking-wider text-ds-text mb-4">
-              Gaming Zones
+              Gaming World
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link
-                  href="/facilities"
+                  href="/booking"
                   className="text-ds-text-muted hover:text-ds-ice transition-colors flex items-center gap-1.5"
                 >
                   <Gamepad2 className="w-3.5 h-3.5 text-ds-accent" />
-                  <span>PS5 Pro Arenas</span>
+                  <span>PS5 Pro Battle Stations</span>
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/facilities"
+                  href="/booking"
                   className="text-ds-text-muted hover:text-ds-ice transition-colors flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-ds-ice" />
-                  <span>Billiards & Pool Tables</span>
+                  <span>Snooker & Billiards Lounge</span>
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/facilities"
+                  href="/pricing"
                   className="text-ds-text-muted hover:text-ds-ice transition-colors flex items-center gap-1.5"
                 >
                   <Shield className="w-3.5 h-3.5 text-ds-primary-light" />
-                  <span>VIP Lounge Suites</span>
+                  <span>Tariff & Pricing Card</span>
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/facilities"
+                  href="/membership"
                   className="text-ds-text-muted hover:text-ds-ice transition-colors"
                 >
-                  Tournament Matchups
+                  Syndicate Member Passes
                 </Link>
               </li>
             </ul>

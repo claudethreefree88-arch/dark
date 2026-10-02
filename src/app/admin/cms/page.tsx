@@ -503,7 +503,7 @@ export default function AdminCmsPage() {
                     onChange={(e) =>
                       setSettings({ ...settings, announcement_link: e.target.value })
                     }
-                    placeholder="/booking or /facilities"
+                    placeholder="/booking or /pricing"
                   />
                 </div>
               </div>

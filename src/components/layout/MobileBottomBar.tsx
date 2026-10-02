@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gamepad2, Sparkles, User, LogIn, Calendar } from 'lucide-react';
+import { Receipt, Sparkles, User, LogIn, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export function MobileBottomBar() {
@@ -76,20 +76,20 @@ export function MobileBottomBar() {
             </Link>
           )}
 
-          {/* Quick Zones Navigation */}
+          {/* Quick Pricing Navigation */}
           <Link
-            href="/facilities"
+            href="/pricing"
             className={`flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-              isCurrent('/facilities')
+              isCurrent('/pricing')
                 ? 'bg-ds-accent/15 text-ds-ice border border-ds-accent/30'
                 : 'text-ds-text-muted hover:text-ds-text hover:bg-ds-surface/60'
             }`}
           >
             <div className="w-5 h-5 flex items-center justify-center">
-              <Gamepad2 className="w-4 h-4 text-ds-ice" />
+              <Receipt className="w-4 h-4 text-ds-ice" />
             </div>
             <span className="text-[11px] font-heading font-bold uppercase tracking-wider mt-0.5">
-              Zones
+              Pricing
             </span>
           </Link>
 
