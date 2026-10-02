@@ -484,15 +484,21 @@ function BookingContent() {
 
   // Handle Booking Submission
   const handleConfirmBooking = async () => {
+    if (!selectedZone) {
+      toast.error('Please select a gaming zone');
+      goToStep(1);
+      return;
+    }
+
     if (!selectedSlot) {
       toast.error('Please pick an available time slot');
-      goToStep(1);
+      goToStep(2);
       return;
     }
 
     if (!selectedStation) {
       toast.error('Please select a gaming station');
-      goToStep(2);
+      goToStep(3);
       return;
     }
 
@@ -508,7 +514,7 @@ function BookingContent() {
         customerEmail: emailErr,
       });
       toast.error(nameErr || phoneErr || emailErr || 'Please check your player details');
-      goToStep(3);
+      goToStep(4);
       return;
     }
 
@@ -550,7 +556,7 @@ function BookingContent() {
       if (!res.ok || !json.success) {
         if (res.status === 409) {
           toast.error('This time slot was just booked by another player. Please select another slot.');
-          setCurrentStep(1);
+          setCurrentStep(2);
           // Refresh slots
           const reloadRes = await fetch(
             `/api/bookings/availability?stationId=${selectedStation.id}&date=${selectedDate}&duration=${durationMinutes}`
@@ -622,39 +628,37 @@ function BookingContent() {
 
   const handleMobileBack = () => {
     setIsSummaryOpen(false);
-    if (currentStep === 1) {
-      return;
-    }
-    if (currentStep === 2) {
-      if (selectedZone) {
-        setSelectedZone(null);
-        setSelectedStation(null);
-      }
-      goToStep(1);
-      return;
-    }
+    if (currentStep === 1) return;
     goToStep(currentStep - 1);
   };
 
   const handleMobileContinue = () => {
     setIsSummaryOpen(false);
     if (currentStep === 1) {
-      if (!selectedSlot) {
-        toast.error('Please pick an available time slot to continue');
+      if (!selectedZone) {
+        toast.error('Please select a gaming zone to continue');
         return;
       }
       goToStep(2);
       return;
     }
     if (currentStep === 2) {
-      if (!selectedStation) {
-        toast.error('Please choose a gaming station or table to continue');
+      if (!selectedSlot) {
+        toast.error('Please pick an available time slot to continue');
         return;
       }
       goToStep(3);
       return;
     }
     if (currentStep === 3) {
+      if (!selectedStation) {
+        toast.error('Please choose a gaming station or table to continue');
+        return;
+      }
+      goToStep(4);
+      return;
+    }
+    if (currentStep === 4) {
       const nameErr = validateCustomerName(customerName);
       const phoneErr = validateCustomerPhone(customerPhone);
       const emailErr = validateCustomerEmail(customerEmail);
@@ -670,10 +674,10 @@ function BookingContent() {
         toast.error(nameErr || phoneErr || emailErr || 'Please fill in all required fields correctly');
         return;
       }
-      goToStep(4);
+      goToStep(5);
       return;
     }
-    if (currentStep === 4) {
+    if (currentStep === 5) {
       handleConfirmBooking();
       return;
     }
@@ -681,10 +685,11 @@ function BookingContent() {
 
   const getMobileContinueText = () => {
     if (submitting) return 'Processing...';
-    if (currentStep === 1) return 'Choose Arena';
-    if (currentStep === 2) return 'Player Details';
-    if (currentStep === 3) return 'Proceed to Checkout';
-    if (currentStep === 4) {
+    if (currentStep === 1) return 'Pick Date & Slot';
+    if (currentStep === 2) return 'Choose Station';
+    if (currentStep === 3) return 'Player Details';
+    if (currentStep === 4) return 'Proceed to Checkout';
+    if (currentStep === 5) {
       return paymentOption === 'ONLINE'
         ? `Pay ₹${(finalPricePaise / 100).toFixed(0)}`
         : 'Reserve Desk';
@@ -714,12 +719,13 @@ function BookingContent() {
 
           {/* Stepper Progress Bar */}
           <div id="booking-stepper-header" className="max-w-4xl mx-auto mb-8 sm:mb-12">
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-3 md:gap-4 relative">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2 md:gap-3 relative">
               {[
-                { step: 1, title: 'Date & Slot', icon: CalendarIcon },
-                { step: 2, title: 'Arena & Station', icon: Gamepad2 },
-                { step: 3, title: 'Player Details', icon: UserIcon },
-                { step: 4, title: 'Pass & Pay', icon: CreditCard },
+                { step: 1, title: 'Gaming Zone', icon: Sparkles },
+                { step: 2, title: 'Date & Slot', icon: CalendarIcon },
+                { step: 3, title: 'Choose Station', icon: Gamepad2 },
+                { step: 4, title: 'Player Info', icon: UserIcon },
+                { step: 5, title: 'Pass & Pay', icon: CreditCard },
               ].map(({ step, title, icon: Icon }) => {
                 const isActive = currentStep === step;
                 const isCompleted = currentStep > step;
@@ -728,11 +734,16 @@ function BookingContent() {
                   <button
                     key={step}
                     onClick={() => {
-                      if (step < currentStep || (step === 2 && selectedSlot) || (step === 3 && selectedStation && selectedSlot)) {
+                      if (
+                        step < currentStep ||
+                        (step === 2 && selectedZone) ||
+                        (step === 3 && selectedZone && selectedSlot) ||
+                        (step === 4 && selectedZone && selectedSlot && selectedStation)
+                      ) {
                         goToStep(step);
                       }
                     }}
-                    className={`flex flex-col items-center text-center p-1.5 sm:p-3 rounded-xl transition-all duration-200 border cursor-pointer ${
+                    className={`flex flex-col items-center text-center p-1 sm:p-2.5 rounded-xl transition-all duration-200 border cursor-pointer ${
                       isActive
                         ? 'bg-ds-surface border-ds-accent text-ds-ice shadow-lg shadow-ds-accent/10 ring-1 ring-ds-accent/40'
                         : isCompleted
@@ -741,7 +752,7 @@ function BookingContent() {
                     }`}
                   >
                     <div
-                      className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-1 sm:mb-1.5 transition-all ${
+                      className={`w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center mb-1 transition-all ${
                         isActive
                           ? 'bg-ds-accent text-white shadow-md shadow-ds-accent/30'
                           : isCompleted
@@ -749,12 +760,12 @@ function BookingContent() {
                           : 'bg-ds-border/40 text-ds-text-dim'
                       }`}
                     >
-                      {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-5 sm:h-5" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
+                      {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                     </div>
                     <span className="text-[9px] sm:text-xs font-heading font-bold uppercase tracking-wider">
                       Step {step}
                     </span>
-                    <span className="text-[11px] sm:text-xs md:text-sm font-medium hidden sm:inline truncate max-w-[90px] sm:max-w-[120px]">
+                    <span className="text-[10px] sm:text-xs font-medium hidden sm:inline truncate max-w-[70px] sm:max-w-[110px]">
                       {title}
                     </span>
                   </button>
@@ -767,22 +778,194 @@ function BookingContent() {
           <div id="booking-step-container" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Main Form / Stepper Canvas */}
             <div className="lg:col-span-8 space-y-8 min-h-[640px]">
-              {/* STEP 1: DATE, DURATION & TIME SLOT */}
+              {/* STEP 1: GAMING ZONE SELECTION */}
               {currentStep === 1 && (
+                <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[580px] flex flex-col justify-between">
+                  <div className="space-y-6">
+                    <div className="border-b border-ds-border pb-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-2">
+                        <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
+                        <span>Step 1: Choose Your Zone</span>
+                      </div>
+                      <h2 className="text-2xl font-heading font-black uppercase text-ds-text">
+                        Choose Your Gaming Zone
+                      </h2>
+                      <p className="text-xs sm:text-sm text-ds-text-muted mt-1">
+                        Select an arena below to explore available gaming consoles and championship snooker tables.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* 1. PlayStation 5 Arena Card */}
+                      <div
+                        onClick={() => {
+                          setSelectedZone('PS5');
+                          setSelectedStation(null);
+                          goToStep(2);
+                        }}
+                        className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between ${
+                          selectedZone === 'PS5' ? 'border-ds-accent ring-2 ring-ds-accent/40 shadow-ds-accent/30' : 'border-ds-border hover:border-ds-accent'
+                        }`}
+                      >
+                        <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                          <Image
+                            src="/ps5-station.jpg"
+                            alt="PlayStation 5 Gaming Station"
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            priority
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                          <div className="absolute top-3 right-3">
+                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                              {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-2xl">🎮</span>
+                              <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
+                                PlayStation 5 Arena
+                              </h3>
+                            </div>
+                            <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                              From ₹150/hr
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-ds-border/60">
+                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
+                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">1 Player</span>
+                              <span className="font-mono font-bold text-xs text-ds-text">₹150/hr</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
+                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">2 Players</span>
+                              <span className="font-mono font-bold text-xs text-ds-ice">₹200/hr</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
+                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">3-4 Squad</span>
+                              <span className="font-mono font-bold text-xs text-ds-accent">₹250/hr</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                            <span className="text-[11px] font-mono text-ds-text-dim">4K 120Hz OLED Displays</span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
+                              <span>Explore PS5 Consoles</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Snooker Lounge Card */}
+                      <div
+                        onClick={() => {
+                          setSelectedZone('POOL_TABLE');
+                          setSelectedStation(null);
+                          goToStep(2);
+                        }}
+                        className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between ${
+                          selectedZone === 'POOL_TABLE' ? 'border-emerald-500 ring-2 ring-emerald-500/40 shadow-emerald-500/30' : 'border-ds-border hover:border-emerald-500'
+                        }`}
+                      >
+                        <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                          <Image
+                            src="/pool-table.jpg"
+                            alt="Championship Snooker Table"
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            priority
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                          <div className="absolute top-3 right-3">
+                            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
+                              {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-2xl">🎱</span>
+                              <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
+                                Snooker Lounge
+                              </h3>
+                            </div>
+                            <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
+                              ₹250/hr (Table)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-ds-border/60">
+                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
+                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">1-4 Players</span>
+                              <span className="font-mono font-bold text-xs text-ds-text">₹250/hr total</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
+                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">Extra Player (5+)</span>
+                              <span className="font-mono font-bold text-xs text-ds-ice">+₹50/hr each</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
+                            <span className="text-[11px] font-mono text-ds-text-dim">Tournament Slate Beds & Cues</span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
+                              <span>Explore Snooker Tables</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Navigation for Step 1 */}
+                  <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full justify-end pt-4 border-t border-ds-border">
+                    <Button
+                      variant="accent"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedZone) goToStep(2);
+                        else toast.error('Please choose a gaming zone to continue');
+                      }}
+                      disabled={!selectedZone}
+                      className="text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
+                    >
+                      <span>Continue to Date & Slot</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {/* STEP 2: DATE, DURATION & TIME SLOT */}
+              {currentStep === 2 && (
                 <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 sm:space-y-8 min-h-[580px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-ds-border pb-4">
                     <div>
                       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
-                        <span>Step 1: Pick Date & Slot</span>
+                        <span>Step 2: Pick Date & Slot</span>
                       </div>
                       <h2 className="text-xl sm:text-2xl font-heading font-black uppercase text-ds-text">
-                        1. Pick Date & Session Duration
+                        2. Pick Date & Session Duration
                       </h2>
                       <p className="text-xs text-ds-text-muted mt-0.5">
-                        Choose your session date, duration, player count, and time slot.
+                        Zone: <span className="text-ds-ice font-semibold">{selectedZone === 'PS5' ? 'PlayStation 5 Arena' : selectedZone === 'POOL_TABLE' ? 'Snooker Lounge' : 'Gaming Arena'}</span> • Choose your session date, duration, player count, and time slot.
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => goToStep(1)}
+                      className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold cursor-pointer shrink-0"
+                    >
+                      Change Zone
+                    </button>
                   </div>
 
                   {/* 1. Date Selector Carousel */}
@@ -1034,18 +1217,28 @@ function BookingContent() {
                       </div>
                     )}
 
-                    <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full justify-end">
+                    <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full sm:justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => goToStep(1)}
+                        className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                        <span>Back to Zone</span>
+                      </Button>
+
                       <Button
                         variant="accent"
                         size="sm"
                         onClick={() => {
-                          if (selectedSlot) goToStep(2);
+                          if (selectedSlot) goToStep(3);
                           else toast.error('Please pick an available time slot');
                         }}
                         disabled={!selectedSlot}
                         className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                       >
-                        <span>Continue to Arena & Station</span>
+                        <span>Choose {selectedZone === 'POOL_TABLE' ? 'Snooker Table' : 'PS5 Station'}</span>
                         <ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Button>
                     </div>
@@ -1054,145 +1247,10 @@ function BookingContent() {
               )}
 
 
-              {/* STEP 2: ARENA ZONE & STATION SELECTION */}
-              {currentStep === 2 && (
+
+              {/* STEP 3: SPECIFIC STATION SELECTION */}
+              {currentStep === 3 && (
                 <Card glass className="p-6 sm:p-8 border-ds-border space-y-6 min-h-[600px] flex flex-col justify-between">
-                  {/* ─── STAGE 1: ONLY SHOW ARENA ZONE IMAGE CARDS INITIALLY ─── */}
-                  {!selectedZone ? (
-                    <div className="space-y-6">
-                      <div className="border-b border-ds-border pb-4 flex items-center justify-between">
-                        <div>
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-ds-accent/15 border border-ds-accent/30 text-ds-ice mb-2">
-                            <Sparkles className="w-3.5 h-3.5 text-ds-accent" />
-                            <span>Step 2: Choose Your Zone</span>
-                          </div>
-                          <h2 className="text-2xl font-heading font-black uppercase text-ds-text">
-                            2. Choose Your Gaming Zone
-                          </h2>
-                          <p className="text-xs sm:text-sm text-ds-text-muted mt-1">
-                            Slot chosen: <span className="text-ds-ice font-semibold">{selectedDate} ({selectedSlot?.label || selectedSlot?.time || 'Pending'})</span>. Tap an arena below to choose your station.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => goToStep(1)}
-                          className="text-xs text-ds-accent hover:underline flex items-center gap-1 font-semibold cursor-pointer shrink-0"
-                        >
-                          Change Date/Slot
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* 1. PlayStation 5 Arena Card */}
-                        <div
-                          onClick={() => {
-                            setSelectedZone('PS5');
-                            setSelectedStation(null);
-                          }}
-                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-ds-accent transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between"
-                        >
-                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
-                            <Image
-                              src="/ps5-station.jpg"
-                              alt="PlayStation 5 Gaming Station"
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
-                            <div className="absolute top-3 right-3">
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
-                                {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-2xl">🎮</span>
-                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
-                                  PlayStation 5 Arena
-                                </h3>
-                              </div>
-                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                                From ₹150/hr
-                              </span>
-                            </div>
-
-                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                              <span className="text-[11px] font-mono text-ds-text-dim">Single, Duo & Squad</span>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
-                                <span>Explore PS5 Consoles</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 2. Snooker Lounge Card */}
-                        <div
-                          onClick={() => {
-                            setSelectedZone('POOL_TABLE');
-                            setSelectedStation(null);
-                          }}
-                          className="group relative rounded-2xl overflow-hidden border-2 border-ds-border hover:border-emerald-500 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between"
-                        >
-                          <div className="relative w-full h-52 sm:h-60 overflow-hidden">
-                            <Image
-                              src="/snooker-table.jpg"
-                              alt="Championship Snooker Table"
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
-                            <div className="absolute top-3 right-3">
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
-                                {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-2xl">🎱</span>
-                                <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-emerald-400 transition-colors">
-                                  Snooker Lounge
-                                </h3>
-                              </div>
-                              <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                                ₹250/hr (Table)
-                              </span>
-                            </div>
-
-                            <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                              <span className="text-[11px] font-mono text-ds-text-dim">Up to 4 Players Included</span>
-                              <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
-                                <span>Explore Snooker Tables</span>
-                                <ArrowRight className="w-4 h-4" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bottom Navigation for Stage 1 */}
-                      <div className="hidden lg:flex items-center gap-2 sm:gap-3 w-full justify-between pt-4 border-t border-ds-border">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => goToStep(1)}
-                          className="text-xs sm:text-sm py-2 px-3 sm:px-4"
-                        >
-                          <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                          <span>Back to Date & Slot</span>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* ─── STAGE 2: DISPLAY SPECIFIC STATIONS ONCE ZONE IS CLICKED ─── */
                     <div className="space-y-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ds-border pb-4">
                         <div>
@@ -1227,7 +1285,7 @@ function BookingContent() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => goToStep(1)}
+                            onClick={() => goToStep(2)}
                             className="px-2.5 py-1.5 rounded-lg text-xs font-heading font-semibold text-ds-accent hover:underline flex items-center gap-1 cursor-pointer mr-1"
                           >
                             <CalendarIcon className="w-3.5 h-3.5" />
@@ -1433,22 +1491,19 @@ function BookingContent() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedZone(null);
-                              setSelectedStation(null);
-                            }}
+                            onClick={() => goToStep(2)}
                             className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                           >
                             <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                            <span>Change Arena</span>
+                            <span>Back to Date & Slot</span>
                           </Button>
 
                           <Button
                             variant="accent"
                             size="sm"
                             onClick={() => {
-                              if (selectedStation) goToStep(3);
-                              else toast.error('Please select a station or table to continue');
+                              if (selectedStation) goToStep(4);
+                              else toast.error('Please choose a gaming station or table to continue');
                             }}
                             disabled={!selectedStation}
                             className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
@@ -1459,17 +1514,15 @@ function BookingContent() {
                         </div>
                       </div>
                     </div>
-                  )}
-                </Card>
-              )}
+                  </Card>
+                )}
 
-
-              {/* STEP 3: GAMER DETAILS */}
-              {currentStep === 3 && (
+              {/* STEP 4: GAMER DETAILS */}
+              {currentStep === 4 && (
                 <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 min-h-[580px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
-                      3. Player Information
+                      4. Player Information
                     </h2>
                     <p className="text-xs text-ds-text-muted mt-0.5">
                       Your digital check-in pass and QR code will be registered under these details.
@@ -1603,11 +1656,11 @@ function BookingContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToStep(2)}
+                      onClick={() => goToStep(3)}
                       className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span>Back to Arena & Station</span>
+                      <span>Back to Stations</span>
                     </Button>
 
                     <Button
@@ -1629,7 +1682,7 @@ function BookingContent() {
                           toast.error(nameErr || phoneErr || emailErr || 'Please check the highlighted errors');
                           return;
                         }
-                        goToStep(4);
+                        goToStep(5);
                       }}
                       className="flex-[1.5] sm:flex-initial text-xs sm:text-sm py-2 px-4 sm:px-5 shadow-md shadow-ds-accent/20"
                     >
@@ -1640,8 +1693,9 @@ function BookingContent() {
                 </Card>
               )}
 
-              {/* STEP 4: REVIEW & PAYMENT SELECTION */}
-              {currentStep === 4 && (
+
+              {/* STEP 5: REVIEW & PAYMENT SELECTION */}
+              {currentStep === 5 && (
                 <Card glass className="p-4 sm:p-6 md:p-8 border-ds-border space-y-6 min-h-[580px] flex flex-col justify-between">
                   <div className="border-b border-ds-border pb-4">
                     <h2 className="text-xl font-heading font-bold uppercase text-ds-text">
@@ -1750,12 +1804,12 @@ function BookingContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToStep(3)}
+                      onClick={() => goToStep(4)}
                       disabled={submitting}
                       className="flex-1 sm:flex-initial text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                      <span>Back to Gamer Info</span>
+                      <span>Back to Player Info</span>
                     </Button>
 
                     <Button
@@ -1782,6 +1836,7 @@ function BookingContent() {
                   </div>
                 </Card>
               )}
+
             </div>
 
             {/* Right Booking Receipt / Summary Sticky Card (Desktop Only) */}
