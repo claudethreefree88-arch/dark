@@ -874,7 +874,7 @@ function BookingContent() {
                       >
                         <div className="relative w-full h-52 sm:h-60 overflow-hidden">
                           <Image
-                            src="/pool-table.jpg"
+                            src="/snooker-table.jpg"
                             alt="Championship Snooker Table"
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
