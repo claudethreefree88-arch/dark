@@ -371,34 +371,24 @@ function BookingContent() {
     fetchSlots();
   }, [selectedStation?.id, selectedDate, durationMinutes]);
 
-  // Calculate dynamic hourly rate based on station and player count
+  // Calculate dynamic hourly rate based on zone, station and player count
   const getHourlyRatePaise = () => {
-    if (!selectedStation) {
-      if (playerCount === 1) return 15000;
-      if (playerCount === 2) return 20000;
-      return 25000;
-    }
-    const isPs5 =
-      selectedStation.stationType === 'PS5' ||
-      selectedStation.name.toUpperCase().includes('PS5');
     const isSnooker =
-      selectedStation.stationType === 'POOL_TABLE' ||
-      selectedStation.name.toUpperCase().includes('SNOOKER') ||
-      selectedStation.name.toUpperCase().includes('POOL');
-
-    if (isPs5) {
-      if (playerCount === 1) return 15000; // Single player: ₹150/hr
-      if (playerCount === 2) return 20000; // 2 players: ₹200/hr
-      return 25000; // 3-4 players: ₹250/hr
-    }
+      selectedZone === 'POOL_TABLE' ||
+      selectedStation?.stationType === 'POOL_TABLE' ||
+      selectedStation?.name.toUpperCase().includes('SNOOKER') ||
+      selectedStation?.name.toUpperCase().includes('POOL');
 
     if (isSnooker) {
-      // Snooker: ₹250/hr for 1-4 players per table, +₹50 per person beyond 4
+      // Snooker: Flat ₹250/hr per table/frame (max 4 players)
       if (playerCount <= 4) return 25000;
       return 25000 + (playerCount - 4) * 5000;
     }
 
-    return selectedStation.pricePerHourPaise;
+    // PlayStation 5 (exact match to illuminated rate board):
+    if (playerCount === 1) return 15000; // Single Player: ₹150/hr
+    if (playerCount === 2) return 20000; // Two Player: ₹200/hr
+    return 25000; // Multi Player (3 & 4 Players): ₹250/hr
   };
 
   const hourlyRatePaise = getHourlyRatePaise();
@@ -801,6 +791,7 @@ function BookingContent() {
                         onClick={() => {
                           setSelectedZone('PS5');
                           setSelectedStation(null);
+                          setPlayerCount(1);
                           goToStep(2);
                         }}
                         className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between ${
@@ -866,6 +857,7 @@ function BookingContent() {
                         onClick={() => {
                           setSelectedZone('POOL_TABLE');
                           setSelectedStation(null);
+                          setPlayerCount(4);
                           goToStep(2);
                         }}
                         className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between ${
@@ -1046,64 +1038,64 @@ function BookingContent() {
                     </div>
                   </div>
 
-                    {/* 2. Player Count Selector */}
+                    {/* 2. Player Count Selector (Matches Official Rate Board) */}
                     <div className="space-y-3">
                       <div className="flex justify-between text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
                         <span>Number of Players</span>
                         <span className="text-ds-ice font-semibold">
-                          {selectedStation?.stationType === 'PS5'
+                          {(selectedZone === 'PS5' || (!selectedZone && selectedStation?.stationType === 'PS5') || (!selectedZone && !selectedStation))
                             ? playerCount === 1
-                              ? '1 Player (₹150/hr)'
+                              ? 'Single Player (₹150/hr)'
                               : playerCount === 2
-                              ? '2 Players (₹200/hr)'
-                              : '3-4 Players (₹250/hr)'
-                            : playerCount <= 4
-                            ? '3-4 Players (₹250/hr)'
-                            : `${playerCount} Players (₹${250 + (playerCount - 4) * 50}/hr)`}
+                              ? 'Two Player (₹200/hr)'
+                              : 'Multi Player 3-4P (₹250/hr)'
+                            : 'Per Frame / Max 4 Players (₹250/hr)'}
                         </span>
                       </div>
-                      {selectedStation?.stationType === 'PS5' ? (
+
+                      {(selectedZone === 'PS5' || (!selectedZone && selectedStation?.stationType === 'PS5') || (!selectedZone && !selectedStation)) ? (
                         <div className="grid grid-cols-3 gap-3">
                           {[
-                            { count: 1, label: 'Single Player', rate: '₹150 / hr' },
-                            { count: 2, label: 'Duo (2 Players)', rate: '₹200 / hr' },
-                            { count: 4, label: 'Squad (3-4 Players)', rate: '₹250 / hr' },
+                            { count: 1, label: 'Single Player', sub: '1 Player', rate: '₹150 / hr' },
+                            { count: 2, label: 'Two Player', sub: '2 Players', rate: '₹200 / hr' },
+                            { count: 4, label: 'Multi Player', sub: '3 & 4 Players', rate: '₹250 / hr' },
                           ].map((opt) => (
                             <button
                               key={opt.count}
                               type="button"
                               onClick={() => setPlayerCount(opt.count)}
-                              className={`p-3 rounded-xl border text-center transition-all ${
+                              className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                                 playerCount === opt.count
                                   ? 'bg-ds-surface border-ds-accent text-ds-ice ring-1 ring-ds-accent shadow-md'
                                   : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
                               }`}
                             >
                               <div className="text-xs font-heading font-bold">{opt.label}</div>
-                              <span className="text-[10px] text-ds-accent block mt-0.5">{opt.rate}</span>
+                              <span className="text-[10px] text-ds-text-dim block mt-0.5">{opt.sub}</span>
+                              <span className="text-[10px] text-ds-accent font-mono font-bold block mt-1">{opt.rate}</span>
                             </button>
                           ))}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                           {[
-                            { count: 4, label: '3-4 Players', rate: 'Standard Table (₹250/hr)' },
-                            { count: 5, label: '5 Players', rate: '+₹50 extra (₹300/hr)' },
-                            { count: 6, label: '6 Players', rate: '+₹100 extra (₹350/hr)' },
-                            { count: 8, label: '7-8 Players', rate: '+₹150+ (₹400/hr)' },
+                            { count: 1, label: 'Solo Practice', sub: '1 Player', rate: '₹250 / hr' },
+                            { count: 2, label: '1v1 Match', sub: '2 Players', rate: '₹250 / hr' },
+                            { count: 4, label: 'Per Frame', sub: 'Max 4 Players', rate: '₹250 / hr' },
                           ].map((opt) => (
                             <button
                               key={opt.count}
                               type="button"
                               onClick={() => setPlayerCount(opt.count)}
-                              className={`p-3 rounded-xl border text-center transition-all ${
+                              className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                                 playerCount === opt.count
-                                  ? 'bg-ds-surface border-ds-accent text-ds-ice ring-1 ring-ds-accent shadow-md'
+                                  ? 'bg-ds-surface border-emerald-500 text-emerald-400 ring-1 ring-emerald-500 shadow-md'
                                   : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
                               }`}
                             >
                               <div className="text-xs font-heading font-bold">{opt.label}</div>
-                              <span className="text-[10px] text-ds-accent block mt-0.5">{opt.rate}</span>
+                              <span className="text-[10px] text-ds-text-dim block mt-0.5">{opt.sub}</span>
+                              <span className="text-[10px] text-emerald-400 font-mono font-bold block mt-1">{opt.rate}</span>
                             </button>
                           ))}
                         </div>
@@ -1880,15 +1872,13 @@ function BookingContent() {
                     <div>
                       <p className="text-[10px] uppercase font-bold text-ds-accent">Players</p>
                       <p className="font-heading font-bold text-sm text-ds-text">
-                        {selectedStation?.stationType === 'PS5'
+                        {(selectedZone === 'PS5' || (!selectedZone && selectedStation?.stationType === 'PS5') || (!selectedZone && !selectedStation))
                           ? playerCount === 1
                             ? 'Single Player (1P)'
                             : playerCount === 2
-                            ? 'Duo (2P)'
-                            : 'Squad (3-4P)'
-                          : playerCount <= 4
-                          ? 'Up to 4 Players'
-                          : `${playerCount} Players`}
+                            ? 'Two Player (2P)'
+                            : 'Multi Player (3-4P)'
+                          : 'Per Frame (Max 4P)'}
                       </p>
                       <p className="text-ds-ice font-semibold text-[11px]">
                         ₹{(hourlyRatePaise / 100).toFixed(0)} / hr
