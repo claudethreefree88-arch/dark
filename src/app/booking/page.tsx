@@ -1316,8 +1316,8 @@ function BookingContent() {
                         </div>
                       </div>
 
-                      {/* Stations Grid for Selected Zone */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Stations Grid for Selected Zone (1 X 3 View) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         {stations
                           .filter((st) => st.stationType === selectedZone)
                           .map((station) => {
@@ -1351,49 +1351,49 @@ function BookingContent() {
                               >
                                 <div>
                                   {/* Compact Card Header */}
-                                  <div className="p-4 pb-3 flex items-center justify-between gap-2 border-b border-ds-border/40">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-8 h-8 rounded-lg bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-sm shrink-0">
+                                  <div className="p-3 pb-2.5 flex items-center justify-between gap-1.5 border-b border-ds-border/40">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="w-7 h-7 rounded-lg bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-xs shrink-0">
                                         {station.stationType === 'PS5' ? '🎮' : '🎱'}
                                       </div>
                                       <div className="min-w-0">
-                                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent block truncate">
+                                        <span className="text-[9px] font-heading font-bold uppercase tracking-wider text-ds-accent block truncate">
                                           {station.facilityName}
                                         </span>
-                                        <span className="text-[10px] text-ds-text-dim font-mono block">
+                                        <span className="text-[9px] text-ds-text-dim font-mono block">
                                           {station.capacity} Max Players
                                         </span>
                                       </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    <div className="flex items-center gap-1.5 shrink-0">
                                       <Badge
                                         variant={isAvailable ? 'success' : 'warning'}
                                         size="sm"
-                                        className="text-[10px]"
+                                        className="text-[9px] px-1.5 py-0.5"
                                       >
                                         {isAvailable ? '🟢 Ready' : '🟡 In Use'}
                                       </Badge>
 
                                       {isSelected && (
-                                        <div className="w-5 h-5 rounded-full bg-ds-accent text-ds-darker font-black text-[11px] flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
+                                        <div className="w-4 h-4 rounded-full bg-ds-accent text-ds-darker font-black text-[10px] flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
                                           ✓
                                         </div>
                                       )}
                                     </div>
                                   </div>
 
-                                  <div className="p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
+                                  <div className="p-3 space-y-2.5">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <h3 className="text-sm font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors truncate">
                                         {station.name}
                                       </h3>
-                                      <span className="text-ds-ice font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                                        {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr'}
+                                      <span className="text-ds-ice font-bold text-[11px] bg-ds-surface px-2 py-0.5 rounded border border-ds-border shrink-0">
+                                        {station.stationType === 'PS5' ? 'From ₹150/hr' : '₹250/hr'}
                                       </span>
                                     </div>
 
-                                    <div className="text-[11px] text-ds-text-dim px-2.5 py-1.5 rounded-lg bg-ds-dark/60 border border-ds-border/40">
+                                    <div className="text-[10px] text-ds-text-dim px-2 py-1 rounded bg-ds-dark/60 border border-ds-border/40 truncate">
                                       {station.stationType === 'PS5'
                                         ? 'Single: ₹150 · Two: ₹200 · Squad: ₹250'
                                         : 'Per Frame: ₹250/hr (Max 4 Players)'}
@@ -1404,7 +1404,7 @@ function BookingContent() {
                                       <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
                                         <div className="flex items-center gap-2 min-w-0">
                                           {lookupGame(selectedGame)?.coverImage ? (
-                                            <div className="w-6 h-6 rounded-md overflow-hidden relative shrink-0 border border-ds-border/60">
+                                            <div className="w-5 h-5 rounded overflow-hidden relative shrink-0 border border-ds-border/60">
                                               <Image
                                                 src={lookupGame(selectedGame)!.coverImage}
                                                 alt={selectedGame}
@@ -1413,9 +1413,9 @@ function BookingContent() {
                                               />
                                             </div>
                                           ) : (
-                                            <Gamepad2 className="w-3.5 h-3.5 text-ds-cyan shrink-0" />
+                                            <Gamepad2 className="w-3 h-3 text-ds-cyan shrink-0" />
                                           )}
-                                          <span className="truncate max-w-[130px] sm:max-w-[170px] font-semibold">{selectedGame}</span>
+                                          <span className="truncate max-w-[100px] sm:max-w-[120px] font-semibold text-xs">{selectedGame}</span>
                                         </div>
                                         <button
                                           type="button"
@@ -1423,7 +1423,7 @@ function BookingContent() {
                                             e.stopPropagation();
                                             setShowGameModal(true);
                                           }}
-                                          className="text-[10px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1.5 cursor-pointer"
+                                          className="text-[9px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1 cursor-pointer"
                                         >
                                           Change
                                         </button>
@@ -1432,8 +1432,8 @@ function BookingContent() {
                                   </div>
                                 </div>
 
-                                <div className="p-4 pt-0">
-                                  <div className="pt-3 flex justify-between items-center border-t border-ds-border/30">
+                                <div className="p-3 pt-0">
+                                  <div className="pt-2 flex justify-between items-center border-t border-ds-border/30">
                                     {station.games && station.games.length > 0 ? (
                                       <button
                                         type="button"
@@ -1445,16 +1445,16 @@ function BookingContent() {
                                           }
                                           setShowGameModal(true);
                                         }}
-                                        className="text-[11px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                        className="text-[10px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
                                       >
                                         <Gamepad2 className="w-3 h-3" />
-                                        <span>Browse Games ({station.games.length})</span>
+                                        <span>Games ({station.games.length})</span>
                                       </button>
                                     ) : (
                                       <div />
                                     )}
                                     <span
-                                      className={`text-xs font-semibold inline-flex items-center gap-1 ${
+                                      className={`text-[11px] font-semibold inline-flex items-center gap-1 ${
                                         isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
                                       }`}
                                     >
