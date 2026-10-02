@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -127,8 +128,25 @@ export default function AccountMembershipPage() {
                 : 'border-slate-400/60 shadow-xl bg-gradient-to-br from-ds-darker via-ds-surface to-[#151b23]'
             }`}
           >
+            {/* Cyber Pass Graphic Visual */}
+            <div className="absolute top-0 right-0 w-80 h-full opacity-15 overflow-hidden pointer-events-none select-none">
+              <Image
+                src={
+                  activeMembership.tierSnapshot === 'VIP'
+                    ? '/passes/vip-black-card.jpg'
+                    : activeMembership.tierSnapshot === 'GOLD'
+                    ? '/passes/gold-pass.jpg'
+                    : '/passes/silver-pass.jpg'
+                }
+                alt="Active Pass"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-ds-dark/40 to-ds-dark" />
+            </div>
+
             {/* Top header */}
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 relative z-10">
               <div>
                 <span className="text-[10px] font-mono tracking-widest text-ds-accent uppercase block font-bold">
                   DARK SYNDICATE ARENA PASS

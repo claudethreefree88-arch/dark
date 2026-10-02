@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card } from '@/components/ui/Card';
@@ -37,6 +38,12 @@ interface MembershipPlan {
   perks: string[];
   badgeColor?: string;
 }
+
+const getPassImage = (tier: string) => {
+  if (tier === 'VIP') return '/passes/vip-black-card.jpg';
+  if (tier === 'GOLD') return '/passes/gold-pass.jpg';
+  return '/passes/silver-pass.jpg';
+};
 
 export default function MembershipPlansPage() {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
@@ -167,7 +174,7 @@ export default function MembershipPlansPage() {
                 <Card
                   key={plan.id}
                   variant="glass"
-                  className={`p-6 sm:p-8 flex flex-col justify-between relative transition-all duration-300 hover:scale-[1.02] ${
+                  className={`overflow-hidden p-0 flex flex-col justify-between relative transition-all duration-300 hover:scale-[1.02] group ${
                     isGold
                       ? 'border-amber-500/60 shadow-xl shadow-amber-500/10'
                       : isVip
@@ -176,90 +183,116 @@ export default function MembershipPlansPage() {
                   }`}
                 >
                   {isGold && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-gradient-to-r from-amber-500 to-amber-400 text-black text-[10px] font-heading font-black uppercase px-3 py-1 rounded-full shadow-md">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                      <span className="bg-gradient-to-r from-amber-500 to-amber-400 text-black text-[10px] font-heading font-black uppercase px-3.5 py-1 rounded-full shadow-lg font-mono">
                         MOST POPULAR
                       </span>
                     </div>
                   )}
 
                   {isVip && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-ds-accent text-white text-[10px] font-heading font-black uppercase px-3 py-1 rounded-full shadow-glow">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                      <span className="bg-ds-accent text-white text-[10px] font-heading font-black uppercase px-3.5 py-1 rounded-full shadow-glow font-mono">
                         PRO GAMER ELITE
                       </span>
                     </div>
                   )}
 
-                  <div className="space-y-6">
-                    {/* Header */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono uppercase tracking-widest text-ds-text-dim">
+                  <div>
+                    {/* 3D Cybernetic Pass Showcase Banner */}
+                    <div className="relative w-full h-52 sm:h-56 bg-ds-dark overflow-hidden">
+                      <Image
+                        src={getPassImage(plan.tier)}
+                        alt={plan.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ds-surface/95 via-transparent to-black/40" />
+
+                      <div className="absolute top-3.5 left-3.5">
+                        <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 font-bold text-white shadow-sm">
                           {plan.tier} TIER
                         </span>
+                      </div>
+
+                      <div className="absolute top-3.5 right-3.5">
                         {isVip ? (
-                          <Crown className="w-5 h-5 text-ds-ice" />
+                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-cyan-400/40 text-ds-ice shadow-sm">
+                            <Crown className="w-4 h-4" />
+                          </div>
                         ) : isGold ? (
-                          <Sparkles className="w-5 h-5 text-amber-400" />
+                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-amber-400/40 text-amber-400 shadow-sm">
+                            <Sparkles className="w-4 h-4" />
+                          </div>
                         ) : (
-                          <Shield className="w-5 h-5 text-slate-400" />
+                          <div className="p-1.5 rounded-full bg-black/75 backdrop-blur-md border border-slate-400/40 text-slate-300 shadow-sm">
+                            <Shield className="w-4 h-4" />
+                          </div>
                         )}
                       </div>
-                      <h3 className="text-xl font-heading font-bold text-ds-text">{plan.name}</h3>
-                      <p className="text-xs text-ds-text-muted leading-relaxed min-h-[36px]">
-                        {plan.description}
-                      </p>
                     </div>
 
-                    {/* Price Tag */}
-                    <div className="p-4 rounded-2xl bg-ds-dark/70 border border-ds-border">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-heading font-black text-ds-text">
-                          ₹{(plan.pricePaise / 100).toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-xs font-mono text-ds-text-dim">
-                          /{plan.durationDays} Days
-                        </span>
+                    <div className="p-6 sm:p-8 space-y-6">
+                      {/* Header */}
+                      <div className="space-y-1.5">
+                        <h3 className="text-xl font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
+                          {plan.name}
+                        </h3>
+                        <p className="text-xs text-ds-text-muted leading-relaxed min-h-[36px]">
+                          {plan.description}
+                        </p>
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="accent" size="sm">
-                          {plan.discountPercent}% OFF EVERY HOUR
-                        </Badge>
-                        {plan.freeHours > 0 && (
-                          <Badge variant="success" size="sm">
-                            +{plan.freeHours} FREE HRS
+
+                      {/* Price Tag */}
+                      <div className="p-4 rounded-2xl bg-ds-dark/70 border border-ds-border">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-heading font-black text-ds-text">
+                            ₹{(plan.pricePaise / 100).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-xs font-mono text-ds-text-dim">
+                            /{plan.durationDays} Days
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="accent" size="sm">
+                            {plan.discountPercent}% OFF EVERY HOUR
                           </Badge>
-                        )}
+                          {plan.freeHours > 0 && (
+                            <Badge variant="success" size="sm">
+                              +{plan.freeHours} FREE HRS
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Perks List */}
-                    <div className="space-y-3 pt-2">
-                      <span className="text-[10px] font-mono uppercase text-ds-text-dim tracking-wider block">
-                        Included Privileges:
-                      </span>
-                      <ul className="space-y-2.5 text-xs text-ds-text-muted">
-                        {plan.perks?.map((perk, idx) => (
-                          <li key={idx} className="flex items-start gap-2.5">
-                            <CheckCircle2
-                              className={`w-4 h-4 shrink-0 mt-0.5 ${
-                                isGold
-                                  ? 'text-amber-400'
-                                  : isVip
-                                  ? 'text-ds-ice'
-                                  : 'text-emerald-400'
-                              }`}
-                            />
-                            <span>{perk}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {/* Perks List */}
+                      <div className="space-y-3 pt-1">
+                        <span className="text-[10px] font-mono uppercase text-ds-text-dim tracking-wider block">
+                          Included Privileges:
+                        </span>
+                        <ul className="space-y-2.5 text-xs text-ds-text-muted">
+                          {plan.perks?.map((perk, idx) => (
+                            <li key={idx} className="flex items-start gap-2.5">
+                              <CheckCircle2
+                                className={`w-4 h-4 shrink-0 mt-0.5 ${
+                                  isGold
+                                    ? 'text-amber-400'
+                                    : isVip
+                                    ? 'text-ds-ice'
+                                    : 'text-emerald-400'
+                                }`}
+                              />
+                              <span>{perk}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
 
                   {/* Call to action */}
-                  <div className="pt-8">
+                  <div className="p-6 sm:p-8 pt-0">
                     <Button
                       variant={isGold ? 'primary' : isVip ? 'accent' : 'outline'}
                       className="w-full font-heading font-bold tracking-wider"
@@ -341,19 +374,29 @@ export default function MembershipPlansPage() {
         >
           <div className="space-y-6 text-xs">
             {/* Plan summary */}
-            <div className="p-4 rounded-xl bg-ds-dark border border-ds-border flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono uppercase text-ds-text-dim block">
-                  Selected Pass
-                </span>
-                <h4 className="font-heading font-bold text-base text-ds-text">
-                  {selectedPlan.name}
-                </h4>
-                <span className="text-xs text-emerald-400">
-                  {selectedPlan.discountPercent}% OFF • {selectedPlan.durationDays} Days Validity
-                </span>
+            <div className="p-4 rounded-xl bg-ds-dark border border-ds-border flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-10 rounded-lg overflow-hidden relative shrink-0 border border-ds-border bg-ds-surface">
+                  <Image
+                    src={getPassImage(selectedPlan.tier)}
+                    alt={selectedPlan.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-ds-text-dim block">
+                    Selected Pass
+                  </span>
+                  <h4 className="font-heading font-bold text-base text-ds-text">
+                    {selectedPlan.name}
+                  </h4>
+                  <span className="text-xs text-emerald-400">
+                    {selectedPlan.discountPercent}% OFF • {selectedPlan.durationDays} Days Validity
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <span className="text-[10px] font-mono uppercase text-ds-text-dim block">
                   Amount Due
                 </span>
