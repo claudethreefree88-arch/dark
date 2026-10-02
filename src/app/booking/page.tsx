@@ -1329,19 +1329,12 @@ function BookingContent() {
                                 key={station.id}
                                 onClick={() => {
                                   if (isAvailable) {
-                                    const isDifferent = selectedStation?.id !== station.id;
                                     setSelectedStation(station);
-                                    if (isDifferent) {
-                                      setSelectedGame(null);
-                                    }
-                                    if (station.games && station.games.length > 0) {
-                                      setShowGameModal(true);
-                                    }
                                   } else {
                                     toast.error(`${station.name} is currently occupied`);
                                   }
                                 }}
-                                className={`rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between overflow-hidden group ${
+                                className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between gap-3 group ${
                                   isSelected
                                     ? 'bg-ds-surface border-ds-accent shadow-xl shadow-ds-accent/20 ring-2 ring-ds-accent'
                                     : isAvailable
@@ -1349,118 +1342,49 @@ function BookingContent() {
                                     : 'bg-ds-surface/20 border-ds-border/40 opacity-60 cursor-not-allowed'
                                 }`}
                               >
-                                <div>
-                                  {/* Compact Card Header */}
-                                  <div className="p-3 pb-2.5 flex items-center justify-between gap-1.5 border-b border-ds-border/40">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className="w-7 h-7 rounded-lg bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-xs shrink-0">
-                                        {station.stationType === 'PS5' ? '🎮' : '🎱'}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <span className="text-[9px] font-heading font-bold uppercase tracking-wider text-ds-accent block truncate">
-                                          {station.facilityName}
-                                        </span>
-                                        <span className="text-[9px] text-ds-text-dim font-mono block">
-                                          {station.capacity} Max Players
-                                        </span>
-                                      </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 border ${
+                                        isSelected
+                                          ? 'bg-ds-accent text-ds-dark border-ds-accent font-black shadow-glow-sm'
+                                          : 'bg-ds-surface-2 border-ds-border text-ds-text'
+                                      }`}
+                                    >
+                                      {station.stationType === 'PS5' ? '🎮' : '🎱'}
                                     </div>
-
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <Badge
-                                        variant={isAvailable ? 'success' : 'warning'}
-                                        size="sm"
-                                        className="text-[9px] px-1.5 py-0.5"
-                                      >
-                                        {isAvailable ? '🟢 Ready' : '🟡 In Use'}
-                                      </Badge>
-
-                                      {isSelected && (
-                                        <div className="w-4 h-4 rounded-full bg-ds-accent text-ds-darker font-black text-[10px] flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
-                                          ✓
-                                        </div>
-                                      )}
-                                    </div>
+                                    <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors truncate">
+                                      {station.name}
+                                    </h3>
                                   </div>
 
-                                  <div className="p-3 space-y-2.5">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <h3 className="text-sm font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors truncate">
-                                        {station.name}
-                                      </h3>
-                                      <span className="text-ds-ice font-bold text-[11px] bg-ds-surface px-2 py-0.5 rounded border border-ds-border shrink-0">
-                                        {station.stationType === 'PS5' ? 'From ₹150/hr' : '₹250/hr'}
-                                      </span>
-                                    </div>
-
-                                    <div className="text-[10px] text-ds-text-dim px-2 py-1 rounded bg-ds-dark/60 border border-ds-border/40 truncate">
-                                      {station.stationType === 'PS5'
-                                        ? 'Single: ₹150 · Two: ₹200 · Squad: ₹250'
-                                        : 'Per Frame: ₹250/hr (Max 4 Players)'}
-                                    </div>
-
-                                    {/* Optional selected game display on card */}
-                                    {isSelected && selectedGame && (
-                                      <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-xs text-ds-cyan">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          {lookupGame(selectedGame)?.coverImage ? (
-                                            <div className="w-5 h-5 rounded overflow-hidden relative shrink-0 border border-ds-border/60">
-                                              <Image
-                                                src={lookupGame(selectedGame)!.coverImage}
-                                                alt={selectedGame}
-                                                fill
-                                                className="object-cover"
-                                              />
-                                            </div>
-                                          ) : (
-                                            <Gamepad2 className="w-3 h-3 text-ds-cyan shrink-0" />
-                                          )}
-                                          <span className="truncate max-w-[100px] sm:max-w-[120px] font-semibold text-xs">{selectedGame}</span>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowGameModal(true);
-                                          }}
-                                          className="text-[9px] text-ds-text-dim hover:text-white underline font-mono shrink-0 ml-1 cursor-pointer"
-                                        >
-                                          Change
-                                        </button>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <Badge
+                                      variant={isAvailable ? 'success' : 'warning'}
+                                      size="sm"
+                                      className="text-[10px] px-2 py-0.5"
+                                    >
+                                      {isAvailable ? 'Ready' : 'In Use'}
+                                    </Badge>
+                                    {isSelected && (
+                                      <div className="w-5 h-5 rounded-full bg-ds-accent text-ds-dark font-black text-xs flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
+                                        ✓
                                       </div>
                                     )}
                                   </div>
                                 </div>
 
-                                <div className="p-3 pt-0">
-                                  <div className="pt-2 flex justify-between items-center border-t border-ds-border/30">
-                                    {station.games && station.games.length > 0 ? (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (selectedStation?.id !== station.id) {
-                                            setSelectedStation(station);
-                                            setSelectedGame(null);
-                                          }
-                                          setShowGameModal(true);
-                                        }}
-                                        className="text-[10px] text-ds-accent hover:text-ds-ice hover:underline inline-flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Gamepad2 className="w-3 h-3" />
-                                        <span>Games ({station.games.length})</span>
-                                      </button>
-                                    ) : (
-                                      <div />
-                                    )}
-                                    <span
-                                      className={`text-[11px] font-semibold inline-flex items-center gap-1 ${
-                                        isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
-                                      }`}
-                                    >
-                                      {isSelected ? 'Selected ✓' : 'Click to Select'}
-                                    </span>
-                                  </div>
+                                <div className="flex items-center justify-between pt-2 border-t border-ds-border/30 text-xs">
+                                  <span className="text-ds-accent font-bold font-mono text-xs">
+                                    {station.stationType === 'PS5' ? 'From ₹150/hr' : '₹250/hr'}
+                                  </span>
+                                  <span
+                                    className={`text-[11px] font-semibold inline-flex items-center gap-1 ${
+                                      isSelected ? 'text-ds-ice font-bold' : 'text-ds-text-dim'
+                                    }`}
+                                  >
+                                    {isSelected ? 'Selected ✓' : 'Click to Select'}
+                                  </span>
                                 </div>
                               </div>
                             );
