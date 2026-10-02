@@ -1350,56 +1350,53 @@ function BookingContent() {
                                 }`}
                               >
                                 <div>
-                                  {/* Station Image Banner */}
-                                  <div className="relative w-full h-36 bg-ds-dark overflow-hidden">
-                                    <Image
-                                      src={station.stationType === 'PS5' ? '/ps5-station.jpg' : '/snooker-table.jpg'}
-                                      alt={station.name}
-                                      fill
-                                      sizes="(max-width: 768px) 100vw, 33vw"
-                                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-ds-surface via-transparent to-black/50" />
-                                    <div className="absolute top-2.5 left-2.5">
+                                  {/* Compact Card Header */}
+                                  <div className="p-4 pb-3 flex items-center justify-between gap-2 border-b border-ds-border/40">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-8 h-8 rounded-lg bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-sm shrink-0">
+                                        {station.stationType === 'PS5' ? '🎮' : '🎱'}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent block truncate">
+                                          {station.facilityName}
+                                        </span>
+                                        <span className="text-[10px] text-ds-text-dim font-mono block">
+                                          {station.capacity} Max Players
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
                                       <Badge
                                         variant={isAvailable ? 'success' : 'warning'}
                                         size="sm"
-                                        className="backdrop-blur-md shadow-md text-[10px]"
+                                        className="text-[10px]"
                                       >
                                         {isAvailable ? '🟢 Ready' : '🟡 In Use'}
                                       </Badge>
-                                    </div>
 
-                                    {/* Top-Right Circular Checkmark Badge when Selected (App Theme) */}
-                                    {isSelected && (
-                                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-ds-accent text-ds-darker font-black text-xs flex items-center justify-center shadow-lg shadow-ds-accent/40 z-10 animate-in zoom-in-75">
-                                        ✓
-                                      </div>
-                                    )}
-
-                                    <div className="absolute bottom-2 left-2.5 flex items-center gap-1 text-[10px] text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10 font-mono">
-                                      <span>{station.capacity} Max Players</span>
+                                      {isSelected && (
+                                        <div className="w-5 h-5 rounded-full bg-ds-accent text-ds-darker font-black text-[11px] flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
+                                          ✓
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
                                   <div className="p-4 space-y-3">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-ds-accent">
-                                        {station.facilityName}
-                                      </span>
-                                      <span className="text-ds-ice font-bold text-xs">
+                                      <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
+                                        {station.name}
+                                      </h3>
+                                      <span className="text-ds-ice font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
                                         {station.stationType === 'PS5' ? 'From ₹150 / hr' : '₹250 / hr'}
                                       </span>
                                     </div>
 
-                                    <h3 className="text-base font-heading font-extrabold text-ds-text group-hover:text-ds-ice transition-colors">
-                                      {station.name}
-                                    </h3>
-
                                     <div className="text-[11px] text-ds-text-dim px-2.5 py-1.5 rounded-lg bg-ds-dark/60 border border-ds-border/40">
                                       {station.stationType === 'PS5'
-                                        ? 'Single: ₹150 · Duo: ₹200 · Squad: ₹250'
-                                        : '3-4 players included · +₹50/extra player'}
+                                        ? 'Single: ₹150 · Two: ₹200 · Squad: ₹250'
+                                        : 'Per Frame: ₹250/hr (Max 4 Players)'}
                                     </div>
 
                                     {/* Optional selected game display on card */}
