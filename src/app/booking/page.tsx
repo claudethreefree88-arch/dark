@@ -816,10 +816,12 @@ function BookingContent() {
                           goToStep(2);
                         }}
                         className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-ds-accent/20 bg-ds-dark flex flex-col justify-between ${
-                          selectedZone === 'PS5' ? 'border-ds-accent ring-2 ring-ds-accent/40 shadow-ds-accent/30' : 'border-ds-border hover:border-ds-accent'
+                          selectedZone === 'PS5'
+                            ? 'border-ds-accent ring-2 ring-ds-accent/40 shadow-ds-accent/30'
+                            : 'border-ds-border hover:border-ds-accent'
                         }`}
                       >
-                        <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                        <div className="relative w-full h-56 sm:h-64 overflow-hidden">
                           <Image
                             src="/ps5-station.jpg"
                             alt="PlayStation 5 Gaming Station"
@@ -827,7 +829,7 @@ function BookingContent() {
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             priority
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/30 to-transparent" />
                           <div className="absolute top-3 right-3">
                             <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
                               {stations.filter((s) => s.stationType === 'PS5' && s.status === 'AVAILABLE').length} Consoles Ready
@@ -835,41 +837,16 @@ function BookingContent() {
                           </div>
                         </div>
 
-                        <div className="p-5 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-2xl">🎮</span>
-                              <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
-                                PlayStation 5 Arena
-                              </h3>
-                            </div>
-                            <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                              From ₹150/hr
-                            </span>
+                        <div className="p-4 sm:p-5 flex items-center justify-between border-t border-ds-border/50 bg-ds-surface/40">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl">🎮</span>
+                            <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
+                              PlayStation 5 Arena
+                            </h3>
                           </div>
-
-                          <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-ds-border/60">
-                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
-                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">1 Player</span>
-                              <span className="font-mono font-bold text-xs text-ds-text">₹150/hr</span>
-                            </div>
-                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
-                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">2 Players</span>
-                              <span className="font-mono font-bold text-xs text-ds-ice">₹200/hr</span>
-                            </div>
-                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
-                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">3-4 Squad</span>
-                              <span className="font-mono font-bold text-xs text-ds-accent">₹250/hr</span>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                            <span className="text-[11px] font-mono text-ds-text-dim">4K 120Hz OLED Displays</span>
-                            <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-ds-ice group-hover:text-ds-accent group-hover:translate-x-1 transition-all">
-                              <span>Explore PS5 Consoles</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </span>
-                          </div>
+                          <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-3 py-1.5 rounded-lg border border-ds-border">
+                            From ₹150/hr
+                          </span>
                         </div>
                       </div>
 
@@ -882,10 +859,12 @@ function BookingContent() {
                           goToStep(2);
                         }}
                         className={`group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 bg-ds-dark flex flex-col justify-between ${
-                          selectedZone === 'POOL_TABLE' ? 'border-emerald-500 ring-2 ring-emerald-500/40 shadow-emerald-500/30' : 'border-ds-border hover:border-emerald-500'
+                          selectedZone === 'POOL_TABLE'
+                            ? 'border-emerald-500 ring-2 ring-emerald-500/40 shadow-emerald-500/30'
+                            : 'border-ds-border hover:border-emerald-500'
                         }`}
                       >
-                        <div className="relative w-full h-52 sm:h-60 overflow-hidden">
+                        <div className="relative w-full h-56 sm:h-64 overflow-hidden">
                           <Image
                             src="/snooker-table.jpg"
                             alt="Championship Snooker Table"
@@ -893,7 +872,7 @@ function BookingContent() {
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             priority
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/40 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-ds-dark via-ds-dark/30 to-transparent" />
                           <div className="absolute top-3 right-3">
                             <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/90 text-white shadow-md backdrop-blur-sm">
                               {stations.filter((s) => s.stationType === 'POOL_TABLE' && s.status === 'AVAILABLE').length} Tables Ready
@@ -901,37 +880,16 @@ function BookingContent() {
                           </div>
                         </div>
 
-                        <div className="p-5 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-2xl">🎱</span>
-                              <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-ds-ice transition-colors">
-                                Snooker Lounge
-                              </h3>
-                            </div>
-                            <span className="text-ds-ice font-mono font-bold text-xs bg-ds-surface px-2.5 py-1 rounded-lg border border-ds-border">
-                              ₹250/hr (Table)
-                            </span>
+                        <div className="p-4 sm:p-5 flex items-center justify-between border-t border-ds-border/50 bg-ds-surface/40">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl">🎱</span>
+                            <h3 className="font-heading font-black text-lg text-ds-text uppercase group-hover:text-emerald-400 transition-colors">
+                              Snooker Lounge
+                            </h3>
                           </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-ds-border/60">
-                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
-                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">1-4 Players</span>
-                              <span className="font-mono font-bold text-xs text-ds-text">₹250/hr total</span>
-                            </div>
-                            <div className="p-2 rounded-lg bg-ds-surface/60 border border-ds-border/40">
-                              <span className="text-[10px] uppercase font-bold text-ds-text-dim block">Extra Player (5+)</span>
-                              <span className="font-mono font-bold text-xs text-ds-ice">+₹50/hr each</span>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 flex items-center justify-between border-t border-ds-border/60">
-                            <span className="text-[11px] font-mono text-ds-text-dim">Tournament Slate Beds & Cues</span>
-                            <span className="inline-flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-400 group-hover:translate-x-1 transition-all">
-                              <span>Explore Snooker Tables</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </span>
-                          </div>
+                          <span className="text-emerald-400 font-mono font-bold text-xs bg-ds-surface px-3 py-1.5 rounded-lg border border-ds-border">
+                            ₹250/hr
+                          </span>
                         </div>
                       </div>
                     </div>
