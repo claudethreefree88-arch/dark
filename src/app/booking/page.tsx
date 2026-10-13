@@ -1196,23 +1196,56 @@ function BookingContent() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
                         {filteredSlots.map((slot) => {
                           const isSelected = selectedSlot?.time === slot.time;
+                          const isBooked = !slot.available;
 
                           return (
                             <button
                               key={slot.time}
-                              disabled={!slot.available}
-                              onClick={() => setSelectedSlot(slot)}
-                              className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                              type="button"
+                              onClick={() => {
+                                if (slot.available) {
+                                  setSelectedSlot(slot);
+                                } else {
+                                  toast.error(
+                                    selectedZone === 'PS5'
+                                      ? `All PlayStation 5 consoles are booked for ${slot.label}. Please select another time.`
+                                      : selectedZone === 'POOL_TABLE'
+                                      ? `All Snooker tables are booked for ${slot.label}. Please select another time.`
+                                      : `All stations are booked for ${slot.label}. Please select another time.`
+                                  );
+                                }
+                              }}
+                              className={`p-3 rounded-xl border text-center transition-all ${
                                 isSelected
-                                  ? 'bg-ds-accent text-white border-ds-accent shadow-lg shadow-ds-accent/20 ring-2 ring-white/20'
+                                  ? 'bg-ds-accent text-white border-ds-accent shadow-lg shadow-ds-accent/20 ring-2 ring-white/20 cursor-pointer'
                                   : slot.available
-                                  ? 'bg-ds-surface border-ds-border text-ds-text hover:border-ds-accent/60 hover:text-ds-ice active:scale-95'
-                                  : 'bg-ds-dark/40 border-ds-border/40 text-ds-text-dim opacity-40 cursor-not-allowed line-through'
+                                  ? 'bg-ds-surface border-ds-border text-ds-text hover:border-ds-accent/60 hover:text-ds-ice active:scale-95 cursor-pointer'
+                                  : 'bg-rose-950/20 border-rose-500/25 text-ds-text-dim hover:border-rose-500/40 cursor-not-allowed'
                               }`}
                             >
-                              <div className="text-sm font-heading font-extrabold">{slot.label}</div>
-                              <span className="text-[10px] block opacity-80 mt-0.5">
-                                {slot.available ? 'Available' : slot.reason || 'Booked'}
+                              <div
+                                className={`text-sm font-heading font-extrabold ${
+                                  isBooked ? 'text-ds-text-muted/60 line-through' : ''
+                                }`}
+                              >
+                                {slot.label}
+                              </div>
+                              <span
+                                className={`text-[10px] block mt-1 font-bold uppercase tracking-wider ${
+                                  slot.available ? 'text-emerald-400' : 'text-rose-400'
+                                }`}
+                              >
+                                {slot.available
+                                  ? slot.availableStationIds && slot.availableStationIds.length > 0
+                                    ? `${slot.availableStationIds.length} ${
+                                        selectedZone === 'PS5'
+                                          ? 'PS5'
+                                          : selectedZone === 'POOL_TABLE'
+                                          ? 'Table'
+                                          : 'Spot'
+                                      }${slot.availableStationIds.length > 1 ? 's' : ''} Ready`
+                                    : 'Available'
+                                  : 'Booked'}
                               </span>
                             </button>
                           );
@@ -1338,29 +1371,38 @@ function BookingContent() {
                       </div>
 
                       {/* Slot Synchronization Notice */}
-                      {selectedSlot && (
-                        <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-ds-surface/60 border border-ds-border">
-                          <div className="flex items-center gap-2 text-ds-text-muted">
-                            <Clock className="w-3.5 h-3.5 text-ds-accent" />
-                            <span>
-                              Availability for{' '}
-                              <strong className="text-ds-ice">{selectedSlot.label}</strong> on{' '}
-                              <strong className="text-ds-ice">{selectedDate}</strong>
+                      {selectedSlot && (() => {
+                        const availableCount = stations.filter(
+                          (st) =>
+                            st.stationType === selectedZone &&
+                            st.status === 'AVAILABLE' &&
+                            Boolean(selectedSlot.availableStationIds?.includes(st.id))
+                        ).length;
+
+                        return (
+                          <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-ds-surface/60 border border-ds-border">
+                            <div className="flex items-center gap-2 text-ds-text-muted">
+                              <Clock className="w-3.5 h-3.5 text-ds-accent" />
+                              <span>
+                                Availability for{' '}
+                                <strong className="text-ds-ice">{selectedSlot.label}</strong> on{' '}
+                                <strong className="text-ds-ice">{selectedDate}</strong>
+                              </span>
+                            </div>
+                            <span
+                              className={`text-[11px] font-mono font-bold ${
+                                availableCount > 0 ? 'text-emerald-400' : 'text-rose-400'
+                              }`}
+                            >
+                              {availableCount > 0
+                                ? `${availableCount} ${selectedZone === 'PS5' ? 'Consoles' : 'Tables'} Free`
+                                : selectedZone === 'PS5'
+                                ? 'All PS5s Booked'
+                                : 'All Tables Booked'}
                             </span>
                           </div>
-                          <span className="text-[11px] font-mono text-emerald-400 font-bold">
-                            {
-                              stations.filter(
-                                (st) =>
-                                  st.stationType === selectedZone &&
-                                  st.status === 'AVAILABLE' &&
-                                  Boolean(selectedSlot.availableStationIds?.includes(st.id))
-                              ).length
-                            }{' '}
-                            Consoles Free
-                          </span>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Stations Grid for Selected Zone (Minimal, slot-synchronized, no games clutter) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -1381,7 +1423,7 @@ function BookingContent() {
                                     toast.success(`Selected ${station.name}`);
                                   } else {
                                     toast.error(
-                                      `${station.name} is reserved during ${selectedSlot?.label || 'this slot'}. Please choose an available station.`
+                                      `${station.name} is booked during ${selectedSlot?.label || 'this slot'}. Please choose an available station.`
                                     );
                                   }
                                 }}
@@ -1390,7 +1432,7 @@ function BookingContent() {
                                     ? 'bg-ds-surface border-ds-accent shadow-xl shadow-ds-accent/20 ring-2 ring-ds-accent'
                                     : isAvailable
                                     ? 'bg-ds-surface/50 border-ds-border hover:border-ds-accent/40 hover:bg-ds-surface/80'
-                                    : 'bg-ds-surface/20 border-ds-border/40 opacity-40 cursor-not-allowed'
+                                    : 'bg-rose-950/15 border-rose-500/25 opacity-50 cursor-not-allowed'
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -1416,11 +1458,13 @@ function BookingContent() {
 
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     <Badge
-                                      variant={isAvailable ? 'success' : 'warning'}
+                                      variant={isAvailable ? 'success' : 'danger'}
                                       size="sm"
-                                      className="text-[10px] px-2 py-0.5"
+                                      className={`text-[10px] px-2 py-0.5 ${
+                                        !isAvailable ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' : ''
+                                      }`}
                                     >
-                                      {isAvailable ? 'Ready' : selectedSlot ? `Reserved at ${selectedSlot.time}` : 'Reserved'}
+                                      {isAvailable ? 'Ready' : 'Booked'}
                                     </Badge>
                                     {isSelected && (
                                       <div className="w-5 h-5 rounded-full bg-ds-accent text-ds-dark font-black text-xs flex items-center justify-center shadow-md shadow-ds-accent/40 animate-in zoom-in-75">
@@ -1440,10 +1484,10 @@ function BookingContent() {
                                         ? 'text-ds-ice font-bold'
                                         : isAvailable
                                         ? 'text-ds-text-dim group-hover:text-white'
-                                        : 'text-ds-text-dim opacity-75'
+                                        : 'text-rose-400 font-mono'
                                     }`}
                                   >
-                                    {isSelected ? 'Selected ✓' : isAvailable ? 'Click to Select' : 'Reserved for Slot'}
+                                    {isSelected ? 'Selected ✓' : isAvailable ? 'Click to Select' : 'Booked for this Slot'}
                                   </span>
                                 </div>
                               </div>

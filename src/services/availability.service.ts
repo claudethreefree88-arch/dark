@@ -204,11 +204,7 @@ export async function getStationAvailability(
     }
 
     const available = availableStationIds.length > 0;
-    const reason = available
-      ? undefined
-      : stationsToCheck.length === 1
-      ? 'Station already reserved for this slot'
-      : 'All stations in this zone are reserved';
+    const reason = available ? undefined : 'Booked';
 
     slots.push({
       time: startTimeStr,
