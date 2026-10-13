@@ -343,7 +343,7 @@ function BookingContent() {
         // Current selected station is already free for this slot
         return;
       }
-      const assigned = stations.find((s) => s.id === slot.availableStationIds![0]);
+      const assigned = stations.find((s) => slot.availableStationIds!.includes(s.id));
       if (assigned) {
         setSelectedStation(assigned);
       }
@@ -582,8 +582,22 @@ function BookingContent() {
         .filter(Boolean)
         .join(' | ');
 
+      // Ensure the station being booked is 100% free for the chosen slot
+      let targetStation = selectedStation;
+      if (
+        selectedSlot?.availableStationIds &&
+        selectedSlot.availableStationIds.length > 0 &&
+        !selectedSlot.availableStationIds.includes(targetStation.id)
+      ) {
+        const freeStation = stations.find((s) => selectedSlot.availableStationIds!.includes(s.id));
+        if (freeStation) {
+          targetStation = freeStation;
+          setSelectedStation(freeStation);
+        }
+      }
+
       const bookingPayload = {
-        stationId: selectedStation.id,
+        stationId: targetStation.id,
         date: selectedDate,
         startTime: selectedSlot.time,
         durationMinutes,
@@ -608,7 +622,10 @@ function BookingContent() {
 
       if (!res.ok || !json.success) {
         if (res.status === 409) {
-          toast.error('This slot was just booked by another player. Please pick another slot.');
+          toast.error(
+            json.error?.message ||
+              'This slot was just booked by another player. Please pick another available time slot.'
+          );
           goToStep(1);
           // Refresh real-time slots
           const reloadRes = await fetch(

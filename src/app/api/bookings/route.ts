@@ -261,10 +261,12 @@ export async function POST(req: NextRequest) {
 
       // 4. Concurrency Protection & Booking Creation inside Transaction
       const result = await prisma.$transaction(async (tx) => {
+        let assignedStationId = station.id;
+
         // Query overlapping bookings (including checked-in and in-progress sessions)
-        const overlapping = await tx.booking.findFirst({
+        let overlapping = await tx.booking.findFirst({
           where: {
-            stationId: station.id,
+            stationId: assignedStationId,
             status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
             OR: [
               {
@@ -283,9 +285,52 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // Smart Arena Auto-Reallocation:
+        // If the initially selected station is reserved for this time, check if another available station
+        // in the SAME zone/stationType is completely free so the player's booking is never rejected unfairly!
+        if (overlapping) {
+          const alternateStations = await tx.gamingStation.findMany({
+            where: {
+              stationType: station.stationType,
+              status: 'AVAILABLE',
+              id: { not: station.id },
+            },
+            select: { id: true },
+          });
+
+          for (const alt of alternateStations) {
+            const altOverlap = await tx.booking.findFirst({
+              where: {
+                stationId: alt.id,
+                status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
+                OR: [
+                  {
+                    startTime: { lte: startDateTime },
+                    endTime: { gt: startDateTime },
+                  },
+                  {
+                    startTime: { lt: endDateTime },
+                    endTime: { gte: endDateTime },
+                  },
+                  {
+                    startTime: { gte: startDateTime },
+                    endTime: { lte: endDateTime },
+                  },
+                ],
+              },
+            });
+
+            if (!altOverlap) {
+              assignedStationId = alt.id;
+              overlapping = null;
+              break;
+            }
+          }
+        }
+
         if (overlapping) {
           throw new ConflictError(
-            'The selected time slot is already reserved for this station. Please pick another available slot.'
+            'All stations in this arena are reserved for the selected time slot. Please pick another available slot.'
           );
         }
 
@@ -297,7 +342,7 @@ export async function POST(req: NextRequest) {
           data: {
             bookingRef,
             userId,
-            stationId: station.id,
+            stationId: assignedStationId,
             date: new Date(Date.UTC(year, month - 1, day, 0, 0, 0)),
             startTime: startDateTime,
             endTime: endDateTime,
