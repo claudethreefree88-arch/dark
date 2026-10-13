@@ -15,6 +15,7 @@ import {
   Shield,
   Sparkles,
   ArrowUpRight,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/shared/NotificationBell';
@@ -40,7 +41,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
     { name: 'Dashboard Overview', shortName: 'Overview', href: '/account', icon: Gamepad2 },
     { name: 'Syndicate Member Pass', shortName: 'Member Pass', href: '/account/membership', icon: Shield },
     { name: 'My Bookings & QR', shortName: 'Bookings & QR', href: '/account/bookings', icon: Calendar },
-    { name: 'Notifications & Alerts', shortName: 'Alerts', href: '/account/notifications', icon: Calendar },
+    { name: 'Notifications & Alerts', shortName: 'Alerts', href: '/account/notifications', icon: Bell },
     { name: 'Profile & Security', shortName: 'Profile', href: '/account/profile', icon: User },
     { name: 'Payment History', shortName: 'Payments', href: '/account/payments', icon: CreditCard },
   ];
@@ -368,6 +369,31 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
 
           {/* Subpage Content */}
           <div className="w-full lg:col-span-9 min-w-0">
+            {/* Operator Quick Switch Banner for Staff/Admin */}
+            {user?.role && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role) && (
+              <div className="mb-6 p-3 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-glow-sm animate-fade-in">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-heading font-black text-amber-300 uppercase tracking-wider block">
+                      {user.role === 'STAFF' ? 'Staff Terminal Privileges' : 'Administrator Privileges'}
+                    </span>
+                    <span className="text-[11px] text-amber-200/80">
+                      Logged in as {user.firstName || 'User'} ({user.role}). You have full console access.
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  href={user.role === 'STAFF' ? '/staff' : '/admin'}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-heading font-black text-xs uppercase tracking-wider transition-all text-center shrink-0 shadow-md"
+                >
+                  Open {user.role === 'STAFF' ? 'Staff Desk' : 'Admin Console'} →
+                </Link>
+              </div>
+            )}
+
             {children}
 
             {/* Mobile Assistance Banner (At the bottom of content) */}

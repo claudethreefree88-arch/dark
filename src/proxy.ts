@@ -66,7 +66,6 @@ export async function proxy(request: NextRequest) {
 
   if (pathname.startsWith('/account')) {
     if (!role) return rejectRequest(request, 'player', 401);
-    if (role !== 'CUSTOMER') return rejectRequest(request, 'player', 403);
     return NextResponse.next();
   }
 

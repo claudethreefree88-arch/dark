@@ -54,7 +54,7 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
       window.location.href = redirectParam || '/admin';
     } else if (portal === 'staff' && ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(user.role)) {
       window.location.href = redirectParam || '/staff';
-    } else if (portal === 'player' && user.role === 'CUSTOMER' && !errorParam) {
+    } else if (portal === 'player' && !errorParam) {
       window.location.href = redirectParam || '/account';
     }
   }, [user, portal, redirectParam, errorParam]);
@@ -199,7 +199,7 @@ function LoginContent({ defaultTab = 'signin' }: LoginViewProps) {
         {/* Access Denied Warning */}
         {errorParam === 'access' && (
           <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-center text-xs text-rose-300 font-semibold shadow-glow-sm">
-            ⚠️ Access Denied: You need {portal === 'admin' ? 'Administrator' : 'Staff'} authorization to access that area. Please sign in with an authorized account.
+            ⚠️ Access Denied: You need {portal === 'admin' ? 'Administrator' : portal === 'staff' ? 'Staff' : 'Player'} authorization to access that area. Please sign in with an authorized account.
           </div>
         )}
 
