@@ -485,8 +485,9 @@ function BookingContent() {
     return { dateStr, dayName, dayNum, month };
   });
 
-  // Filtered slots by period
+  // Filtered slots by period (passed time slots are never shown)
   const filteredSlots = slots.filter((slot) => {
+    if (slot.reason === 'Time slot has passed') return false;
     if (slotPeriod === 'ALL') return true;
     return slot.period === slotPeriod;
   });

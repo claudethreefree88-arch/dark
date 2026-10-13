@@ -146,17 +146,8 @@ export async function getStationAvailability(
     const label = `${format12Hour(startTimeStr)} – ${format12Hour(endTimeStr)}`;
     const period = getPeriod(hour);
 
-    // Check if time is in the past for today (with 15 min buffer)
+    // Skip time slots that have already passed for today
     if (isToday && (hour < currentHourIst || (hour === currentHourIst && currentMinIst > 15))) {
-      slots.push({
-        time: startTimeStr,
-        endTime: endTimeStr,
-        label,
-        period,
-        available: false,
-        reason: 'Time slot has passed',
-        availableStationIds: [],
-      });
       continue;
     }
 
