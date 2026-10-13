@@ -342,15 +342,14 @@ function BookingContent() {
     loadStations();
   }, [preselectedStationId]);
 
-  // Fetch slots whenever zone, station, date, or duration changes
+  // Fetch slots whenever zone, date, or duration changes (checks all stations in zone)
   useEffect(() => {
     async function fetchSlots() {
       setLoadingSlots(true);
       try {
         const zoneParam = selectedZone ? `&zone=${selectedZone}` : '';
-        const stationParam = selectedStation?.id ? `&stationId=${selectedStation.id}` : '';
         const res = await fetch(
-          `/api/bookings/availability?date=${selectedDate}&duration=${durationMinutes}${zoneParam}${stationParam}`
+          `/api/bookings/availability?date=${selectedDate}&duration=${durationMinutes}${zoneParam}`
         );
         const json = await res.json();
         if (json.success && json.data) {
@@ -371,7 +370,7 @@ function BookingContent() {
     }
 
     fetchSlots();
-  }, [selectedZone, selectedStation?.id, selectedDate, durationMinutes]);
+  }, [selectedZone, selectedDate, durationMinutes]);
 
   // Slot-synchronized station pre-selection: ensure selectedStation is free for selectedSlot
   useEffect(() => {
