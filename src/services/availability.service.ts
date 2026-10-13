@@ -1,20 +1,24 @@
 import { prisma } from '@/lib/prisma';
+import { StationType } from '@prisma/client';
 
 export interface TimeSlot {
   time: string; // '10:00'
   endTime: string; // '12:00'
-  label: string; // '10:00 AM - 12:00 PM'
+  label: string; // '10:00 AM – 12:00 PM'
   period: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
   available: boolean;
   reason?: string;
+  availableStationIds?: string[];
 }
 
 export interface AvailabilityResult {
-  stationId: string;
+  stationId?: string;
+  zone?: string | null;
   date: string;
   durationMinutes: number;
   operatingHours: { open: string; close: string };
   slots: TimeSlot[];
+  totalStationsInZone?: number;
 }
 
 const OPERATING_START_HOUR = 10; // 10:00 AM
@@ -44,35 +48,64 @@ function getPeriod(hour: number): 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT' 
 }
 
 /**
- * Compute availability for a station on a given date.
+ * Compute availability for a specific station or across an entire zone on a given date.
  */
 export async function getStationAvailability(
   stationId?: string | null,
   dateStr: string = new Date().toISOString().split('T')[0],
-  durationMinutes: number = 60
+  durationMinutes: number = 60,
+  zone?: string | null
 ): Promise<AvailabilityResult> {
-  // Query station from database
-  let station = null;
-  let existingBookings: any[] = [];
+  const durationHours = Math.ceil(durationMinutes / 60);
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
 
-  if (stationId && stationId !== 'all') {
-    try {
-      station = await prisma.gamingStation.findUnique({
+  // Determine stations to check
+  let stationsToCheck: { id: string; name: string; stationType: string; status: string }[] = [];
+  let existingBookings: { stationId: string; startTime: Date; endTime: Date; status: string }[] = [];
+
+  try {
+    if (stationId && stationId !== 'all') {
+      const station = await prisma.gamingStation.findUnique({
         where: { id: stationId },
-        include: { facility: true },
+        select: { id: true, name: true, stationType: true, status: true },
       });
+      if (station) {
+        stationsToCheck = [station];
+      }
+    } else {
+      // Query stations by zone or all active stations
+      const whereClause: any = {
+        status: { not: 'DEACTIVATED' },
+      };
 
-    if (station) {
-      // Find all active bookings for this station on this date in IST
+      if (zone) {
+        const normalizedZone = zone.toUpperCase();
+        if (
+          normalizedZone === 'PS5' ||
+          normalizedZone === 'POOL_TABLE' ||
+          normalizedZone === 'PC' ||
+          normalizedZone === 'VR'
+        ) {
+          whereClause.stationType = normalizedZone as StationType;
+        }
+      }
+
+      stationsToCheck = await prisma.gamingStation.findMany({
+        where: whereClause,
+        select: { id: true, name: true, stationType: true, status: true },
+        orderBy: { displayOrder: 'asc' },
+      });
+    }
+
+    if (stationsToCheck.length > 0) {
       const [y, m, d] = dateStr.split('-').map(Number);
-      const istOffsetMs = 5.5 * 60 * 60 * 1000;
       const dayStartUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - istOffsetMs);
       const dayEndUtc = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0) - istOffsetMs);
       const targetDate = new Date(`${dateStr}T00:00:00.000Z`);
 
       existingBookings = await prisma.booking.findMany({
         where: {
-          stationId,
+          stationId: { in: stationsToCheck.map((s) => s.id) },
           status: {
             in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'PENDING'],
           },
@@ -83,6 +116,7 @@ export async function getStationAvailability(
           ],
         },
         select: {
+          stationId: true,
           startTime: true,
           endTime: true,
           status: true,
@@ -92,14 +126,11 @@ export async function getStationAvailability(
   } catch (err) {
     console.warn('Availability service running with fallback demo data:', err);
   }
-  }
 
-  const durationHours = Math.ceil(durationMinutes / 60);
   const slots: TimeSlot[] = [];
 
   // Current time in IST (UTC+5:30)
   const now = new Date();
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
   const nowIst = new Date(now.getTime() + istOffsetMs);
   const todayIstStr = nowIst.toISOString().split('T')[0];
   const isToday = dateStr === todayIstStr;
@@ -115,29 +146,51 @@ export async function getStationAvailability(
     const label = `${format12Hour(startTimeStr)} – ${format12Hour(endTimeStr)}`;
     const period = getPeriod(hour);
 
-    let available = true;
-    let reason: string | undefined = undefined;
-
-    // Check if station is under maintenance
-    if (station && station.status === 'MAINTENANCE') {
-      available = false;
-      reason = 'Station under maintenance';
-    } else if (station && station.status === 'DEACTIVATED') {
-      available = false;
-      reason = 'Station currently unavailable';
-    }
-
     // Check if time is in the past for today (with 15 min buffer)
-    if (available && isToday) {
-      if (hour < currentHourIst || (hour === currentHourIst && currentMinIst > 15)) {
-        available = false;
-        reason = 'Time slot has passed';
-      }
+    if (isToday && (hour < currentHourIst || (hour === currentHourIst && currentMinIst > 15))) {
+      slots.push({
+        time: startTimeStr,
+        endTime: endTimeStr,
+        label,
+        period,
+        available: false,
+        reason: 'Time slot has passed',
+        availableStationIds: [],
+      });
+      continue;
     }
 
-    // Check against existing bookings with IST timezone conversion
-    if (available && existingBookings.length > 0) {
-      for (const booking of existingBookings) {
+    // Candidate slot boundaries
+    const candidateStart = hour;
+    const candidateEnd = hour + durationHours;
+
+    // Check availability across all target stations
+    const availableStationIds: string[] = [];
+
+    if (stationsToCheck.length === 0) {
+      // Fallback demo slot if stations list is empty
+      slots.push({
+        time: startTimeStr,
+        endTime: endTimeStr,
+        label,
+        period,
+        available: true,
+        availableStationIds: [],
+      });
+      continue;
+    }
+
+    for (const station of stationsToCheck) {
+      // Skip station if in maintenance
+      if (station.status === 'MAINTENANCE' || station.status === 'DEACTIVATED') {
+        continue;
+      }
+
+      // Check if this station has overlapping bookings
+      const stationBookings = existingBookings.filter((b) => b.stationId === station.id);
+      let isBooked = false;
+
+      for (const booking of stationBookings) {
         const bStartIst = new Date(booking.startTime.getTime() + istOffsetMs);
         const bEndIst = new Date(booking.endTime.getTime() + istOffsetMs);
         const bStartHourIst = bStartIst.getUTCHours() + bStartIst.getUTCMinutes() / 60;
@@ -145,20 +198,26 @@ export async function getStationAvailability(
         const bStartHourRaw = booking.startTime.getUTCHours() + booking.startTime.getUTCMinutes() / 60;
         const bEndHourRaw = booking.endTime.getUTCHours() + booking.endTime.getUTCMinutes() / 60;
 
-        // Check if candidate slot [hour, hour + durationHours] overlaps with IST or raw timestamps
-        const candidateStart = hour;
-        const candidateEnd = hour + durationHours;
-
         const overlapsIst = candidateStart < bEndHourIst && candidateEnd > bStartHourIst;
         const overlapsRaw = candidateStart < bEndHourRaw && candidateEnd > bStartHourRaw;
 
         if (overlapsIst || overlapsRaw) {
-          available = false;
-          reason = 'Station already reserved for this slot';
+          isBooked = true;
           break;
         }
       }
+
+      if (!isBooked) {
+        availableStationIds.push(station.id);
+      }
     }
+
+    const available = availableStationIds.length > 0;
+    const reason = available
+      ? undefined
+      : stationsToCheck.length === 1
+      ? 'Station already reserved for this slot'
+      : 'All stations in this zone are reserved';
 
     slots.push({
       time: startTimeStr,
@@ -167,14 +226,17 @@ export async function getStationAvailability(
       period,
       available,
       reason,
+      availableStationIds,
     });
   }
 
   return {
     stationId: stationId || 'all',
+    zone: zone || null,
     date: dateStr,
     durationMinutes,
     operatingHours: { open: '10:00', close: '24:00' },
     slots,
+    totalStationsInZone: stationsToCheck.length,
   };
 }

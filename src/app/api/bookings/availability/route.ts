@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const stationId = searchParams.get('stationId');
+    const zone = searchParams.get('zone');
     const date = searchParams.get('date');
     const duration = parseInt(searchParams.get('duration') || '60', 10);
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
       throw new ValidationError('A valid date in YYYY-MM-DD format is required');
     }
 
-    const availability = await getStationAvailability(stationId, date, duration);
+    const availability = await getStationAvailability(stationId, date, duration, zone);
 
     return apiSuccess(availability);
   } catch (error) {
