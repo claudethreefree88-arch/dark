@@ -1348,7 +1348,7 @@ function BookingContent() {
                     </div>
 
                     {isAuthenticated ? (
-                      <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-heading font-bold">
                             {user?.firstName?.[0] || 'U'}
@@ -1360,9 +1360,16 @@ function BookingContent() {
                             <p className="text-xs text-ds-text-muted">{user?.email}</p>
                           </div>
                         </div>
-                        <Badge variant="success" size="sm">
-                          Verified Gamer
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {activeMembership && (
+                            <Badge variant="accent" size="sm" className="text-[10px]">
+                              👑 {activeMembership.planNameSnapshot} ({activeMembership.discountPercent}% OFF)
+                            </Badge>
+                          )}
+                          <Badge variant="success" size="sm">
+                            Verified Gamer
+                          </Badge>
+                        </div>
                       </div>
                     ) : (
                       <div className="p-4 rounded-xl bg-ds-accent/10 border border-ds-accent/30 flex items-center justify-between">

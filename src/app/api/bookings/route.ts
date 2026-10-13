@@ -88,10 +88,21 @@ export async function POST(req: NextRequest) {
         userId = session.userId;
         const userRec = await prisma.user.findUnique({
           where: { id: userId },
-          select: { status: true },
+          select: { status: true, phone: true },
         });
         if (userRec?.status === 'BLOCKED') {
           throw new ValidationError('Your account is currently suspended. Please contact Dark Syndicate management.');
+        }
+        // Auto-save phone to user profile if user has no phone saved yet
+        if (!userRec?.phone && data.customerPhone) {
+          try {
+            await prisma.user.update({
+              where: { id: userId },
+              data: { phone: data.customerPhone },
+            });
+          } catch {
+            // non-blocking if phone is already bound to another account
+          }
         }
       } else if (data.customerEmail) {
         let existingUser = await prisma.user.findUnique({
