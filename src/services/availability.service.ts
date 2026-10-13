@@ -75,7 +75,7 @@ export async function getStationAvailability(
     } else {
       // Query stations by zone or all active stations
       const whereClause: any = {
-        status: { not: 'DEACTIVATED' },
+        status: 'AVAILABLE',
       };
 
       if (zone) {

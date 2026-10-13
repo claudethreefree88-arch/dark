@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -1352,7 +1351,15 @@ function BookingContent() {
                               }`}
                             >
                               {availableCount > 0
-                                ? `${availableCount} ${selectedZone === 'PS5' ? 'Consoles' : 'Tables'} Free`
+                                ? `${availableCount} ${
+                                    selectedZone === 'PS5'
+                                      ? availableCount === 1
+                                        ? 'Console'
+                                        : 'Consoles'
+                                      : availableCount === 1
+                                      ? 'Table'
+                                      : 'Tables'
+                                  } Free`
                                 : selectedZone === 'PS5'
                                 ? 'All PS5s Booked'
                                 : 'All Tables Booked'}
@@ -2621,8 +2628,6 @@ function BookingContent() {
           </div>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }

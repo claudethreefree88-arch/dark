@@ -105,9 +105,10 @@ export async function GET() {
         include: {
           stations: {
             where: {
-              status: {
-                not: 'DEACTIVATED',
-              },
+              status: 'AVAILABLE',
+            },
+            orderBy: {
+              displayOrder: 'asc',
             },
           },
         },
@@ -134,25 +135,26 @@ export async function GET() {
         });
       };
 
-      // Standardize to exactly 3 PS5 stations and 3 Snooker tables as requested
+      // Map facilities and active stations preserving true database names and orders
       const standardized = facilities.map((fac) => {
         const isPs5 =
           fac.name.toUpperCase().includes('PS5') ||
           (fac.slug && fac.slug.includes('ps5'));
 
         if (isPs5) {
-          const ps5Stations = fac.stations.slice(0, 3).map((st, idx) => {
+          const ps5Stations = fac.stations.map((st) => {
             const stGames = getStationGames(st.id, 'PS5');
             const resolvedGames = stGames.length > 0 ? stGames : ps5DefaultGames;
             const gameTitles = resolvedGames.map((g) => g.title);
 
             return {
               ...st,
-              name: `PS5 Station ${idx + 1}`,
+              name: st.name,
               stationType: 'PS5',
               pricePerHourPaise: 15000,
               capacity: 4,
               specs:
+                (st as any).specs ||
                 'Sony PS5, 55" LG OLED 4K 120Hz, DualSense Controllers, SteelSeries 3D Audio. Single ₹150/hr, Duo ₹200/hr, Squad (3-4) ₹250/hr.',
               games: gameTitles,
               gameDetails: resolvedGames,
@@ -167,18 +169,19 @@ export async function GET() {
             stations: ps5Stations,
           };
         } else {
-          const snookerStations = fac.stations.slice(0, 3).map((st, idx) => {
+          const snookerStations = fac.stations.map((st) => {
             const stGames = getStationGames(st.id, 'POOL_TABLE');
             const resolvedGames = stGames.length > 0 ? stGames : poolDefaultGames;
             const gameTitles = resolvedGames.map((g) => g.title);
 
             return {
               ...st,
-              name: `Snooker Table ${idx + 1}`,
+              name: st.name,
               stationType: 'POOL_TABLE',
               pricePerHourPaise: 25000,
               capacity: 4,
               specs:
+                (st as any).specs ||
                 'Full-size Championship Snooker Table, Shadowless LED Canopy, Premium Cues & Accessories. ₹250/hr (3-4 players), +₹50 per extra person.',
               games: gameTitles,
               gameDetails: resolvedGames,
