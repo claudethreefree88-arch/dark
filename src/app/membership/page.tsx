@@ -370,7 +370,7 @@ export default function MembershipPlansPage() {
         >
           <div className="space-y-6 text-xs">
             {/* Plan summary */}
-            <div className="p-4 rounded-xl bg-ds-dark border border-ds-border flex items-center justify-between gap-4">
+            <div className="p-4 rounded-xl bg-ds-dark border border-ds-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-16 h-10 rounded-lg overflow-hidden relative shrink-0 border border-ds-border bg-ds-surface">
                   <Image
@@ -392,7 +392,7 @@ export default function MembershipPlansPage() {
                   </span>
                 </div>
               </div>
-              <div className="text-right shrink-0">
+              <div className="sm:text-right shrink-0 border-t border-ds-border/40 sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto flex sm:block items-center justify-between">
                 <span className="text-[10px] font-mono uppercase text-ds-text-dim block">
                   Amount Due
                 </span>
@@ -407,7 +407,7 @@ export default function MembershipPlansPage() {
               <label className="text-ds-text-dim block font-heading font-bold uppercase text-[10px]">
                 Select Payment Method
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 {[
                   { id: 'UPI', label: 'Instant UPI', desc: 'GPay / PhonePe / Paytm' },
                   { id: 'CARD', label: 'Debit / Card', desc: 'Visa / Mastercard' },
@@ -417,14 +417,19 @@ export default function MembershipPlansPage() {
                     key={pm.id}
                     type="button"
                     onClick={() => setPaymentMethod(pm.id as any)}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                    className={`p-3 rounded-xl border text-left flex sm:flex-col justify-between items-center sm:items-start transition-all ${
                       paymentMethod === pm.id
                         ? 'bg-ds-accent/20 border-ds-accent text-white shadow-glow-sm'
                         : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:text-white'
                     }`}
                   >
-                    <span className="font-heading font-bold text-xs">{pm.label}</span>
-                    <span className="text-[10px] text-ds-text-dim mt-1">{pm.desc}</span>
+                    <div>
+                      <span className="font-heading font-bold text-xs block">{pm.label}</span>
+                      <span className="text-[10px] text-ds-text-dim mt-0.5 sm:mt-1 block">{pm.desc}</span>
+                    </div>
+                    {paymentMethod === pm.id && (
+                      <span className="text-[10px] font-mono text-ds-accent font-bold uppercase sm:hidden">Selected</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -440,11 +445,11 @@ export default function MembershipPlansPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" type="button" onClick={() => setSelectedPlan(null)} disabled={purchasing}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+              <Button variant="outline" type="button" onClick={() => setSelectedPlan(null)} disabled={purchasing} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button variant="accent" type="button" onClick={handleSubscribe} isLoading={purchasing}>
+              <Button variant="accent" type="button" onClick={handleSubscribe} isLoading={purchasing} className="w-full sm:w-auto">
                 <span>Pay ₹{(selectedPlan.pricePaise / 100).toLocaleString('en-IN')} & Activate</span>
               </Button>
             </div>
