@@ -90,11 +90,9 @@ function BookingContent() {
     setCurrentStep(step);
     if (typeof window !== 'undefined') {
       setTimeout(() => {
-        const el =
-          document.getElementById('booking-stepper-header') ||
-          document.getElementById('booking-step-container');
+        const el = document.getElementById('booking-stepper-header');
         if (el) {
-          const navOffset = 90;
+          const navOffset = 85;
           const y = el.getBoundingClientRect().top + window.pageYOffset - navOffset;
           window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
         } else {
@@ -103,19 +101,6 @@ function BookingContent() {
       }, 50);
     }
   };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const el =
-        document.getElementById('booking-stepper-header') ||
-        document.getElementById('booking-step-container');
-      if (el) {
-        const navOffset = 90;
-        const y = el.getBoundingClientRect().top + window.pageYOffset - navOffset;
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-      }
-    }
-  }, [currentStep]);
 
   // Stations & Zone State
   const [stations, setStations] = useState<Station[]>([]);
@@ -856,47 +841,52 @@ function BookingContent() {
 
                     {/* 1. Zone Toggle Switcher (Top of Step 1) */}
                     <div className="space-y-2.5">
-                      <label className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim flex items-center justify-between">
-                        <span>Select Gaming Zone</span>
-                        <span className="text-[11px] text-ds-ice font-normal">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                          Select Gaming Zone
+                        </span>
+                        <span className="text-[11px] text-ds-ice font-mono font-medium">
                           {selectedZone === 'PS5' ? 'PlayStation 5 Pro Arena' : 'Championship Snooker Lounge'}
                         </span>
-                      </label>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Option A: PS5 Arena */}
                         <button
                           type="button"
                           onClick={() => handleToggleZone('PS5')}
-                          className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                          className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between gap-2.5 ${
                             selectedZone === 'PS5'
                               ? 'bg-ds-surface border-ds-accent text-ds-ice ring-2 ring-ds-accent/40 shadow-lg shadow-ds-accent/15'
                               : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-2xl shrink-0">
-                              🎮
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-heading font-black text-sm sm:text-base text-ds-text uppercase">
-                                  PlayStation 5
-                                </h4>
-                                {selectedZone === 'PS5' && (
-                                  <Badge variant="accent" size="sm" className="text-[9px] py-0 px-1.5">
-                                    Selected
-                                  </Badge>
-                                )}
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-ds-accent/15 border border-ds-accent/30 flex items-center justify-center text-xl shrink-0">
+                                🎮
                               </div>
-                              <p className="text-[11px] text-ds-text-dim mt-0.5">
-                                4K 120Hz OLED Displays • DualSense Edge
-                              </p>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="font-heading font-black text-sm sm:text-base text-ds-text uppercase whitespace-nowrap">
+                                    PlayStation 5
+                                  </h4>
+                                  {selectedZone === 'PS5' && (
+                                    <Badge variant="accent" size="sm" className="text-[9px] py-0 px-1.5 shrink-0">
+                                      Selected
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <span className="font-mono font-bold text-[11px] sm:text-xs text-ds-ice bg-ds-dark/80 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-ds-border/60 whitespace-nowrap inline-block">
+                                From ₹150/hr
+                              </span>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="font-mono font-bold text-xs text-ds-ice bg-ds-dark/60 px-2.5 py-1 rounded-lg border border-ds-border/60">
-                              From ₹150/hr
-                            </span>
+
+                          <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-[11px] text-ds-text-dim w-full">
+                            <span className="truncate">4K 120Hz OLED Displays • DualSense Edge</span>
                           </div>
                         </button>
 
@@ -904,36 +894,39 @@ function BookingContent() {
                         <button
                           type="button"
                           onClick={() => handleToggleZone('POOL_TABLE')}
-                          className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                          className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between gap-2.5 ${
                             selectedZone === 'POOL_TABLE'
                               ? 'bg-ds-surface border-emerald-500 text-emerald-400 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/15'
                               : 'bg-ds-surface/50 border-ds-border text-ds-text-muted hover:border-ds-border hover:text-white'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0">
-                              🎱
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-heading font-black text-sm sm:text-base text-ds-text uppercase">
-                                  Snooker Lounge
-                                </h4>
-                                {selectedZone === 'POOL_TABLE' && (
-                                  <Badge variant="success" size="sm" className="text-[9px] py-0 px-1.5">
-                                    Selected
-                                  </Badge>
-                                )}
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl shrink-0">
+                                🎱
                               </div>
-                              <p className="text-[11px] text-ds-text-dim mt-0.5">
-                                Championship Slate Tables • Premium Cues
-                              </p>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="font-heading font-black text-sm sm:text-base text-ds-text uppercase whitespace-nowrap">
+                                    Snooker Lounge
+                                  </h4>
+                                  {selectedZone === 'POOL_TABLE' && (
+                                    <Badge variant="success" size="sm" className="text-[9px] py-0 px-1.5 shrink-0">
+                                      Selected
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <span className="font-mono font-bold text-[11px] sm:text-xs text-emerald-400 bg-ds-dark/80 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-ds-border/60 whitespace-nowrap inline-block">
+                                ₹250/hr Table
+                              </span>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="font-mono font-bold text-xs text-emerald-400 bg-ds-dark/60 px-2.5 py-1 rounded-lg border border-ds-border/60">
-                              ₹250/hr Table
-                            </span>
+
+                          <div className="pt-2 border-t border-ds-border/40 flex items-center justify-between text-[11px] text-ds-text-dim w-full">
+                            <span className="truncate">Championship Slate Tables • Premium Cues</span>
                           </div>
                         </button>
                       </div>
