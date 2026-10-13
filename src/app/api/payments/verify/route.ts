@@ -89,15 +89,39 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Update customer profile hours and loyalty points if user exists
+      // Update customer profile hours and spending if user exists
       if (booking.userId) {
-        await tx.customerProfile.updateMany({
+        await tx.customerProfile.upsert({
           where: { userId: booking.userId },
-          data: {
+          create: {
+            userId: booking.userId,
+            totalBookings: 1,
+            totalSpent: booking.totalPricePaise,
+          },
+          update: {
             totalBookings: { increment: 1 },
             totalSpent: { increment: booking.totalPricePaise },
           },
         });
+
+        // Dispatch in-app notification to member portal
+        try {
+          await tx.notification.create({
+            data: {
+              userId: booking.userId,
+              type: 'PAYMENT_RECEIVED',
+              title: 'Payment Received & Pass Activated',
+              message: `Your payment of ₹${(booking.totalPricePaise / 100).toFixed(0)} for reservation ${booking.bookingRef} was verified. Your battle station pass is active!`,
+              metadata: {
+                bookingId: booking.id,
+                bookingRef: booking.bookingRef,
+                path: `/booking/confirmation/${booking.id}`,
+              },
+            },
+          });
+        } catch {
+          // non-blocking
+        }
       }
 
       return { booking: updatedBooking, payment };

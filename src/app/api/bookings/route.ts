@@ -398,6 +398,27 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // In-app notification for confirmed counter bookings
+        if (data.payAtCounter && userId) {
+          try {
+            await tx.notification.create({
+              data: {
+                userId,
+                type: 'BOOKING_CONFIRMED',
+                title: 'Reservation Confirmed',
+                message: `Your reservation ${bookingRef} has been confirmed. Show your QR pass at the front reception counter to check in.`,
+                metadata: {
+                  bookingId: booking.id,
+                  bookingRef,
+                  path: `/booking/confirmation/${booking.id}`,
+                },
+              },
+            });
+          } catch {
+            // non-blocking
+          }
+        }
+
         return booking;
       });
 
