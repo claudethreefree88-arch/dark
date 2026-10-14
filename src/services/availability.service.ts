@@ -62,6 +62,7 @@ export async function getStationAvailability(
   // Determine stations to check
   let stationsToCheck: { id: string; name: string; stationType: string; status: string }[] = [];
   let existingBookings: { stationId: string; startTime: Date; endTime: Date; status: string }[] = [];
+  let activeSessions: { stationId: string; startedAt: Date; scheduledEndAt: Date }[] = [];
 
   try {
     if (stationId && stationId !== 'all') {
@@ -73,9 +74,9 @@ export async function getStationAvailability(
         stationsToCheck = [station];
       }
     } else {
-      // Query stations by zone or all active stations
+      // Query stations by zone or all active stations (exclude maintenance and deactivated)
       const whereClause: any = {
-        status: 'AVAILABLE',
+        status: { notIn: ['MAINTENANCE', 'DEACTIVATED'] },
       };
 
       if (zone) {
@@ -104,32 +105,47 @@ export async function getStationAvailability(
       const targetDate = new Date(`${dateStr}T00:00:00.000Z`);
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-      existingBookings = await prisma.booking.findMany({
-        where: {
-          stationId: { in: stationsToCheck.map((s) => s.id) },
-          AND: [
-            {
-              OR: [
-                { status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] } },
-                { status: 'PENDING', createdAt: { gte: fifteenMinutesAgo } },
-              ],
-            },
-            {
-              OR: [
-                { startTime: { lt: dayEndUtc, gte: dayStartUtc } },
-                { endTime: { gt: dayStartUtc, lte: dayEndUtc } },
-                { date: targetDate },
-              ],
-            },
-          ],
-        },
-        select: {
-          stationId: true,
-          startTime: true,
-          endTime: true,
-          status: true,
-        },
-      });
+      const [bookings, sessions] = await Promise.all([
+        prisma.booking.findMany({
+          where: {
+            stationId: { in: stationsToCheck.map((s) => s.id) },
+            AND: [
+              {
+                OR: [
+                  { status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] } },
+                  { status: 'PENDING', createdAt: { gte: fifteenMinutesAgo } },
+                ],
+              },
+              {
+                OR: [
+                  { startTime: { lt: dayEndUtc }, endTime: { gt: dayStartUtc } },
+                  { date: targetDate },
+                ],
+              },
+            ],
+          },
+          select: {
+            stationId: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+          },
+        }),
+        prisma.gamingSession.findMany({
+          where: {
+            stationId: { in: stationsToCheck.map((s) => s.id) },
+            status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] },
+          },
+          select: {
+            stationId: true,
+            startedAt: true,
+            scheduledEndAt: true,
+          },
+        }),
+      ]);
+
+      existingBookings = bookings;
+      activeSessions = sessions;
     }
   } catch (err) {
     console.warn('Availability service running with fallback demo data:', err);
@@ -185,7 +201,7 @@ export async function getStationAvailability(
     }
 
     for (const station of stationsToCheck) {
-      if (station.status !== 'AVAILABLE') {
+      if (station.status === 'MAINTENANCE' || station.status === 'DEACTIVATED') {
         continue;
       }
 
@@ -197,7 +213,15 @@ export async function getStationAvailability(
           b.endTime > slotStartUtc
       );
 
-      if (!isBooked) {
+      // Check if station currently has an active gaming session overlapping this slot
+      const hasActiveSession = isToday && activeSessions.some(
+        (s) =>
+          s.stationId === station.id &&
+          s.startedAt < slotEndUtc &&
+          s.scheduledEndAt > slotStartUtc
+      );
+
+      if (!isBooked && !hasActiveSession) {
         availableStationIds.push(station.id);
       }
     }

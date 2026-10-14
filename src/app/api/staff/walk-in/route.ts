@@ -10,7 +10,7 @@ const walkInSchema = z.object({
   stationId: z.string().min(1, 'Station is required'),
   durationMinutes: z.number().int().min(30).default(60),
   customerName: z.string().min(2, 'Customer name is required'),
-  customerPhone: z.string().min(10, 'Valid phone number is required'),
+  customerPhone: z.string().optional().or(z.literal('')),
   customerEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'OTHER']).default('CASH'),
   gameTitle: z.string().optional(),
@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
 
       // 2. Concurrency: Check if station currently has an active gaming session
       const activeSession = await tx.gamingSession.findFirst({
-        where: { stationId: station.id, status: 'ACTIVE' },
+        where: {
+          stationId: station.id,
+          status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] },
+        },
       });
 
       if (activeSession) {
@@ -90,7 +93,7 @@ export async function POST(req: NextRequest) {
       const subtotalPaise = Math.round(hourlyRate * (data.durationMinutes / 60));
 
       // 5. Customer Resolution
-      const phoneDigits = data.customerPhone.replace(/\D/g, '').slice(-10);
+      const phoneDigits = data.customerPhone ? data.customerPhone.replace(/\D/g, '').slice(-10) : '';
       const cleanEmail = data.customerEmail?.trim().toLowerCase() || null;
       let registeredUser = null;
 
@@ -161,7 +164,7 @@ export async function POST(req: NextRequest) {
           qrToken,
           isWalkIn: true,
           customerName: data.customerName,
-          customerPhone: data.customerPhone,
+          customerPhone: data.customerPhone?.trim() || null,
           gameTitle: data.gameTitle || null,
           notes:
             (data.gameTitle ? `Game: ${data.gameTitle}. ` : '') +

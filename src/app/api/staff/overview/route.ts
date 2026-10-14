@@ -7,9 +7,16 @@ export async function GET(req: NextRequest) {
   try {
     await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
     try {
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      const now = new Date();
+      const nowIst = new Date(now.getTime() + istOffsetMs);
+      const y = nowIst.getUTCFullYear();
+      const m = nowIst.getUTCMonth();
+      const d = nowIst.getUTCDate();
+      const startOfDay = new Date(Date.UTC(y, m, d, 0, 0, 0) - istOffsetMs);
+      const endOfDay = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - istOffsetMs);
+      const targetDate = new Date(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}T00:00:00.000Z`);
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
       // Fetch all active stations and games concurrently
       const [stations, allGames] = await Promise.all([
@@ -18,7 +25,7 @@ export async function GET(req: NextRequest) {
           include: {
             facility: true,
             sessions: {
-              where: { status: 'ACTIVE' },
+              where: { status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] } },
               include: {
                 booking: {
                   include: {
@@ -30,11 +37,23 @@ export async function GET(req: NextRequest) {
             },
             bookings: {
               where: {
-                date: { gte: startOfDay, lte: endOfDay },
-                status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] },
+                AND: [
+                  {
+                    OR: [
+                      { status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] } },
+                      { status: 'PENDING', createdAt: { gte: fifteenMinutesAgo } },
+                    ],
+                  },
+                  {
+                    OR: [
+                      { startTime: { lt: endOfDay }, endTime: { gt: startOfDay } },
+                      { date: targetDate },
+                    ],
+                  },
+                ],
               },
               orderBy: { startTime: 'asc' },
-              take: 3,
+              take: 20,
               include: {
                 user: { select: { firstName: true, lastName: true, phone: true } },
               },
@@ -56,14 +75,22 @@ export async function GET(req: NextRequest) {
 
         const formattedStations = stations.map((st) => {
           const activeSession = st.sessions[0];
-          let computedStatus = st.status;
+          const currentBooking = st.bookings.find(
+            (b) => new Date(b.startTime) <= now && new Date(b.endTime) > now
+          );
 
-          if (activeSession) {
+          let computedStatus: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'DEACTIVATED' = 'AVAILABLE';
+
+          if (st.status === 'MAINTENANCE') {
+            computedStatus = 'MAINTENANCE';
+            maintenanceCount++;
+          } else if (st.status === 'DEACTIVATED') {
+            computedStatus = 'DEACTIVATED';
+          } else if (activeSession || currentBooking) {
             computedStatus = 'OCCUPIED';
             occupiedCount++;
-          } else if (st.status === 'MAINTENANCE') {
-            maintenanceCount++;
           } else {
+            computedStatus = 'AVAILABLE';
             availableCount++;
           }
 
@@ -88,6 +115,47 @@ export async function GET(req: NextRequest) {
             description: g.description,
           }));
 
+          const resolvedSession = activeSession
+            ? {
+                id: activeSession.id,
+                bookingId: activeSession.bookingId,
+                customerName:
+                  activeSession.booking?.customerName ||
+                  `${activeSession.booking?.user?.firstName || 'Gamer'} ${
+                    activeSession.booking?.user?.lastName || ''
+                  }`.trim(),
+                customerPhone: activeSession.booking?.customerPhone || activeSession.booking?.user?.phone,
+                bookingRef: activeSession.booking?.bookingRef,
+                startedAt: activeSession.startedAt,
+                scheduledEndAt: activeSession.scheduledEndAt,
+                extensionMinutes: activeSession.extensionMinutes,
+                gameTitle:
+                  activeSession.notes ||
+                  activeSession.booking?.gameTitle ||
+                  (activeSession.booking?.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
+                  null,
+              }
+            : currentBooking
+            ? {
+                id: `bk_${currentBooking.id}`,
+                bookingId: currentBooking.id,
+                customerName:
+                  currentBooking.customerName ||
+                  `${currentBooking.user?.firstName || 'Gamer'} ${
+                    currentBooking.user?.lastName || ''
+                  }`.trim(),
+                customerPhone: currentBooking.customerPhone || currentBooking.user?.phone,
+                bookingRef: currentBooking.bookingRef,
+                startedAt: currentBooking.startTime,
+                scheduledEndAt: currentBooking.endTime,
+                extensionMinutes: 0,
+                gameTitle:
+                  currentBooking.gameTitle ||
+                  (currentBooking.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
+                  null,
+              }
+            : null;
+
           return {
             id: st.id,
             name: st.name,
@@ -98,31 +166,17 @@ export async function GET(req: NextRequest) {
             capacity: (st.metadata as any)?.capacity || (st.stationType === 'PS5' ? 2 : 4),
             status: computedStatus,
             games: stationGames,
-            activeSession: activeSession
-              ? {
-                  id: activeSession.id,
-                  bookingId: activeSession.bookingId,
-                  customerName:
-                    activeSession.booking?.customerName ||
-                    `${activeSession.booking?.user?.firstName || 'Gamer'} ${
-                      activeSession.booking?.user?.lastName || ''
-                    }`.trim(),
-                  customerPhone: activeSession.booking?.customerPhone || activeSession.booking?.user?.phone,
-                  bookingRef: activeSession.booking?.bookingRef,
-                  startedAt: activeSession.startedAt,
-                  scheduledEndAt: activeSession.scheduledEndAt,
-                  extensionMinutes: activeSession.extensionMinutes,
-                  gameTitle: activeSession.notes || (activeSession.booking?.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) || null,
-                }
-              : null,
-            upcomingBookings: st.bookings.map((b) => ({
-              id: b.id,
-              bookingRef: b.bookingRef,
-              customerName: b.customerName || `${b.user?.firstName || 'Gamer'} ${b.user?.lastName || ''}`.trim(),
-              startTime: b.startTime,
-              endTime: b.endTime,
-              status: b.status,
-            })),
+            activeSession: resolvedSession,
+            upcomingBookings: st.bookings
+              .filter((b) => new Date(b.endTime).getTime() > now.getTime() && b.id !== currentBooking?.id)
+              .map((b) => ({
+                id: b.id,
+                bookingRef: b.bookingRef,
+                customerName: b.customerName || `${b.user?.firstName || 'Gamer'} ${b.user?.lastName || ''}`.trim(),
+                startTime: b.startTime,
+                endTime: b.endTime,
+                status: b.status,
+              })),
           };
         });
 

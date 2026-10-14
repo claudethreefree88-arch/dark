@@ -207,8 +207,8 @@ export async function POST(req: NextRequest) {
         throw new NotFoundError('Gaming station not found');
       }
 
-      if (station.status === 'MAINTENANCE') {
-        throw new ValidationError('Selected station is currently under maintenance');
+      if (station.status === 'MAINTENANCE' || station.status === 'DEACTIVATED') {
+        throw new ValidationError(`Selected station is currently ${station.status.toLowerCase()}`);
       }
 
       // 3. Dynamic Pricing Calculation based on Station Type & Player Count
@@ -322,37 +322,57 @@ export async function POST(req: NextRequest) {
         });
 
         // Query overlapping bookings on initially selected station
-        let overlapping = await tx.booking.findFirst({
+        let overlappingBooking = await tx.booking.findFirst({
           where: buildOverlapWhere(assignedStationId),
         });
 
+        // Query overlapping active sessions on initially selected station
+        let overlappingSession = await tx.gamingSession.findFirst({
+          where: {
+            stationId: assignedStationId,
+            status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] },
+            startedAt: { lt: endDateTime },
+            scheduledEndAt: { gt: startDateTime },
+          },
+        });
+
+        let hasConflict = Boolean(overlappingBooking || overlappingSession);
+
         // Smart Arena Auto-Reallocation:
-        // If the initially selected station is reserved for this time, check if another available station
+        // If the initially selected station is reserved for this time, check if another station
         // in the SAME zone/stationType is completely free so the player's booking is never rejected unfairly!
-        if (overlapping) {
+        if (hasConflict) {
           const alternateStations = await tx.gamingStation.findMany({
             where: {
               stationType: station.stationType,
-              status: 'AVAILABLE',
+              status: { notIn: ['MAINTENANCE', 'DEACTIVATED'] },
               id: { not: station.id },
             },
             select: { id: true },
           });
 
           for (const alt of alternateStations) {
-            const altOverlap = await tx.booking.findFirst({
+            const altBookingConflict = await tx.booking.findFirst({
               where: buildOverlapWhere(alt.id),
             });
+            const altSessionConflict = await tx.gamingSession.findFirst({
+              where: {
+                stationId: alt.id,
+                status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] },
+                startedAt: { lt: endDateTime },
+                scheduledEndAt: { gt: startDateTime },
+              },
+            });
 
-            if (!altOverlap) {
+            if (!altBookingConflict && !altSessionConflict) {
               assignedStationId = alt.id;
-              overlapping = null;
+              hasConflict = false;
               break;
             }
           }
         }
 
-        if (overlapping) {
+        if (hasConflict) {
           throw new ConflictError(
             'All stations in this arena are reserved for the selected time slot. Please pick another available slot.'
           );

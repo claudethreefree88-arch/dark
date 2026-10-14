@@ -27,6 +27,14 @@ interface Station {
   pricePerHourPaise: number;
   status: string;
   games?: StationGame[];
+  upcomingBookings?: Array<{
+    id: string;
+    bookingRef: string;
+    customerName: string;
+    startTime: string;
+    endTime: string;
+    status?: string;
+  }>;
 }
 
 interface WalkInModalProps {
@@ -35,6 +43,50 @@ interface WalkInModalProps {
   stations: Station[];
   preselectedStationId?: string;
   onSuccess: () => void;
+}
+
+export function getStationAvailabilityState(st: Station, durationMins: number = 60): {
+  isAvailable: boolean;
+  statusLabel: string;
+  conflictReason?: string;
+} {
+  if (st.status === 'MAINTENANCE') {
+    return { isAvailable: false, statusLabel: 'MAINT' };
+  }
+  if (st.status === 'DEACTIVATED') {
+    return { isAvailable: false, statusLabel: 'OFFLINE' };
+  }
+  if (st.status === 'OCCUPIED') {
+    return { isAvailable: false, statusLabel: 'BUSY' };
+  }
+
+  // Check if upcoming booking overlaps with [now, now + durationMins]
+  if (st.upcomingBookings && st.upcomingBookings.length > 0) {
+    const nowMs = Date.now();
+    const sessionEndMs = nowMs + durationMins * 60 * 1000;
+    const conflictBooking = st.upcomingBookings.find((b) => {
+      const bStart = new Date(b.startTime).getTime();
+      const bEnd = new Date(b.endTime).getTime();
+      return bStart < sessionEndMs && bEnd > nowMs;
+    });
+
+    if (conflictBooking) {
+      const conflictDate = new Date(conflictBooking.startTime);
+      const timeStr = conflictDate.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+      return {
+        isAvailable: false,
+        statusLabel: 'RESERVED',
+        conflictReason: `Reserved at ${timeStr}`,
+      };
+    }
+  }
+
+  return { isAvailable: true, statusLabel: 'READY' };
 }
 
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
@@ -88,9 +140,12 @@ export function WalkInModal({
   preselectedStationId,
   onSuccess,
 }: WalkInModalProps) {
-  const availableStations = stations.filter((s) => s.status === 'AVAILABLE');
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
+  const availableStations = stations.filter((s) => getStationAvailabilityState(s, durationMinutes).isAvailable);
   const initialStation =
-    stations.find((s) => s.id === preselectedStationId) || availableStations[0] || stations[0];
+    stations.find((s) => s.id === preselectedStationId && getStationAvailabilityState(s, 60).isAvailable) ||
+    availableStations[0] ||
+    stations[0];
 
   // Distinct category tabs ordered PS5 -> Snooker -> PC -> others
   const availableCategories = Array.from(
@@ -106,7 +161,6 @@ export function WalkInModal({
   const [activeCategory, setActiveCategory] = useState<string>(initialStation?.stationType || 'PS5');
   const [selectedStationId, setSelectedStationId] = useState<string>(initialStation?.id || '');
   const [selectedGameTitle, setSelectedGameTitle] = useState<string>('');
-  const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
@@ -136,8 +190,9 @@ export function WalkInModal({
   };
 
   const validatePhone = (phone: string): string | undefined => {
-    const rawDigits = phone.replace(/\D/g, '');
-    if (!rawDigits) return 'WhatsApp phone number is required';
+    const trimmed = phone.trim();
+    if (!trimmed) return undefined; // Optional for desk walk-in
+    const rawDigits = trimmed.replace(/\D/g, '');
     const digits = rawDigits.length === 12 && rawDigits.startsWith('91') ? rawDigits.slice(2) : rawDigits;
     if (digits.length !== 10) return 'Must be a 10-digit mobile number';
     if (!/^[6-9]/.test(digits)) return 'Indian mobile numbers start with 6, 7, 8, or 9';
@@ -170,8 +225,8 @@ export function WalkInModal({
 
     if (isOpen && !wasOpen) {
       const target =
-        stations.find((s) => s.id === preselectedStationId) ||
-        stations.find((s) => s.status === 'AVAILABLE') ||
+        stations.find((s) => s.id === preselectedStationId && getStationAvailabilityState(s, durationMinutes).isAvailable) ||
+        stations.find((s) => getStationAvailabilityState(s, durationMinutes).isAvailable) ||
         stations[0];
       if (target) {
         setSelectedStationId(target.id);
@@ -184,7 +239,7 @@ export function WalkInModal({
       setFormErrors({});
       setTouched({});
     }
-  }, [isOpen, preselectedStationId, stations]);
+  }, [isOpen, preselectedStationId, stations, durationMinutes]);
 
   // Fetch Admin uploaded QR Code and UPI configuration
   useEffect(() => {
@@ -219,12 +274,26 @@ export function WalkInModal({
   const handleCategoryChange = (catKey: string) => {
     setActiveCategory(catKey);
     const firstAvailable =
-      stations.find((s) => s.stationType === catKey && s.status === 'AVAILABLE') ||
+      stations.find((s) => s.stationType === catKey && getStationAvailabilityState(s, durationMinutes).isAvailable) ||
       stations.find((s) => s.stationType === catKey);
     if (firstAvailable) {
       setSelectedStationId(firstAvailable.id);
     }
     setSelectedGameTitle('');
+  };
+
+  // Change duration and switch station if currently selected station has a conflict
+  const handleDurationChange = (minutes: number) => {
+    setDurationMinutes(minutes);
+    const curr = stations.find((s) => s.id === selectedStationId);
+    if (curr && !getStationAvailabilityState(curr, minutes).isAvailable) {
+      const firstAvailableInCat = stations.find(
+        (s) => s.stationType === activeCategory && getStationAvailabilityState(s, minutes).isAvailable
+      );
+      if (firstAvailableInCat) {
+        setSelectedStationId(firstAvailableInCat.id);
+      }
+    }
   };
 
   // Base catalog games for current category
@@ -376,7 +445,7 @@ export function WalkInModal({
                   <span>Select Arena Category</span>
                 </label>
                 <span className="text-[11px] font-mono text-ds-text-dim">
-                  {stations.filter((s) => s.status === 'AVAILABLE').length} Available Units
+                  {stations.filter((s) => getStationAvailabilityState(s, durationMinutes).isAvailable).length} Available Units
                 </span>
               </div>
 
@@ -384,7 +453,7 @@ export function WalkInModal({
                 {availableCategories.map((catKey) => {
                   const isSelected = activeCategory === catKey;
                   const count = stations.filter(
-                    (s) => s.stationType === catKey && s.status === 'AVAILABLE'
+                    (s) => s.stationType === catKey && getStationAvailabilityState(s, durationMinutes).isAvailable
                   ).length;
                   const totalCount = stations.filter((s) => s.stationType === catKey).length;
                   const meta = CATEGORY_META[catKey] || { label: catKey, icon: '🎯' };
@@ -425,7 +494,7 @@ export function WalkInModal({
                   <span>Choose {CATEGORY_META[activeCategory]?.label || 'Station'}</span>
                 </label>
                 <span className="text-[11px] font-mono text-ds-text-dim">
-                  {categoryStations.filter((s) => s.status === 'AVAILABLE').length} Available
+                  {categoryStations.filter((s) => getStationAvailabilityState(s, durationMinutes).isAvailable).length} Available
                 </span>
               </div>
 
@@ -439,7 +508,8 @@ export function WalkInModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
                 {categoryStations.map((st) => {
                   const isSelected = selectedStationId === st.id;
-                  const isAvailable = st.status === 'AVAILABLE';
+                  const state = getStationAvailabilityState(st, durationMinutes);
+                  const isAvailable = state.isAvailable;
 
                   return (
                     <button
@@ -471,12 +541,19 @@ export function WalkInModal({
                       </div>
 
                       {/* Station Details */}
-                      <div className="flex-1 min-w-0 pr-6">
+                      <div className="flex-1 min-w-0 pr-14">
                         <div className="font-heading font-bold text-xs text-ds-ice group-hover:text-white truncate">
                           {st.name}
                         </div>
-                        <div className="text-cyan-400 font-mono font-bold text-[11px] mt-0.5">
-                          ₹{(st.pricePerHourPaise / 100).toFixed(0)}/hr
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-cyan-400 font-mono font-bold text-[11px]">
+                            ₹{(st.pricePerHourPaise / 100).toFixed(0)}/hr
+                          </span>
+                          {state.conflictReason && (
+                            <span className="text-[10px] font-mono text-amber-400 truncate">
+                              • {state.conflictReason}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -490,15 +567,24 @@ export function WalkInModal({
                           <div className="flex items-center gap-1">
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                isAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                                isAvailable
+                                  ? 'bg-emerald-400 animate-pulse'
+                                  : state.statusLabel === 'RESERVED'
+                                  ? 'bg-amber-400'
+                                  : 'bg-rose-400'
                               }`}
                             />
                             <span
                               className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
-                                isAvailable ? 'text-emerald-400' : 'text-rose-400'
+                                isAvailable
+                                  ? 'text-emerald-400'
+                                  : state.statusLabel === 'RESERVED'
+                                  ? 'text-amber-400'
+                                  : 'text-rose-400'
                               }`}
+                              title={state.conflictReason}
                             >
-                              {isAvailable ? 'READY' : 'BUSY'}
+                              {state.statusLabel}
                             </span>
                           </div>
                         )}
@@ -634,7 +720,7 @@ export function WalkInModal({
                   <button
                     type="button"
                     key={d.min}
-                    onClick={() => setDurationMinutes(d.min)}
+                    onClick={() => handleDurationChange(d.min)}
                     className={`py-2.5 rounded-xl text-xs font-heading font-bold uppercase transition-all border ${
                       durationMinutes === d.min
                         ? 'bg-ds-accent text-white border-ds-accent shadow-md shadow-ds-accent/20 ring-1 ring-ds-accent'
@@ -660,9 +746,9 @@ export function WalkInModal({
                   type="button"
                   onClick={() => {
                     setCustomerName('Walk-in Guest');
-                    setCustomerPhone('9999999999');
+                    setCustomerPhone('');
                     setFormErrors((prev) => ({ ...prev, customerName: undefined, customerPhone: undefined }));
-                    setTouched((prev) => ({ ...prev, customerName: true, customerPhone: true }));
+                    setTouched((prev) => ({ ...prev, customerName: true, customerPhone: false }));
                     toast.info('Quick Walk-in Guest details filled');
                   }}
                   className="text-[10px] font-mono font-bold text-ds-cyan hover:underline hover:text-white px-2 py-0.5 rounded bg-ds-cyan/10 border border-ds-cyan/30 flex items-center gap-1 transition-all cursor-pointer"
@@ -697,10 +783,10 @@ export function WalkInModal({
 
                   <div className="space-y-1">
                     <span className="text-[10px] uppercase font-mono text-ds-text-muted block">
-                      WhatsApp Phone <span className="text-rose-400">*</span>
+                      WhatsApp Phone <span className="text-ds-text-dim lowercase">(optional)</span>
                     </span>
                     <Input
-                      placeholder="Enter 10-digit mobile number"
+                      placeholder="10-digit mobile number (optional)"
                       type="tel"
                       value={customerPhone}
                       onChange={(e) => {
@@ -714,7 +800,6 @@ export function WalkInModal({
                         setFormErrors((prev) => ({ ...prev, customerPhone: validatePhone(customerPhone) }));
                       }}
                       error={touched.customerPhone ? formErrors.customerPhone : undefined}
-                      required
                       className="text-xs"
                     />
                   </div>
