@@ -11,6 +11,9 @@ export async function PUT(
     const session = await getSession();
     if (!session) throw new AuthError();
     const { id } = await params;
+    if (id.startsWith('upcoming-alert-')) {
+      return apiSuccess({ message: 'Notification marked as read', id });
+    }
     const result = await prisma.notification.updateMany({
       where: { id, userId: session.userId },
       data: { isRead: true },

@@ -245,6 +245,13 @@ export default function StaffBookingsSchedulePage() {
     return isSessionActive;
   }).length;
 
+  const nearUpcomingBookings = bookings.filter((b) => {
+    if (b.status !== 'CONFIRMED' || !b.startTime) return false;
+    if (!getIsToday(b)) return false;
+    const diffMs = new Date(b.startTime).getTime() - currentTime;
+    return diffMs <= 15 * 60 * 1000 && diffMs >= -90 * 60 * 1000;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -257,6 +264,11 @@ export default function StaffBookingsSchedulePage() {
             {activeInSessionCount > 0 && (
               <Badge variant="accent" size="sm" className="font-mono">
                 {activeInSessionCount} In Session
+              </Badge>
+            )}
+            {nearUpcomingBookings.length > 0 && (
+              <Badge variant="warning" size="sm" className="font-mono bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse">
+                ⏰ {nearUpcomingBookings.length} Near Slot Start
               </Badge>
             )}
           </div>
@@ -285,6 +297,88 @@ export default function StaffBookingsSchedulePage() {
         </div>
       </div>
 
+      {/* ─── UPCOMING BOOKED TIME SLOTS NEAR ALERT BANNER ─── */}
+      {nearUpcomingBookings.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-ds-surface to-amber-500/5 border-2 border-amber-500/60 shadow-xl shadow-amber-500/10 animate-fade-in space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400" />
+              </span>
+              <div>
+                <span className="font-heading font-black text-xs sm:text-sm uppercase tracking-wider text-amber-300">
+                  ⏰ Upcoming Booked Time Slot Alert ({nearUpcomingBookings.length} {nearUpcomingBookings.length === 1 ? 'Reservation Near' : 'Reservations Near'})
+                </span>
+                <p className="text-[11px] text-white/70 font-mono">
+                  Players with booked slots starting in ≤15 minutes or due for front desk check-in.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {nearUpcomingBookings.map((b) => {
+              const startMs = new Date(b.startTime).getTime();
+              const diffMs = startMs - currentTime;
+              const isDue = diffMs <= 0;
+              const diffSec = Math.floor(Math.abs(diffMs) / 1000);
+              const mins = Math.floor(diffSec / 60);
+              const secs = diffSec % 60;
+              const timeFormatted = new Date(b.startTime).toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              });
+
+              return (
+                <div
+                  key={b.id}
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                    isDue
+                      ? 'bg-rose-500/15 border-rose-500/70 shadow-lg shadow-rose-500/10'
+                      : 'bg-black/50 border-amber-400/50 hover:border-amber-400'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading font-bold text-xs text-white truncate">
+                        {b.stationName || b.station?.name}
+                      </span>
+                      <span
+                        className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          isDue
+                            ? 'bg-rose-500 text-white animate-pulse'
+                            : 'bg-amber-400 text-black font-black'
+                        }`}
+                      >
+                        {isDue ? '🚨 DUE NOW' : `in ${mins}m ${secs}s`}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-white/80 truncate mt-1">
+                      <strong className="text-white">{b.customerName}</strong> •{' '}
+                      <span className="font-mono text-cyan-300 font-bold">{timeFormatted}</span>
+                      {b.bookingRef && <span className="text-white/50 font-mono text-[10px] ml-1.5">({b.bookingRef})</span>}
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    onClick={() => handleQuickCheckIn(b)}
+                    className="text-[11px] py-1.5 px-3 bg-emerald-500 hover:bg-emerald-400 text-black font-heading font-black shrink-0 shadow-md shadow-emerald-500/20"
+                  >
+                    <Play className="w-3 h-3 mr-1 fill-black" />
+                    <span>Check In</span>
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filter & View Switcher Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-ds-surface/50 p-4 rounded-2xl border border-ds-border">
         {/* Left Side: Status Tabs + Date Scope + Staff Scope */}
@@ -294,7 +388,13 @@ export default function StaffBookingsSchedulePage() {
             {[
               { id: 'ALL', label: dateScope === 'TODAY' ? 'All Today' : 'All Bookings' },
               { id: 'ACTIVE', label: `In Session / Checked In (${activeInSessionCount})` },
-              { id: 'UPCOMING', label: 'Upcoming' },
+              {
+                id: 'UPCOMING',
+                label:
+                  nearUpcomingBookings.length > 0
+                    ? `Upcoming (${nearUpcomingBookings.length} Near!)`
+                    : 'Upcoming',
+              },
               { id: 'COMPLETED', label: 'Completed' },
             ].map((tab) => (
               <button
@@ -588,6 +688,13 @@ export default function StaffBookingsSchedulePage() {
                     const scheduledEnd = b.session?.scheduledEndAt || b.endTime;
                     const countdown = isSessionActive ? getCountdown(scheduledEnd) : null;
 
+                    const startDiffMs = b.startTime ? new Date(b.startTime).getTime() - currentTime : null;
+                    const isSlotNear = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && startDiffMs <= 15 * 60 * 1000 && startDiffMs >= -120 * 60 * 1000;
+                    const isSlotDue = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && startDiffMs <= 0 && startDiffMs >= -120 * 60 * 1000;
+                    const diffSec = startDiffMs !== null ? Math.floor(Math.abs(startDiffMs) / 1000) : 0;
+                    const startMins = Math.floor(diffSec / 60);
+                    const startSecs = diffSec % 60;
+
                     return (
                       <tr key={b.id} className="hover:bg-ds-surface/40 transition-colors">
                         <td className="py-3.5 px-4 font-mono font-bold text-ds-ice">{b.bookingRef}</td>
@@ -646,7 +753,24 @@ export default function StaffBookingsSchedulePage() {
                             </div>
                           )}
                           {!isSessionActive && (
-                            <span className="text-[10px] text-ds-text-dim">{b.durationMinutes / 60} hr session</span>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              {isSlotDue ? (
+                                <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold font-mono text-[10px] animate-pulse flex items-center gap-1">
+                                  <span>🚨 DUE NOW (Check-in Ready)</span>
+                                </span>
+                              ) : isSlotNear ? (
+                                <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold font-mono text-[10px] flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-400" />
+                                  <span>Starts in {startMins}m {startSecs}s</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-ds-text-dim">
+                                  {startDiffMs !== null && startDiffMs > 0 && startDiffMs <= 120 * 60 * 1000 && getIsToday(b)
+                                    ? `Starts in ${Math.round(startDiffMs / 60000)}m • ${b.durationMinutes / 60} hr session`
+                                    : `${b.durationMinutes / 60} hr session`}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="py-3.5 px-4">
@@ -658,9 +782,9 @@ export default function StaffBookingsSchedulePage() {
                         <td className="py-3.5 px-4">
                           <Badge
                             variant={
-                              countdown?.isOverdue
+                              countdown?.isOverdue || isSlotDue
                                 ? 'default'
-                                : countdown?.isCriticalEnding
+                                : countdown?.isCriticalEnding || isSlotNear
                                 ? 'warning'
                                 : countdown?.isEndingSoon
                                 ? 'warning'
@@ -676,8 +800,12 @@ export default function StaffBookingsSchedulePage() {
                             className={`font-mono text-[10px] ${
                               countdown?.isOverdue
                                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-pulse font-bold'
+                                : isSlotDue
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/60 animate-pulse font-bold'
                                 : countdown?.isCriticalEnding
                                 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold'
+                                : isSlotNear
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 font-bold'
                                 : countdown?.isEndingSoon
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                 : ''
@@ -685,6 +813,10 @@ export default function StaffBookingsSchedulePage() {
                           >
                             {countdown?.isOverdue
                               ? `🔴 EXTRA TIME (+${countdown.overdueMins}m)`
+                              : isSlotDue
+                              ? '🚨 DUE NOW'
+                              : isSlotNear
+                              ? '⏳ STARTS SOON'
                               : countdown?.isCriticalEnding
                               ? '🟠 FINAL 5 MINS'
                               : countdown?.isEndingSoon
@@ -738,12 +870,18 @@ export default function StaffBookingsSchedulePage() {
                             {/* Check In action for confirmed bookings */}
                             {b.status === 'CONFIRMED' && (
                               <Button
-                                variant="accent"
+                                variant={isSlotNear || isSlotDue ? 'accent' : 'outline'}
                                 size="sm"
                                 onClick={() => handleQuickCheckIn(b)}
-                                className="text-[11px] py-1 px-2.5"
+                                className={`text-[11px] py-1 px-3 flex items-center gap-1 font-bold ${
+                                  isSlotDue
+                                    ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300 animate-pulse'
+                                    : isSlotNear
+                                    ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-md shadow-amber-400/20 font-bold'
+                                    : 'text-ds-ice border-ds-border hover:border-ds-accent'
+                                }`}
                               >
-                                <Play className="w-3 h-3 mr-1" />
+                                <Play className={`w-3 h-3 mr-1 ${isSlotNear || isSlotDue ? 'fill-black' : ''}`} />
                                 <span>Check In</span>
                               </Button>
                             )}

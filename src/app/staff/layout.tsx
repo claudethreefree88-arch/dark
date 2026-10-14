@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 import { SessionExpiryAlertManager } from '@/components/staff/SessionExpiryAlertManager';
+import { UpcomingBookingAlertManager } from '@/components/staff/UpcomingBookingAlertManager';
 
 interface NavItem {
   name: string;
@@ -425,6 +426,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
         {/* Real-time Session Expiry & Extra Time Alerts Popups */}
         <SessionExpiryAlertManager />
+
+        {/* Real-time Upcoming Booked Time Slot Near Alerts */}
+        <UpcomingBookingAlertManager />
       </div>
     </div>
   );
