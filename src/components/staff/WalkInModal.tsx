@@ -160,9 +160,15 @@ export function WalkInModal({
   const [dynamicQrUrl, setDynamicQrUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Synchronize preselected station and category when modal opens
+  // Ref to track modal transition so 10-second polling does not wipe what staff is typing
+  const prevIsOpenRef = React.useRef(false);
+
+  // Synchronize preselected station and category ONLY when modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    const wasOpen = prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+
+    if (isOpen && !wasOpen) {
       const target =
         stations.find((s) => s.id === preselectedStationId) ||
         stations.find((s) => s.status === 'AVAILABLE') ||
@@ -370,7 +376,7 @@ export function WalkInModal({
                   <span>Select Arena Category</span>
                 </label>
                 <span className="text-[11px] font-mono text-ds-text-dim">
-                  {stations.filter((s) => s.status === 'AVAILABLE').length} Available Consoles
+                  {stations.filter((s) => s.status === 'AVAILABLE').length} Available Units
                 </span>
               </div>
 
@@ -643,12 +649,27 @@ export function WalkInModal({
 
             {/* 5. Customer Details (Name, Phone, optional Email) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-heading font-black text-ds-ice uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-ds-accent/20 border border-ds-accent text-ds-accent text-[11px] flex items-center justify-center font-mono">
-                  {isConsoleStation ? '5' : '4'}
-                </span>
-                <span>Gamer Information</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-heading font-black text-ds-ice uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-ds-accent/20 border border-ds-accent text-ds-accent text-[11px] flex items-center justify-center font-mono">
+                    {isConsoleStation ? '5' : '4'}
+                  </span>
+                  <span>Gamer Information</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomerName('Walk-in Guest');
+                    setCustomerPhone('9999999999');
+                    setFormErrors((prev) => ({ ...prev, customerName: undefined, customerPhone: undefined }));
+                    setTouched((prev) => ({ ...prev, customerName: true, customerPhone: true }));
+                    toast.info('Quick Walk-in Guest details filled');
+                  }}
+                  className="text-[10px] font-mono font-bold text-ds-cyan hover:underline hover:text-white px-2 py-0.5 rounded bg-ds-cyan/10 border border-ds-cyan/30 flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <span>⚡ Quick Walk-in Guest</span>
+                </button>
+              </div>
               <div className="space-y-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
@@ -679,7 +700,7 @@ export function WalkInModal({
                       WhatsApp Phone <span className="text-rose-400">*</span>
                     </span>
                     <Input
-                      placeholder="9876543210"
+                      placeholder="Enter 10-digit mobile number"
                       type="tel"
                       value={customerPhone}
                       onChange={(e) => {
@@ -804,8 +825,8 @@ export function WalkInModal({
           </div>
         </div>
 
-        {/* ─── BOTTOM ACTION STRIP (FULL WIDTH) ─── */}
-        <div className="pt-4 mt-6 border-t border-ds-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* ─── BOTTOM ACTION STRIP (STICKY AT BOTTOM) ─── */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3.5 bg-ds-surface/95 backdrop-blur-md border-t border-ds-border/80 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl z-20 mt-6">
           <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
             <div className="flex items-center gap-2">
               <Badge variant="accent" size="md" className="font-heading font-bold text-xs uppercase">

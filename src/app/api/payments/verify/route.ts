@@ -28,10 +28,25 @@ export async function POST(req: NextRequest) {
       throw new NotFoundError('Booking not found');
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
     const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
-    const isMockPayment = data.isMock || !razorpaySecret || data.gatewayPaymentId?.startsWith('pay_mock_');
 
-    if (!isMockPayment && razorpaySecret && data.gatewayOrderId && data.gatewayPaymentId && data.gatewaySignature) {
+    // In production with Razorpay credentials configured, strictly forbid mock payment bypass
+    if (isProduction && razorpaySecret && (data.isMock || data.gatewayPaymentId?.startsWith('pay_mock_'))) {
+      throw new ValidationError('Mock payment verification is strictly forbidden in production');
+    }
+
+    const isMockAllowed = !razorpaySecret || !isProduction;
+    const isMockPayment =
+      isMockAllowed && (Boolean(data.isMock) || !razorpaySecret || Boolean(data.gatewayPaymentId?.startsWith('pay_mock_')));
+
+    if (!isMockPayment) {
+      if (!razorpaySecret) {
+        throw new ValidationError('Payment gateway secret is not configured on server');
+      }
+      if (!data.gatewayOrderId || !data.gatewayPaymentId || !data.gatewaySignature) {
+        throw new ValidationError('Missing required payment gateway verification parameters');
+      }
       const generatedSignature = crypto
         .createHmac('sha256', razorpaySecret)
         .update(`${data.gatewayOrderId}|${data.gatewayPaymentId}`)

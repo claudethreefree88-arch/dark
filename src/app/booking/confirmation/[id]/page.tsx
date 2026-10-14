@@ -127,7 +127,7 @@ export default function BookingConfirmationPage() {
       : `https://dark-beta-two.vercel.app/booking/confirmation/${booking.id}`;
 
     const latestPay = booking.payments?.[0];
-    const isBookingPaid = latestPay?.status === 'COMPLETED' || booking.status === 'CONFIRMED';
+    const isBookingPaid = booking.totalPricePaise === 0 || latestPay?.status === 'COMPLETED';
     const paymentStatus = isBookingPaid ? 'Paid' : 'Pay at Venue';
     const amount = `₹${(booking.totalPricePaise / 100).toFixed(0)}`;
 
@@ -247,7 +247,7 @@ export default function BookingConfirmationPage() {
   }
 
   const latestPayment = booking.payments?.[0];
-  const isPaid = latestPayment?.status === 'COMPLETED' || booking.status === 'CONFIRMED';
+  const isPaid = booking.totalPricePaise === 0 || latestPayment?.status === 'COMPLETED';
 
   return (
     <div className="min-h-screen bg-ds-darker text-ds-text flex flex-col selection:bg-ds-accent selection:text-white print:bg-white print:text-black">

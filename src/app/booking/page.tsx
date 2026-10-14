@@ -116,8 +116,9 @@ function BookingContent() {
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
-  // Date & Duration State
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Date & Duration State (IST-aware to prevent midnight date rollover)
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const todayStr = new Date(Date.now() + istOffsetMs).toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [playerCount, setPlayerCount] = useState<number>(1);
@@ -415,6 +416,11 @@ function BookingContent() {
   // Multi-hour discount: 3+ hours gives 10%
   const multiHourDiscountPaise = durationMinutes >= 180 ? Math.round(subtotalPaise * 0.1) : 0;
 
+  // Happy Hour discount: 10 AM to 3 PM gives 15% off if not already multi-hour discounted
+  const slotStartHour = selectedSlot ? parseInt(selectedSlot.time.split(':')[0], 10) : -1;
+  const isHappyHour = slotStartHour >= 10 && slotStartHour < 15 && durationMinutes < 180;
+  const happyHourDiscountPaise = isHappyHour ? Math.round(subtotalPaise * 0.15) : 0;
+
   // Coupon discount
   const couponDiscountPaise = appliedCoupon ? appliedCoupon.discountPaise : 0;
 
@@ -425,7 +431,8 @@ function BookingContent() {
       ? Math.round((subtotalPaise * membershipDiscountPercent) / 100)
       : 0;
 
-  const totalDiscountPaise = multiHourDiscountPaise + couponDiscountPaise + membershipDiscountPaise;
+  const totalDiscountPaise =
+    multiHourDiscountPaise + happyHourDiscountPaise + couponDiscountPaise + membershipDiscountPaise;
   const finalPricePaise = Math.max(0, subtotalPaise - totalDiscountPaise);
 
   // Handle Coupon Apply
@@ -472,14 +479,18 @@ function BookingContent() {
     toast.info('Coupon removed');
   };
 
-  // Generate date list for the next 14 days
+  // Generate date list for the next 14 days (IST time zone aware)
   const dateList = Array.from({ length: 14 }).map((_, idx) => {
-    const d = new Date();
-    d.setDate(d.getDate() + idx);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayName = idx === 0 ? 'Today' : idx === 1 ? 'Tmrw' : d.toLocaleDateString('en-US', { weekday: 'short' });
-    const dayNum = d.getDate();
-    const month = d.toLocaleDateString('en-US', { month: 'short' });
+    const dIst = new Date(Date.now() + istOffsetMs + idx * 24 * 60 * 60 * 1000);
+    const dateStr = dIst.toISOString().split('T')[0];
+    const dayName =
+      idx === 0
+        ? 'Today'
+        : idx === 1
+        ? 'Tmrw'
+        : dIst.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+    const dayNum = dIst.getUTCDate();
+    const month = dIst.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
     return { dateStr, dayName, dayNum, month };
   });
 
@@ -1296,8 +1307,13 @@ function BookingContent() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedZone('PS5');
-                              setSelectedStation(null);
+                              if (selectedZone !== 'PS5') {
+                                setSelectedZone('PS5');
+                                setSelectedStation(null);
+                                setSelectedSlot(null);
+                                toast.info('Switched to PS5 Arena. Please select an available slot.');
+                                goToStep(2);
+                              }
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
                               selectedZone === 'PS5'
@@ -1311,8 +1327,13 @@ function BookingContent() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedZone('POOL_TABLE');
-                              setSelectedStation(null);
+                              if (selectedZone !== 'POOL_TABLE') {
+                                setSelectedZone('POOL_TABLE');
+                                setSelectedStation(null);
+                                setSelectedSlot(null);
+                                toast.info('Switched to Snooker Arena. Please select an available slot.');
+                                goToStep(2);
+                              }
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all border flex items-center gap-1.5 ${
                               selectedZone === 'POOL_TABLE'
@@ -1905,7 +1926,7 @@ function BookingContent() {
                     <div>
                       <p className="text-[10px] uppercase font-bold text-ds-accent">Date & Window</p>
                       <p className="font-heading font-bold text-ds-text">
-                        {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—'}
+                        {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—'}
                       </p>
                       <p className="text-ds-ice font-semibold text-[11px]">
                         {selectedSlot ? selectedSlot.label : 'Slot not chosen'}
@@ -1989,6 +2010,13 @@ function BookingContent() {
                     <div className="flex justify-between text-emerald-400">
                       <span>Multi-Hour Deal (10% off)</span>
                       <span>-₹{(multiHourDiscountPaise / 100).toFixed(0)}</span>
+                    </div>
+                  )}
+
+                  {happyHourDiscountPaise > 0 && (
+                    <div className="flex justify-between text-amber-400">
+                      <span>Happy Hour Deal (10 AM–3 PM: 15% off)</span>
+                      <span>-₹{(happyHourDiscountPaise / 100).toFixed(0)}</span>
                     </div>
                   )}
 
@@ -2116,7 +2144,7 @@ function BookingContent() {
                         <p className="text-[9px] uppercase font-mono text-ds-text-dim">Date</p>
                         <p className="font-heading font-bold text-ds-text truncate">
                           {selectedDate
-                            ? new Date(selectedDate).toLocaleDateString('en-US', {
+                            ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',

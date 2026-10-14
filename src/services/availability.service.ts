@@ -102,17 +102,25 @@ export async function getStationAvailability(
       const dayStartUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - istOffsetMs);
       const dayEndUtc = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0) - istOffsetMs);
       const targetDate = new Date(`${dateStr}T00:00:00.000Z`);
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
       existingBookings = await prisma.booking.findMany({
         where: {
           stationId: { in: stationsToCheck.map((s) => s.id) },
-          status: {
-            in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'PENDING'],
-          },
-          OR: [
-            { startTime: { lt: dayEndUtc, gte: dayStartUtc } },
-            { endTime: { gt: dayStartUtc, lte: dayEndUtc } },
-            { date: targetDate },
+          AND: [
+            {
+              OR: [
+                { status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] } },
+                { status: 'PENDING', createdAt: { gte: fifteenMinutesAgo } },
+              ],
+            },
+            {
+              OR: [
+                { startTime: { lt: dayEndUtc, gte: dayStartUtc } },
+                { endTime: { gt: dayStartUtc, lte: dayEndUtc } },
+                { date: targetDate },
+              ],
+            },
           ],
         },
         select: {
@@ -137,6 +145,8 @@ export async function getStationAvailability(
   const currentHourIst = nowIst.getUTCHours();
   const currentMinIst = nowIst.getUTCMinutes();
 
+  const [dateYear, dateMonth, dateDay] = dateStr.split('-').map(Number);
+
   for (let hour = OPERATING_START_HOUR; hour <= OPERATING_END_HOUR - durationHours; hour++) {
     const startHourStr = hour.toString().padStart(2, '0');
     const endHourStr = (hour + durationHours).toString().padStart(2, '0');
@@ -151,15 +161,18 @@ export async function getStationAvailability(
       continue;
     }
 
-    // Candidate slot boundaries
-    const candidateStart = hour;
-    const candidateEnd = hour + durationHours;
+    // Exact UTC timestamp boundaries for this candidate slot
+    const slotStartUtc = new Date(
+      Date.UTC(dateYear, dateMonth - 1, dateDay, hour, 0, 0, 0) - istOffsetMs
+    );
+    const slotEndUtc = new Date(
+      Date.UTC(dateYear, dateMonth - 1, dateDay, hour + durationHours, 0, 0, 0) - istOffsetMs
+    );
 
     // Check availability across all target stations
     const availableStationIds: string[] = [];
 
     if (stationsToCheck.length === 0) {
-      // Fallback demo slot if stations list is empty
       slots.push({
         time: startTimeStr,
         endTime: endTimeStr,
@@ -172,31 +185,17 @@ export async function getStationAvailability(
     }
 
     for (const station of stationsToCheck) {
-      // Skip station if in maintenance
-      if (station.status === 'MAINTENANCE' || station.status === 'DEACTIVATED') {
+      if (station.status !== 'AVAILABLE') {
         continue;
       }
 
-      // Check if this station has overlapping bookings
-      const stationBookings = existingBookings.filter((b) => b.stationId === station.id);
-      let isBooked = false;
-
-      for (const booking of stationBookings) {
-        const bStartIst = new Date(booking.startTime.getTime() + istOffsetMs);
-        const bEndIst = new Date(booking.endTime.getTime() + istOffsetMs);
-        const bStartHourIst = bStartIst.getUTCHours() + bStartIst.getUTCMinutes() / 60;
-        const bEndHourIst = bEndIst.getUTCHours() + bEndIst.getUTCMinutes() / 60;
-        const bStartHourRaw = booking.startTime.getUTCHours() + booking.startTime.getUTCMinutes() / 60;
-        const bEndHourRaw = booking.endTime.getUTCHours() + booking.endTime.getUTCMinutes() / 60;
-
-        const overlapsIst = candidateStart < bEndHourIst && candidateEnd > bStartHourIst;
-        const overlapsRaw = candidateStart < bEndHourRaw && candidateEnd > bStartHourRaw;
-
-        if (overlapsIst || overlapsRaw) {
-          isBooked = true;
-          break;
-        }
-      }
+      // Check if station has any overlapping active booking
+      const isBooked = existingBookings.some(
+        (b) =>
+          b.stationId === station.id &&
+          b.startTime < slotEndUtc &&
+          b.endTime > slotStartUtc
+      );
 
       if (!isBooked) {
         availableStationIds.push(station.id);

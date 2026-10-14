@@ -121,22 +121,59 @@ export async function POST(req: NextRequest) {
           const lastName = names.slice(1).join(' ') || 'Player';
           const defaultPassword = await hashPassword(crypto.randomBytes(16).toString('hex'));
 
-          const newUser = await prisma.user.create({
-            data: {
-              email: data.customerEmail.toLowerCase(),
-              passwordHash: defaultPassword,
-              firstName,
-              lastName,
-              phone: data.customerPhone || null,
-              role: 'CUSTOMER',
-              customerProfile: {
-                create: {
-                  totalBookings: 1,
-                  totalSpent: 0,
+          // Check if phone number is already taken by another account
+          let phoneToAssign: string | null = null;
+          if (data.customerPhone) {
+            const phoneOwner = await prisma.user.findUnique({
+              where: { phone: data.customerPhone },
+              select: { id: true },
+            });
+            if (!phoneOwner) {
+              phoneToAssign = data.customerPhone;
+            }
+          }
+
+          let newUser;
+          try {
+            newUser = await prisma.user.create({
+              data: {
+                email: data.customerEmail.toLowerCase(),
+                passwordHash: defaultPassword,
+                firstName,
+                lastName,
+                phone: phoneToAssign,
+                role: 'CUSTOMER',
+                customerProfile: {
+                  create: {
+                    totalBookings: 1,
+                    totalSpent: 0,
+                  },
                 },
               },
-            },
-          });
+            });
+          } catch (createErr: any) {
+            // If phone unique collision still triggers, retry safely without binding phone
+            if (createErr?.code === 'P2002') {
+              newUser = await prisma.user.create({
+                data: {
+                  email: data.customerEmail.toLowerCase(),
+                  passwordHash: defaultPassword,
+                  firstName,
+                  lastName,
+                  phone: null,
+                  role: 'CUSTOMER',
+                  customerProfile: {
+                    create: {
+                      totalBookings: 1,
+                      totalSpent: 0,
+                    },
+                  },
+                },
+              });
+            } else {
+              throw createErr;
+            }
+          }
           userId = newUser.id;
         }
       } else {
@@ -152,7 +189,7 @@ export async function POST(req: NextRequest) {
               passwordHash: defaultPassword,
               firstName: data.customerName || 'Guest',
               lastName: 'Player',
-              phone: data.customerPhone || '9876543210',
+              phone: null,
               role: 'CUSTOMER',
             },
           });
@@ -243,15 +280,17 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Automatic Membership Discount
+      // Automatic Membership Discount (Only for authenticated members to prevent guest discount hijacking)
       let membershipDiscountPaise = 0;
       let membershipPlanName: string | null = null;
       try {
-        const activeMembership = await getActiveUserMembership(userId);
-        if (activeMembership && activeMembership.discountPercent > 0) {
-          membershipPlanName = activeMembership.planNameSnapshot;
-          membershipDiscountPaise = Math.round((subtotalPaise * activeMembership.discountPercent) / 100);
-          discountPaise += membershipDiscountPaise;
+        if (session?.userId && session.userId === userId) {
+          const activeMembership = await getActiveUserMembership(userId);
+          if (activeMembership && activeMembership.discountPercent > 0) {
+            membershipPlanName = activeMembership.planNameSnapshot;
+            membershipDiscountPaise = Math.round((subtotalPaise * activeMembership.discountPercent) / 100);
+            discountPaise += membershipDiscountPaise;
+          }
         }
       } catch {
         // non-blocking fallback
@@ -263,26 +302,28 @@ export async function POST(req: NextRequest) {
       const result = await prisma.$transaction(async (tx) => {
         let assignedStationId = station.id;
 
-        // Query overlapping bookings (including checked-in and in-progress sessions)
+        // 15-minute pending checkout timeout threshold
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+        const buildOverlapWhere = (targetStationId: string) => ({
+          stationId: targetStationId,
+          AND: [
+            {
+              OR: [
+                { status: { in: ['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'] as any } },
+                { status: 'PENDING' as any, createdAt: { gte: fifteenMinutesAgo } },
+              ],
+            },
+            {
+              startTime: { lt: endDateTime },
+              endTime: { gt: startDateTime },
+            },
+          ],
+        });
+
+        // Query overlapping bookings on initially selected station
         let overlapping = await tx.booking.findFirst({
-          where: {
-            stationId: assignedStationId,
-            status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
-            OR: [
-              {
-                startTime: { lte: startDateTime },
-                endTime: { gt: startDateTime },
-              },
-              {
-                startTime: { lt: endDateTime },
-                endTime: { gte: endDateTime },
-              },
-              {
-                startTime: { gte: startDateTime },
-                endTime: { lte: endDateTime },
-              },
-            ],
-          },
+          where: buildOverlapWhere(assignedStationId),
         });
 
         // Smart Arena Auto-Reallocation:
@@ -300,24 +341,7 @@ export async function POST(req: NextRequest) {
 
           for (const alt of alternateStations) {
             const altOverlap = await tx.booking.findFirst({
-              where: {
-                stationId: alt.id,
-                status: { in: ['CONFIRMED', 'PENDING', 'CHECKED_IN', 'IN_PROGRESS'] },
-                OR: [
-                  {
-                    startTime: { lte: startDateTime },
-                    endTime: { gt: startDateTime },
-                  },
-                  {
-                    startTime: { lt: endDateTime },
-                    endTime: { gte: endDateTime },
-                  },
-                  {
-                    startTime: { gte: startDateTime },
-                    endTime: { lte: endDateTime },
-                  },
-                ],
-              },
+              where: buildOverlapWhere(alt.id),
             });
 
             if (!altOverlap) {
@@ -423,9 +447,17 @@ export async function POST(req: NextRequest) {
       });
 
       return apiSuccess(result, 201);
-    } catch (err: unknown) {
+    } catch (err: any) {
       if (err instanceof ConflictError || err instanceof ValidationError || err instanceof NotFoundError) {
         throw err;
+      }
+
+      // Map Prisma unique constraint violation (P2002) to HTTP 409 ConflictError
+      // so frontend recovers gracefully instead of failing with 500
+      if (err?.code === 'P2002') {
+        throw new ConflictError(
+          'This station has just been booked for this slot by another player. Please select another slot or station.'
+        );
       }
 
       console.error('Database booking transaction failed:', err);
