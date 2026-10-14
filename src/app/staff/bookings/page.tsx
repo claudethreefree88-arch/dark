@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   List,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { ExtendSessionModal } from '@/components/staff/ExtendSessionModal';
 import { EndSessionModal, type EndSessionTarget } from '@/components/staff/EndSessionModal';
@@ -97,7 +98,18 @@ export default function StaffBookingsSchedulePage() {
     const interval = setInterval(() => {
       loadBookings(true); // Silent background polling — zero UI flicker/unmounting
     }, 15000);
-    return () => clearInterval(interval);
+
+    const handleBookingUpdate = () => loadBookings(true);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ds-booking-updated', handleBookingUpdate);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ds-booking-updated', handleBookingUpdate);
+      }
+    };
   }, []);
 
   // Countdown timer calculations
@@ -252,6 +264,10 @@ export default function StaffBookingsSchedulePage() {
     return diffMs <= 15 * 60 * 1000 && diffMs >= -90 * 60 * 1000;
   });
 
+  const dueBookingsCount = nearUpcomingBookings.filter(
+    (b) => new Date(b.startTime).getTime() <= currentTime
+  ).length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -267,8 +283,18 @@ export default function StaffBookingsSchedulePage() {
               </Badge>
             )}
             {nearUpcomingBookings.length > 0 && (
-              <Badge variant="warning" size="sm" className="font-mono bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse">
-                ⏰ {nearUpcomingBookings.length} Near Slot Start
+              <Badge
+                variant={dueBookingsCount > 0 ? 'default' : 'warning'}
+                size="sm"
+                className={`font-mono font-bold animate-pulse ${
+                  dueBookingsCount > 0
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/60'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                }`}
+              >
+                {dueBookingsCount > 0
+                  ? `🚨 ${dueBookingsCount} Due for Check-In`
+                  : `⏰ ${nearUpcomingBookings.length} Near Slot Start`}
               </Badge>
             )}
           </div>
@@ -299,22 +325,54 @@ export default function StaffBookingsSchedulePage() {
 
       {/* ─── UPCOMING BOOKED TIME SLOTS NEAR ALERT BANNER ─── */}
       {nearUpcomingBookings.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-ds-surface to-amber-500/5 border-2 border-amber-500/60 shadow-xl shadow-amber-500/10 animate-fade-in space-y-3.5">
-          <div className="flex items-center justify-between">
+        <div
+          className={`p-4 sm:p-5 rounded-2xl border-2 shadow-xl animate-fade-in space-y-3.5 transition-all ${
+            dueBookingsCount > 0
+              ? 'bg-gradient-to-r from-rose-500/15 via-ds-surface to-rose-500/5 border-rose-500/80 shadow-rose-500/10'
+              : 'bg-gradient-to-r from-amber-500/15 via-ds-surface to-amber-500/5 border-amber-500/60 shadow-amber-500/10'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400" />
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    dueBookingsCount > 0 ? 'bg-rose-500' : 'bg-amber-400'
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
+                    dueBookingsCount > 0 ? 'bg-rose-500' : 'bg-amber-400'
+                  }`}
+                />
               </span>
               <div>
-                <span className="font-heading font-black text-xs sm:text-sm uppercase tracking-wider text-amber-300">
-                  ⏰ Upcoming Booked Time Slot Alert ({nearUpcomingBookings.length} {nearUpcomingBookings.length === 1 ? 'Reservation Near' : 'Reservations Near'})
+                <span
+                  className={`font-heading font-black text-xs sm:text-sm uppercase tracking-wider ${
+                    dueBookingsCount > 0 ? 'text-rose-300' : 'text-amber-300'
+                  }`}
+                >
+                  {dueBookingsCount > 0
+                    ? `🚨 Booked Slots Due for Check-In (${dueBookingsCount} Ready for Desk)`
+                    : `⏰ Upcoming Booked Time Slots (${nearUpcomingBookings.length} Starting Soon)`}
                 </span>
                 <p className="text-[11px] text-white/70 font-mono">
                   Players with booked slots starting in ≤15 minutes or due for front desk check-in.
                 </p>
               </div>
             </div>
+
+            {statusFilter !== 'UPCOMING' && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter('UPCOMING')}
+                className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ds-dark/90 hover:bg-ds-surface border border-ds-border hover:border-amber-400 text-xs font-heading font-bold text-ds-ice transition-all shadow-sm"
+                title="Switch table to Upcoming tab"
+              >
+                <span>Switch to Upcoming Tab ({nearUpcomingBookings.length})</span>
+                <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

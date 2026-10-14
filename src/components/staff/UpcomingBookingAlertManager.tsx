@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Clock,
   AlertTriangle,
@@ -87,9 +88,25 @@ function playUpcomingChime(stage: '15m' | '5m' | 'due') {
 }
 
 export function UpcomingBookingAlertManager() {
+  const pathname = usePathname();
+  const isOnBookingsPage = pathname?.startsWith('/staff/bookings');
+
   const [alerts, setAlerts] = useState<UpcomingSlotAlert[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [isMinimized, setIsMinimized] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname.startsWith('/staff/bookings');
+    }
+    return false;
+  });
+
+  // When navigating to /staff/bookings, auto-minimize to avoid obscuring the schedule table
+  useEffect(() => {
+    if (isOnBookingsPage) {
+      setIsMinimized(true);
+    }
+  }, [pathname, isOnBookingsPage]);
+
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -227,6 +244,9 @@ export function UpcomingBookingAlertManager() {
         setAlerts((prev) => prev.filter((a) => a.bookingId !== alert.bookingId));
         // Remove from rawBookingsRef
         rawBookingsRef.current = rawBookingsRef.current.filter((b) => b.id !== alert.bookingId);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ds-booking-updated'));
+        }
       } else {
         toast.error(json.error?.message || 'Check-in failed');
       }
@@ -474,7 +494,7 @@ export function UpcomingBookingAlertManager() {
                   <span>{checkingInId === currentAlert.bookingId ? 'Checking In...' : 'Quick Check In'}</span>
                 </Button>
 
-                <Link href="/staff/bookings?tab=ACTIVE" className="shrink-0">
+                <Link href="/staff/bookings?tab=UPCOMING" className="shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
