@@ -179,10 +179,19 @@ function StaffSidebarNav({
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [timeStr, setTimeStr] = useState<string>('');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
+
+  const isStaffOrAdmin = user?.role === 'STAFF' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
+  // Guard: Redirect unauthorized users or customers out of the staff operations floor
+  useEffect(() => {
+    if (!isLoading && (!user || !isStaffOrAdmin)) {
+      window.location.href = '/login?portal=staff';
+    }
+  }, [user, isLoading, isStaffOrAdmin]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -298,6 +307,15 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       window.location.href = '/login?portal=staff';
     }
   };
+
+  if (isLoading || !user || !isStaffOrAdmin) {
+    return (
+      <div className="min-h-screen bg-ds-darker flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-mono text-ds-text-dim">Verifying Staff Authorization...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-ds-darker text-ds-text flex selection:bg-ds-accent selection:text-white">

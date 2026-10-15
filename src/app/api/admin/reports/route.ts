@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       calendarStartDate.setUTCMonth(0, 1);
     }
 
-    const [bookings, payments, refunds, facilities, stations] = await Promise.all([
+    const [bookings, payments, refunds, facilities, stations, staffUsers] = await Promise.all([
       prisma.booking.findMany({
         where: {
           date: { gte: calendarStartDate, lt: calendarEndDate },
@@ -90,6 +90,7 @@ export async function GET(req: NextRequest) {
           method: true,
           paidAt: true,
           bookingId: true,
+          recordedByStaffId: true,
           booking: { select: { station: { select: { id: true, facility: { select: { id: true, name: true } } } } } },
         },
       }),
@@ -121,6 +122,11 @@ export async function GET(req: NextRequest) {
         where: { status: { not: 'DEACTIVATED' } },
         select: { id: true, name: true, stationType: true },
         orderBy: [{ facilityId: 'asc' }, { displayOrder: 'asc' }],
+      }),
+      prisma.user.findMany({
+        where: { role: { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] } },
+        select: { id: true, firstName: true, lastName: true, role: true },
+        orderBy: { firstName: 'asc' },
       }),
     ]);
 
@@ -232,6 +238,21 @@ export async function GET(req: NextRequest) {
         revenuePaise: (stationTotals.get(station.id)?.revenuePaise || 0) - (stationRefunds.get(station.id) || 0),
       })),
       peakHours: hourCounts,
+      staffCollections: staffUsers.map((s) => {
+        const staffPayments = payments.filter((p) => p.recordedByStaffId === s.id);
+        const cashPaise = staffPayments.filter((p) => p.method === 'CASH').reduce((sum, p) => sum + p.amountPaise, 0);
+        const upiPaise = staffPayments.filter((p) => p.method === 'UPI').reduce((sum, p) => sum + p.amountPaise, 0);
+        const totalPaise = staffPayments.reduce((sum, p) => sum + p.amountPaise, 0);
+        return {
+          id: s.id,
+          name: `${s.firstName} ${s.lastName}`.trim(),
+          role: s.role,
+          count: staffPayments.length,
+          cashPaise,
+          upiPaise,
+          totalPaise,
+        };
+      }).filter((s) => s.count > 0),
     });
   } catch (error) {
     return handleApiError(error);

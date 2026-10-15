@@ -11,7 +11,8 @@ const checkInSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffSession = await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffName = `${staffSession.firstName} ${staffSession.lastName}`.trim();
     const body = await req.json();
     const { identifier, autoStartSession } = checkInSchema.parse(body);
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
           data: { status: 'OCCUPIED' },
         });
 
-        // If paying at counter was pending, mark payment completed
+        // If paying at counter was pending, mark payment completed with staffId
         const pendingPayment = booking.payments.find((p) => p.status === 'PENDING');
         if (pendingPayment) {
           await tx.payment.update({
@@ -70,7 +71,8 @@ export async function POST(req: NextRequest) {
             data: {
               status: 'COMPLETED',
               paidAt: new Date(),
-              notes: 'Desk cash / in-person verification',
+              recordedByStaffId: staffSession.userId,
+              notes: `Desk counter payment confirmed by ${staffName}`,
             },
           });
         }
@@ -84,12 +86,36 @@ export async function POST(req: NextRequest) {
             data: {
               bookingId: booking.id,
               stationId: booking.stationId,
+              staffId: staffSession.userId,
               status: 'ACTIVE',
               startedAt: now,
               scheduledEndAt,
+              notes: `Checked in by ${staffName}`,
             },
           });
+        } else if (session && !session.staffId) {
+          // If session existed without staffId, attribute it now
+          session = await tx.gamingSession.update({
+            where: { id: session.id },
+            data: { staffId: staffSession.userId },
+          });
         }
+
+        // Log staff activity
+        await tx.staffActivityLog.create({
+          data: {
+            userId: staffSession.userId,
+            action: 'CHECK_IN_SESSION',
+            entityType: 'booking',
+            entityId: booking.id,
+            details: {
+              bookingRef: booking.bookingRef,
+              stationId: booking.stationId,
+              customerName: booking.customerName || `${booking.user.firstName} ${booking.user.lastName}`,
+              staffName,
+            },
+          },
+        }).catch(() => {});
 
         return { booking: updatedBooking, session };
       });

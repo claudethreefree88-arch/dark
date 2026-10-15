@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
-import { apiSuccess, handleApiError, ConflictError, ValidationError, NotFoundError } from '@/lib/errors';
+import { apiSuccess, handleApiError, ConflictError, ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
@@ -177,14 +177,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── PATCH /api/admin/staff (Update Profile / Address / Aadhaar / Password) ───
+// ─── PATCH /api/admin/staff (Update Profile / Address / Aadhaar / Password / Role) ───
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole('ADMIN', 'SUPER_ADMIN');
+    const adminSession = await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const {
       id,
       status,
+      role,
       password,
       firstName,
       lastName,
@@ -205,6 +206,13 @@ export async function PATCH(req: NextRequest) {
       throw new NotFoundError('Staff account not found');
     }
 
+    const isSuperAdmin = adminSession.role === 'SUPER_ADMIN';
+
+    // Prevent regular ADMIN from modifying another ADMIN or SUPER_ADMIN account
+    if (!isSuperAdmin && (target.role === 'ADMIN' || target.role === 'SUPER_ADMIN') && target.id !== adminSession.userId) {
+      throw new ForbiddenError('Only Super Admin can modify Administrator accounts');
+    }
+
     if (target.role === 'SUPER_ADMIN' && status && status !== 'ACTIVE') {
       throw new ValidationError('Cannot deactivate a Super Admin account');
     }
@@ -213,6 +221,13 @@ export async function PATCH(req: NextRequest) {
     const userUpdateData: any = {};
     if (status && ['ACTIVE', 'DEACTIVATED', 'BLOCKED'].includes(status)) {
       userUpdateData.status = status;
+    }
+    // Only Super Admin can change account roles (promote/demote)
+    if (role && ['STAFF', 'ADMIN'].includes(role)) {
+      if (!isSuperAdmin) {
+        throw new ForbiddenError('Only Super Admin can change staff role permissions');
+      }
+      userUpdateData.role = role;
     }
     if (password && password.length >= 6) {
       userUpdateData.passwordHash = await hashPassword(password);
@@ -321,6 +336,10 @@ export async function DELETE(req: NextRequest) {
 
     if (target.role === 'SUPER_ADMIN') {
       throw new ValidationError('Cannot delete a Super Admin account');
+    }
+
+    if (adminSession.role !== 'SUPER_ADMIN' && target.role === 'ADMIN') {
+      throw new ForbiddenError('Only Super Admin can delete or deactivate Administrator accounts');
     }
 
     try {

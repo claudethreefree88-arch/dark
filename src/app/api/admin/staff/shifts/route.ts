@@ -13,13 +13,13 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get('dateTo') || '';
     const reasonFilter = searchParams.get('reason') || 'ALL';
 
-    // 1. Auto-cleanup any hanging shifts older than 2 hours that missed logout
+    // 1. Auto-cleanup any hanging abandoned shifts older than 16 hours that missed logout
     try {
       const staleShifts = await prisma.staffShift.findMany({
         where: {
           logoutAt: null,
           loginAt: {
-            lt: new Date(Date.now() - 2 * 60 * 60 * 1000), // > 2 hours ago
+            lt: new Date(Date.now() - 16 * 60 * 60 * 1000), // > 16 hours ago (abandoned shift from previous day)
           },
         },
       });
@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
         await prisma.staffShift.update({
           where: { id: stale.id },
           data: {
-            logoutAt: new Date(new Date(stale.loginAt).getTime() + 2 * 60 * 60 * 1000),
+            logoutAt: new Date(new Date(stale.loginAt).getTime() + 8 * 60 * 60 * 1000),
             logoutReason: 'SYSTEM_INACTIVE',
-            durationMinutes: 120,
+            durationMinutes: 480,
           },
         });
       }

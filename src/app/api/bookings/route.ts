@@ -84,7 +84,10 @@ export async function POST(req: NextRequest) {
     try {
       // 1. Resolve User
       let userId: string;
-      if (session?.userId) {
+      const isStaffOrAdmin = session?.role === 'ADMIN' || session?.role === 'SUPER_ADMIN' || session?.role === 'STAFF';
+      const isBookingForOther = isStaffOrAdmin && Boolean(data.customerEmail && data.customerEmail.toLowerCase() !== session?.email?.toLowerCase());
+
+      if (session?.userId && !isBookingForOther) {
         userId = session.userId;
         const userRec = await prisma.user.findUnique({
           where: { id: userId },

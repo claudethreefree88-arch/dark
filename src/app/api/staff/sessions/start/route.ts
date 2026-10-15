@@ -104,9 +104,11 @@ export async function POST(req: NextRequest) {
           data: {
             bookingId: bookingId as string,
             stationId: station.id,
+            staffId: staffSession.userId,
             status: 'ACTIVE',
             startedAt: now,
             scheduledEndAt,
+            notes: data.customerName ? `Started for ${data.customerName} by ${staffName}` : `Started by ${staffName}`,
           },
           include: { booking: true },
         });

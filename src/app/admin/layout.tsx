@@ -194,9 +194,18 @@ function SidebarNav({
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
+  // Guard: Redirect unauthorized users or customers out of the admin console
+  useEffect(() => {
+    if (!isLoading && (!user || !isAdmin)) {
+      window.location.href = '/login?portal=admin';
+    }
+  }, [user, isLoading, isAdmin]);
 
   // Load saved sidebar state from localStorage
   useEffect(() => {
@@ -242,6 +251,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       window.location.href = '/login?portal=admin';
     }
   };
+
+  if (isLoading || !user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-ds-darker flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-mono text-ds-text-dim">Verifying Admin Privileges...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-ds-darker text-ds-text flex selection:bg-ds-accent selection:text-white">

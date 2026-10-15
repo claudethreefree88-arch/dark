@@ -116,13 +116,6 @@ export async function GET(req: NextRequest) {
                 role: 'STAFF',
                 isDesk: true,
               };
-            } else if (p.user?.role === 'SUPER_ADMIN' || p.user?.role === 'ADMIN' || p.user?.role === 'STAFF') {
-              collectedBy = {
-                id: p.user.id,
-                name: `${p.user.firstName} ${p.user.lastName}`.trim(),
-                role: p.user.role,
-                isDesk: true,
-              };
             } else {
               collectedBy = {
                 id: '',

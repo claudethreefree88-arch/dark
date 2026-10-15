@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { apiSuccess, handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 import { requireRole } from '@/lib/session';
 import { getActiveUserMembership } from '@/lib/memberships';
+import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -113,20 +114,57 @@ export async function POST(req: NextRequest) {
 
       let user = registeredUser;
       if (!user) {
-        let guest = await tx.user.findUnique({ where: { email: 'guest@darksyndicate.in' } });
-        if (!guest) {
-          guest = await tx.user.create({
-            data: {
-              email: 'guest@darksyndicate.in',
-              passwordHash: 'LOCKED_GUEST_ACCOUNT',
-              firstName: 'Walk-in',
-              lastName: 'Gamer',
-              phone: null,
-              role: 'CUSTOMER',
-            },
-          });
+        // If customer provided a phone or email, create an individual Customer account in directory
+        if (cleanEmail || phoneDigits.length === 10) {
+          const names = data.customerName.trim().split(' ');
+          const firstName = names[0] || 'Walk-in';
+          const lastName = names.slice(1).join(' ') || 'Gamer';
+          const userEmail = cleanEmail || `gamer_${phoneDigits || Date.now()}@darksyndicate.in`;
+          const dummyPassword = crypto.randomBytes(16).toString('hex');
+          const passwordHash = await hashPassword(dummyPassword);
+
+          const existingByEmail = await tx.user.findUnique({ where: { email: userEmail } });
+          if (existingByEmail) {
+            user = existingByEmail;
+            registeredUser = existingByEmail;
+          } else {
+            const newCustomer = await tx.user.create({
+              data: {
+                email: userEmail,
+                passwordHash,
+                firstName,
+                lastName,
+                phone: phoneDigits.length === 10 ? phoneDigits : null,
+                role: 'CUSTOMER',
+                status: 'ACTIVE',
+                customerProfile: {
+                  create: {
+                    totalSpent: 0,
+                    totalBookings: 0,
+                  },
+                },
+              },
+            });
+            user = newCustomer;
+            registeredUser = newCustomer;
+          }
+        } else {
+          // Fallback to anonymous guest account only if zero contact info given
+          let guest = await tx.user.findUnique({ where: { email: 'guest@darksyndicate.in' } });
+          if (!guest) {
+            guest = await tx.user.create({
+              data: {
+                email: 'guest@darksyndicate.in',
+                passwordHash: 'LOCKED_GUEST_ACCOUNT',
+                firstName: 'Walk-in',
+                lastName: 'Gamer',
+                phone: null,
+                role: 'CUSTOMER',
+              },
+            });
+          }
+          user = guest;
         }
-        user = guest;
       }
 
       // 6. Check Active Membership Discount for Registered Users

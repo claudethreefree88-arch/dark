@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { AUTH_COOKIE_NAME, AUTH_COOKIE_MAX_AGE } from './constants';
 import { createAccessToken, verifyToken, type TokenPayload } from './auth';
+import { prisma } from './prisma';
 import { AuthError, ForbiddenError } from './errors';
 
 // ─── Cookie-Based Session Management ────────────────────────────────────────
@@ -50,14 +51,52 @@ export async function clearSessionCookie(): Promise<void> {
 }
 
 /**
- * Require a valid session. Throws if not authenticated.
+ * Require a valid session with real-time database status verification.
+ * Throws if unauthenticated, blocked, or deactivated.
  */
 export async function requireSession(): Promise<TokenPayload> {
   const session = await getSession();
   if (!session) {
     throw new AuthError('Authentication required');
   }
-  return session;
+
+  // Real-time verification against DB status
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    if (!user) {
+      throw new AuthError('User account not found');
+    }
+
+    if (user.status === 'BLOCKED') {
+      throw new AuthError('Your account has been suspended. Please contact Dark Syndicate management.');
+    }
+
+    if (user.status === 'DEACTIVATED') {
+      throw new AuthError('Your account has been deactivated.');
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+  } catch (err) {
+    if (err instanceof AuthError) throw err;
+    return session;
+  }
 }
 
 /**

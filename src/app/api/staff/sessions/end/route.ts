@@ -13,7 +13,8 @@ const endSessionSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffSession = await requireRole('STAFF', 'ADMIN', 'SUPER_ADMIN');
+    const staffName = `${staffSession.firstName} ${staffSession.lastName}`.trim();
     const body = await req.json();
     const { sessionId, stationId, bookingId, extraMinutes } = endSessionSchema.parse(body);
 
@@ -48,22 +49,53 @@ export async function POST(req: NextRequest) {
       }
 
       if (session) {
+        const overtimeMinutes = extraMinutes && extraMinutes > 0 ? extraMinutes : 0;
+        const hourlyRatePaise = session.station?.pricePerHourPaise || 15000;
+        const overtimePaise = overtimeMinutes > 0 ? Math.round(hourlyRatePaise * (overtimeMinutes / 60)) : 0;
+
         await prisma.$transaction(async (tx) => {
-          // End session
+          // End session & record overtime
           await tx.gamingSession.update({
             where: { id: session.id },
             data: {
               status: 'COMPLETED',
               endedAt: new Date(),
+              extensionMinutes: (session.extensionMinutes || 0) + overtimeMinutes,
+              extensionPaise: (session.extensionPaise || 0) + overtimePaise,
+              staffId: session.staffId || staffSession.userId,
             },
           });
 
-          // Mark booking completed
+          // Mark booking completed and increment total price if overtime applied
           if (session.bookingId) {
             await tx.booking.update({
               where: { id: session.bookingId },
-              data: { status: 'COMPLETED' },
+              data: {
+                status: 'COMPLETED',
+                ...(overtimePaise > 0 ? { totalPricePaise: { increment: overtimePaise } } : {}),
+              },
             });
+
+            // Create overtime desk payment record
+            if (overtimePaise > 0 && session.booking) {
+              await tx.payment.create({
+                data: {
+                  bookingId: session.bookingId,
+                  userId: session.booking.userId,
+                  amountPaise: overtimePaise,
+                  method: 'CASH',
+                  status: 'COMPLETED',
+                  paidAt: new Date(),
+                  recordedByStaffId: staffSession.userId,
+                  notes: `Overtime payment (+${overtimeMinutes} mins) collected on checkout by ${staffName}`,
+                },
+              });
+
+              await tx.customerProfile.updateMany({
+                where: { userId: session.booking.userId },
+                data: { totalSpent: { increment: overtimePaise } },
+              });
+            }
           }
 
           // Free up station
@@ -73,13 +105,30 @@ export async function POST(req: NextRequest) {
               data: { status: 'AVAILABLE' },
             });
           }
+
+          // Log staff activity
+          await tx.staffActivityLog.create({
+            data: {
+              userId: staffSession.userId,
+              action: 'END_SESSION',
+              entityType: 'session',
+              entityId: session.id,
+              details: {
+                stationName: session.station?.name,
+                overtimeMinutes,
+                overtimePaise,
+                staffName,
+              },
+            },
+          }).catch(() => {});
         });
 
         return apiSuccess({
-          message: extraMinutes && extraMinutes > 0
-            ? `Session on ${session.station?.name || 'station'} ended (${extraMinutes}m extra time recorded). Station is now Available.`
+          message: overtimeMinutes > 0
+            ? `Session on ${session.station?.name || 'station'} ended (+${overtimeMinutes}m extra time recorded: ₹${(overtimePaise / 100).toFixed(0)}). Station is now Available.`
             : `Session on ${session.station?.name || 'station'} ended successfully. Station is now Available.`,
-          extraMinutes: extraMinutes || 0,
+          extraMinutes: overtimeMinutes,
+          overtimePaise,
         });
       } else {
         // Fallback: If no GamingSession row was found, update Booking & GamingStation directly
