@@ -16,34 +16,30 @@ const createStationSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    try {
-      const stations = await prisma.gamingStation.findMany({
-        where: { status: { not: 'DEACTIVATED' } },
-        include: { facility: true },
-        orderBy: [{ facilityId: 'asc' }, { displayOrder: 'asc' }],
-      });
+    await requireRole('ADMIN', 'SUPER_ADMIN', 'STAFF');
+    const { searchParams } = new URL(req.url);
+    const includeDeactivated = searchParams.get('includeDeactivated') === 'true';
 
-      if (stations.length > 0) {
-        return apiSuccess(
-          stations.map((st) => ({
-            id: st.id,
-            name: st.name,
-            facilityId: st.facilityId,
-            facilityName: st.facility?.name || 'Main Facility',
-            stationType: st.stationType,
-            pricePerHourPaise: st.pricePerHourPaise,
-            specs: (st.metadata as any)?.specs || st.description || 'Pro Battle Station',
-            capacity: (st.metadata as any)?.capacity || (st.stationType === 'PS5' ? 2 : 4),
-            status: st.status,
-            displayOrder: st.displayOrder,
-          }))
-        );
-      }
-    } catch {
-      // Fallback
-    }
+    const stations = await prisma.gamingStation.findMany({
+      where: includeDeactivated ? {} : { status: { not: 'DEACTIVATED' } },
+      include: { facility: true },
+      orderBy: [{ facilityId: 'asc' }, { displayOrder: 'asc' }],
+    });
 
-    return apiSuccess(getDemoStations());
+    return apiSuccess(
+      stations.map((st) => ({
+        id: st.id,
+        name: st.name,
+        facilityId: st.facilityId,
+        facilityName: st.facility?.name || 'Main Facility',
+        stationType: st.stationType,
+        pricePerHourPaise: st.pricePerHourPaise,
+        specs: (st.metadata as any)?.specs || st.description || 'Pro Battle Station',
+        capacity: (st.metadata as any)?.capacity || (st.stationType === 'PS5' ? 2 : 4),
+        status: st.status,
+        displayOrder: st.displayOrder,
+      }))
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -51,151 +47,88 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('ADMIN', 'SUPER_ADMIN');
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = createStationSchema.parse(body);
 
-    try {
-      // Find facility
-      let facilityId = data.facilityId;
-      if (!facilityId) {
-        const fac = await prisma.gamingFacility.findFirst({
-          where: { isActive: true },
-        });
-        facilityId = fac?.id || 'default_fac';
-      }
-
-      const count = await prisma.gamingStation.count();
-
-      const station = await prisma.gamingStation.create({
-        data: {
-          name: data.name,
-          facilityId: facilityId as string,
-          stationType: data.stationType,
-          pricePerHourPaise: data.pricePerHourPaise,
-          status: data.status,
-          displayOrder: count + 1,
-          metadata: {
-            specs: data.specs,
-            capacity: data.capacity,
-          },
-        },
-        include: { facility: true },
+    // Resolve facility matching stationType if not explicitly provided
+    let facilityId = data.facilityId;
+    if (!facilityId) {
+      const facilities = await prisma.gamingFacility.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: 'asc' },
       });
 
-      return apiSuccess(
-        {
-          id: station.id,
+      const isPool = data.stationType === 'POOL_TABLE';
+      const matched = facilities.find((f) =>
+        isPool
+          ? /pool|billiard|snooker/i.test(`${f.name} ${f.slug}`)
+          : /ps5|playstation|console/i.test(`${f.name} ${f.slug}`)
+      );
+      facilityId = matched?.id || facilities[0]?.id;
+
+      if (!facilityId) {
+        const createdFac = await prisma.gamingFacility.create({
+          data: {
+            name: isPool ? 'Billiards & Pool Lounge' : 'PlayStation 5 Pro Arena',
+            slug: isPool ? 'pool-lounge' : 'ps5-pro-arena',
+            description: isPool ? 'Tournament Pool & Snooker Tables' : '4K 120Hz PS5 Pro Gaming Stations',
+            isActive: true,
+          },
+        });
+        facilityId = createdFac.id;
+      }
+    }
+
+    const count = await prisma.gamingStation.count();
+
+    const station = await prisma.gamingStation.create({
+      data: {
+        name: data.name,
+        facilityId: facilityId as string,
+        stationType: data.stationType,
+        pricePerHourPaise: data.pricePerHourPaise,
+        status: data.status,
+        displayOrder: count + 1,
+        metadata: {
+          specs: data.specs,
+          capacity: data.capacity,
+        },
+      },
+      include: { facility: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: 'CREATE',
+        entityType: 'GamingStation',
+        entityId: station.id,
+        newValue: {
           name: station.name,
-          facilityId: station.facilityId,
-          facilityName: station.facility?.name,
           stationType: station.stationType,
           pricePerHourPaise: station.pricePerHourPaise,
-          specs: data.specs,
-          capacity: data.capacity,
           status: station.status,
+          facilityName: station.facility?.name,
         },
-        201
-      );
-    } catch {
-      // Fallback for simulation
-      return apiSuccess(
-        {
-          id: `station-${Date.now()}`,
-          name: data.name,
-          stationType: data.stationType,
-          pricePerHourPaise: data.pricePerHourPaise,
-          specs: data.specs,
-          capacity: data.capacity,
-          status: data.status,
-          facilityName: data.stationType === 'PS5' ? 'PlayStation 5 Pro Arena' : 'Billiards & Pool Lounge',
-        },
-        201
-      );
-    }
+      },
+    }).catch(() => {});
+
+    return apiSuccess(
+      {
+        id: station.id,
+        name: station.name,
+        facilityId: station.facilityId,
+        facilityName: station.facility?.name,
+        stationType: station.stationType,
+        pricePerHourPaise: station.pricePerHourPaise,
+        specs: data.specs,
+        capacity: data.capacity,
+        status: station.status,
+      },
+      201
+    );
   } catch (error) {
     return handleApiError(error);
   }
-}
-
-function getDemoStations() {
-  return [
-    {
-      id: 'station-ps5-01',
-      name: 'PS5 Battle Station Alpha',
-      facilityName: 'PlayStation 5 Pro Arena',
-      stationType: 'PS5',
-      pricePerHourPaise: 20000,
-      specs: 'Sony Bravia XR 65" 4K 120Hz OLED, DualSense Edge Wireless',
-      capacity: 2,
-      status: 'AVAILABLE',
-      displayOrder: 1,
-    },
-    {
-      id: 'station-ps5-02',
-      name: 'PS5 Battle Station Beta',
-      facilityName: 'PlayStation 5 Pro Arena',
-      stationType: 'PS5',
-      pricePerHourPaise: 20000,
-      specs: 'Sony Bravia XR 65" 4K 120Hz OLED, Pulse 3D Wireless Headset',
-      capacity: 2,
-      status: 'AVAILABLE',
-      displayOrder: 2,
-    },
-    {
-      id: 'station-ps5-03',
-      name: 'PS5 Battle Station Gamma',
-      facilityName: 'PlayStation 5 Pro Arena',
-      stationType: 'PS5',
-      pricePerHourPaise: 20000,
-      specs: 'Sony Bravia XR 65" 4K 120Hz OLED, 2x DualSense Controllers',
-      capacity: 2,
-      status: 'AVAILABLE',
-      displayOrder: 3,
-    },
-    {
-      id: 'station-ps5-04',
-      name: 'PS5 Quad Lounge Titan',
-      facilityName: 'PlayStation 5 Pro Arena',
-      stationType: 'PS5',
-      pricePerHourPaise: 35000,
-      specs: '75" 4K 120Hz Mini-LED, 4x DualSense Wireless Controllers, Plush Couch',
-      capacity: 4,
-      status: 'MAINTENANCE',
-      displayOrder: 4,
-    },
-    {
-      id: 'station-pool-01',
-      name: 'Championship Pool Table 1',
-      facilityName: 'Billiards & Pool Lounge',
-      stationType: 'POOL_TABLE',
-      pricePerHourPaise: 25000,
-      specs: '9ft Tournament Slate Table, Simonis 860 Tournament Cloth, Aramith Pro Balls',
-      capacity: 4,
-      status: 'AVAILABLE',
-      displayOrder: 5,
-    },
-    {
-      id: 'station-pool-02',
-      name: 'Championship Pool Table 2',
-      facilityName: 'Billiards & Pool Lounge',
-      stationType: 'POOL_TABLE',
-      pricePerHourPaise: 25000,
-      specs: '9ft Tournament Slate Table, Predator Carbon Fiber Cues',
-      capacity: 4,
-      status: 'AVAILABLE',
-      displayOrder: 6,
-    },
-    {
-      id: 'station-pool-03',
-      name: 'English Snooker Table',
-      facilityName: 'Billiards & Pool Lounge',
-      stationType: 'POOL_TABLE',
-      pricePerHourPaise: 30000,
-      specs: '12ft Full Size Tournament Snooker Slate Table with Northern Rubber Cushions',
-      capacity: 4,
-      status: 'AVAILABLE',
-      displayOrder: 7,
-    },
-  ];
 }

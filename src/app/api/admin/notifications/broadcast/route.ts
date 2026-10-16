@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     const users = await prisma.user.findMany({
       where: {
         status: 'ACTIVE',
+        email: { not: 'guest@darksyndicate.in' },
         role: data.target === 'CUSTOMERS'
           ? 'CUSTOMER'
           : data.target === 'STAFF'

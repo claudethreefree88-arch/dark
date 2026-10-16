@@ -229,7 +229,23 @@ export default function AdminMembershipsPage() {
     }
   };
 
-  // Plan Edit Handlers
+  // Plan Create & Edit Handlers
+  const handleOpenCreatePlan = () => {
+    setEditingPlan(null);
+    setPlanForm({
+      name: '',
+      tier: 'SILVER',
+      priceRupees: 499,
+      discountPercent: 10,
+      durationDays: 30,
+      freeHours: 0,
+      description: '',
+      perksText: '10% OFF all gaming sessions\nPriority seat booking',
+      isActive: true,
+    });
+    setIsEditPlanOpen(true);
+  };
+
   const handleOpenEditPlan = (plan: MembershipPlan) => {
     setEditingPlan(plan);
     const perks = Array.isArray(plan.perks)
@@ -252,9 +268,26 @@ export default function AdminMembershipsPage() {
     setIsEditPlanOpen(true);
   };
 
+  const handleDeletePlan = async (plan: MembershipPlan) => {
+    if (!confirm(`Delete or deactivate membership plan "${plan.name}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/memberships/plans/${plan.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.data?.message || 'Membership plan removed');
+        loadData();
+      } else {
+        toast.error(json.error?.message || 'Failed to delete plan');
+      }
+    } catch {
+      toast.error('Network error deleting plan');
+    }
+  };
+
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlan) return;
 
     if (!planForm.name.trim() || planForm.name.trim().length < 2) {
       toast.error('Plan name must be at least 2 characters');
@@ -284,8 +317,13 @@ export default function AdminMembershipsPage() {
         .map((p) => p.trim())
         .filter(Boolean);
 
-      const res = await fetch(`/api/admin/memberships/plans/${editingPlan.id}`, {
-        method: 'PUT',
+      const url = editingPlan
+        ? `/api/admin/memberships/plans/${editingPlan.id}`
+        : '/api/admin/memberships/plans';
+      const method = editingPlan ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: planForm.name.trim(),
@@ -302,15 +340,15 @@ export default function AdminMembershipsPage() {
 
       const json = await res.json();
       if (json.success) {
-        toast.success(json.data.message || 'Plan updated successfully!');
+        toast.success(json.data.message || (editingPlan ? 'Plan updated!' : 'New plan created!'));
         setIsEditPlanOpen(false);
         setEditingPlan(null);
         loadData();
       } else {
-        toast.error(json.error?.message || 'Failed to update plan');
+        toast.error(json.error?.message || 'Failed to save plan');
       }
     } catch {
-      toast.error('Network error while updating plan');
+      toast.error('Network error while saving plan');
     } finally {
       setSavingPlan(false);
     }
@@ -438,6 +476,10 @@ export default function AdminMembershipsPage() {
             <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </Button>
+          <Button variant="outline" size="sm" onClick={handleOpenCreatePlan}>
+            <PlusCircle className="w-4 h-4 mr-1.5 text-ds-accent" />
+            <span>New Plan</span>
+          </Button>
           <Button variant="accent" size="sm" onClick={() => setIsGrantOpen(true)}>
             <PlusCircle className="w-4 h-4 mr-1.5" />
             <span>Issue Syndicate Pass</span>
@@ -551,6 +593,14 @@ export default function AdminMembershipsPage() {
                         aria-label={`Edit ${p.name}`}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlan(p)}
+                        className="p-1 rounded text-ds-text-dim hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title={`Delete ${p.name}`}
+                        aria-label={`Delete ${p.name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -790,14 +840,14 @@ export default function AdminMembershipsPage() {
         )}
       </Card>
 
-      {/* Edit Membership Plan Modal */}
+      {/* Create / Edit Membership Plan Modal */}
       <Modal
         isOpen={isEditPlanOpen}
         onClose={() => {
           setIsEditPlanOpen(false);
           setEditingPlan(null);
         }}
-        title={`Edit Plan: ${editingPlan?.name || 'Membership Plan'}`}
+        title={editingPlan ? `Edit Plan: ${editingPlan.name}` : 'Create New Membership Plan'}
         size="lg"
       >
         <form onSubmit={handleSavePlan} className="space-y-4">

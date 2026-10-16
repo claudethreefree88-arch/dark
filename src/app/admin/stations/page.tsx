@@ -51,10 +51,12 @@ export default function AdminStationsPage() {
   const loadStations = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/stations');
+      const res = await fetch('/api/admin/stations?includeDeactivated=true');
       const json = await res.json();
       if (json.success && json.data) {
         setStations(json.data || []);
+      } else {
+        toast.error(json.error?.message || 'Failed to load stations');
       }
     } catch {
       toast.error('Failed to load stations');
@@ -119,7 +121,8 @@ export default function AdminStationsPage() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: formName,
+            name: formName.trim(),
+            stationType: formType,
             pricePerHourPaise: pricePaise,
             specs: formSpecs,
             capacity: capacityNum,
@@ -131,13 +134,15 @@ export default function AdminStationsPage() {
           toast.success('Station updated successfully!');
           loadStations();
           setModalOpen(false);
+        } else {
+          toast.error(json.error?.message || 'Failed to update station');
         }
       } else {
         const res = await fetch('/api/admin/stations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: formName,
+            name: formName.trim(),
             stationType: formType,
             pricePerHourPaise: pricePaise,
             specs: formSpecs,
@@ -150,6 +155,8 @@ export default function AdminStationsPage() {
           toast.success('New station added to arena catalog!');
           loadStations();
           setModalOpen(false);
+        } else {
+          toast.error(json.error?.message || 'Failed to create station');
         }
       }
     } catch {
@@ -160,7 +167,7 @@ export default function AdminStationsPage() {
   };
 
   const handleDeactivate = async (station: Station) => {
-    if (!confirm(`Are you sure you want to deactivate ${station.name}? It will be removed from customer view.`)) {
+    if (!confirm(`Are you sure you want to deactivate ${station.name}? It will be hidden from customer booking.`)) {
       return;
     }
 
@@ -172,9 +179,30 @@ export default function AdminStationsPage() {
       if (json.success) {
         toast.info(`${station.name} deactivated.`);
         loadStations();
+      } else {
+        toast.error(json.error?.message || 'Failed to deactivate station');
       }
     } catch {
       toast.error('Failed to deactivate station');
+    }
+  };
+
+  const handleReactivate = async (station: Station) => {
+    try {
+      const res = await fetch(`/api/admin/stations/${station.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'AVAILABLE' }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`${station.name} reactivated and set to AVAILABLE!`);
+        loadStations();
+      } else {
+        toast.error(json.error?.message || 'Failed to reactivate station');
+      }
+    } catch {
+      toast.error('Failed to reactivate station');
     }
   };
 
@@ -231,7 +259,12 @@ export default function AdminStationsPage() {
               </thead>
               <tbody className="divide-y divide-ds-border/40">
                 {stations.map((st) => (
-                  <tr key={st.id} className="hover:bg-ds-surface/40 transition-colors">
+                  <tr
+                    key={st.id}
+                    className={`hover:bg-ds-surface/40 transition-colors ${
+                      st.status === 'DEACTIVATED' ? 'opacity-60' : ''
+                    }`}
+                  >
                     <td className="py-3.5 px-4 font-heading font-bold text-ds-text">{st.name}</td>
                     <td className="py-3.5 px-4 text-ds-accent">{st.facilityName}</td>
                     <td className="py-3.5 px-4 font-heading font-extrabold text-ds-ice">
@@ -242,7 +275,13 @@ export default function AdminStationsPage() {
                     <td className="py-3.5 px-4">
                       <Badge
                         variant={
-                          st.status === 'AVAILABLE' ? 'success' : st.status === 'OCCUPIED' ? 'accent' : 'warning'
+                          st.status === 'AVAILABLE'
+                            ? 'success'
+                            : st.status === 'OCCUPIED'
+                            ? 'accent'
+                            : st.status === 'DEACTIVATED'
+                            ? 'danger'
+                            : 'warning'
                         }
                         size="sm"
                       >
@@ -260,15 +299,28 @@ export default function AdminStationsPage() {
                           <Edit2 className="w-3.5 h-3.5 mr-1" />
                           <span>Edit</span>
                         </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDeactivate(st)}
-                          className="text-[11px] py-1 px-2"
-                          title="Deactivate Station"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {st.status === 'DEACTIVATED' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReactivate(st)}
+                            className="text-[11px] py-1 px-2.5 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
+                            title="Reactivate Station"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            <span>Activate</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDeactivate(st)}
+                            className="text-[11px] py-1 px-2"
+                            title="Deactivate Station"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -341,6 +393,7 @@ export default function AdminStationsPage() {
                 <option value="AVAILABLE">AVAILABLE</option>
                 <option value="MAINTENANCE">MAINTENANCE</option>
                 <option value="OCCUPIED">OCCUPIED</option>
+                <option value="DEACTIVATED">DEACTIVATED</option>
               </select>
             </div>
           </div>

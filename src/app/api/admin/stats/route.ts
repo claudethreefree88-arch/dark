@@ -60,10 +60,13 @@ export async function GET(_req: NextRequest) {
 
     const [
       todayPayments,
+      todayMemberships,
       todayRefunds,
       monthPayments,
+      monthMemberships,
       monthRefunds,
       weekPayments,
+      weekMemberships,
       weekRefunds,
       todayBookingsCount,
       totalBookingsCount,
@@ -77,6 +80,10 @@ export async function GET(_req: NextRequest) {
         where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: todayStart, lt: tomorrowStart } },
         select: { amountPaise: true },
       }),
+      prisma.membership.findMany({
+        where: { status: { not: 'CANCELLED' }, pricePaidPaise: { gt: 0 }, createdAt: { gte: todayStart, lt: tomorrowStart } },
+        select: { pricePaidPaise: true },
+      }),
       prisma.refund.aggregate({
         where: { status: 'COMPLETED', processedAt: { gte: todayStart, lt: tomorrowStart } },
         _sum: { amountPaise: true },
@@ -85,6 +92,10 @@ export async function GET(_req: NextRequest) {
         where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: monthStart, lte: now } },
         select: { amountPaise: true },
       }),
+      prisma.membership.findMany({
+        where: { status: { not: 'CANCELLED' }, pricePaidPaise: { gt: 0 }, createdAt: { gte: monthStart, lte: now } },
+        select: { pricePaidPaise: true },
+      }),
       prisma.refund.aggregate({
         where: { status: 'COMPLETED', processedAt: { gte: monthStart, lte: now } },
         _sum: { amountPaise: true },
@@ -92,6 +103,10 @@ export async function GET(_req: NextRequest) {
       prisma.payment.findMany({
         where: { status: { in: ['COMPLETED', 'REFUNDED', 'PARTIALLY_REFUNDED'] }, paidAt: { gte: weekStart, lt: tomorrowStart } },
         select: { amountPaise: true, paidAt: true },
+      }),
+      prisma.membership.findMany({
+        where: { status: { not: 'CANCELLED' }, pricePaidPaise: { gt: 0 }, createdAt: { gte: weekStart, lt: tomorrowStart } },
+        select: { pricePaidPaise: true, createdAt: true },
       }),
       prisma.refund.findMany({
         where: { status: 'COMPLETED', processedAt: { gte: weekStart, lt: tomorrowStart } },
@@ -104,7 +119,13 @@ export async function GET(_req: NextRequest) {
         },
       }),
       prisma.booking.count({ where: { status: { notIn: ['CANCELLED', 'PAYMENT_FAILED', 'NO_SHOW'] } } }),
-      prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
+      prisma.user.count({
+        where: {
+          role: 'CUSTOMER',
+          status: 'ACTIVE',
+          email: { not: 'guest@darksyndicate.in' },
+        },
+      }),
       prisma.gamingStation.count({ where: { status: { in: ['AVAILABLE', 'OCCUPIED'] } } }),
       prisma.gamingSession.count({ where: { status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] } } }),
       prisma.booking.findMany({
@@ -132,14 +153,21 @@ export async function GET(_req: NextRequest) {
       const end = businessDateStart(now, 5 - index);
       const calendarDate = businessCalendarDateStart(now, 6 - index);
       const key = calendarDate.toISOString().slice(0, 10);
-      const revenuePaise = weekPayments
+      const bookingRevenuePaise = weekPayments
         .filter((payment) => payment.paidAt && payment.paidAt >= start && payment.paidAt < end)
         .reduce((total, payment) => total + payment.amountPaise, 0);
+      const membershipRevenuePaise = weekMemberships
+        .filter((m) => m.createdAt >= start && m.createdAt < end)
+        .reduce((total, m) => total + m.pricePaidPaise, 0);
       const refundsPaise = weekRefunds
         .filter((refund) => refund.processedAt && refund.processedAt >= start && refund.processedAt < end)
         .reduce((total, refund) => total + refund.amountPaise, 0);
       const bookings = weekBookings.filter((booking) => booking.date.toISOString().slice(0, 10) === key).length;
-      return { day: formatBusinessDate(start), revenue: Math.round((revenuePaise - refundsPaise) / 100), bookings };
+      return {
+        day: formatBusinessDate(start),
+        revenue: Math.round((bookingRevenuePaise + membershipRevenuePaise - refundsPaise) / 100),
+        bookings,
+      };
     });
 
     const facilityCounts = new Map<string, { name: string; count: number }>();
@@ -168,13 +196,19 @@ export async function GET(_req: NextRequest) {
     }));
 
     const activeSessions = activeSessionsCount;
-    const netCollectedPaise = (payments: typeof todayPayments, refundsPaise: number) =>
-      payments.reduce((total, payment) => total + payment.amountPaise, 0) - refundsPaise;
+    const netCollectedPaise = (
+      payments: typeof todayPayments,
+      memberships: typeof todayMemberships,
+      refundsPaise: number
+    ) =>
+      payments.reduce((total, payment) => total + payment.amountPaise, 0) +
+      memberships.reduce((total, m) => total + m.pricePaidPaise, 0) -
+      refundsPaise;
 
     return apiSuccess({
       kpis: {
-        todayRevenuePaise: netCollectedPaise(todayPayments, todayRefunds._sum.amountPaise ?? 0),
-        monthRevenuePaise: netCollectedPaise(monthPayments, monthRefunds._sum.amountPaise ?? 0),
+        todayRevenuePaise: netCollectedPaise(todayPayments, todayMemberships, todayRefunds._sum.amountPaise ?? 0),
+        monthRevenuePaise: netCollectedPaise(monthPayments, monthMemberships, monthRefunds._sum.amountPaise ?? 0),
         todayBookingsCount,
         totalBookingsCount,
         totalCustomersCount,

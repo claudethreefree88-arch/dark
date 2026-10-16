@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       calendarStartDate.setUTCMonth(0, 1);
     }
 
-    const [bookings, payments, refunds, facilities, stations, staffUsers] = await Promise.all([
+    const [bookings, payments, paidMemberships, refunds, facilities, stations, staffUsers] = await Promise.all([
       prisma.booking.findMany({
         where: {
           date: { gte: calendarStartDate, lt: calendarEndDate },
@@ -92,6 +92,14 @@ export async function GET(req: NextRequest) {
           bookingId: true,
           recordedByStaffId: true,
           booking: { select: { station: { select: { id: true, facility: { select: { id: true, name: true } } } } } },
+        },
+      }),
+      prisma.membership.findMany({
+        where: { status: { not: 'CANCELLED' }, pricePaidPaise: { gt: 0 }, createdAt: { gte: startDate, lt: endDate } },
+        select: {
+          pricePaidPaise: true,
+          paymentMethod: true,
+          createdAt: true,
         },
       }),
       prisma.refund.findMany({
@@ -130,7 +138,9 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    const totalCollectedPaise = payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
+    const bookingPaymentsPaise = payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
+    const membershipPaymentsPaise = paidMemberships.reduce((sum, m) => sum + m.pricePaidPaise, 0);
+    const totalCollectedPaise = bookingPaymentsPaise + membershipPaymentsPaise;
     const refundsPaise = refunds.reduce((sum, refund) => sum + refund.amountPaise, 0);
     const revenueByBooking = new Map<string, number>();
     const methodTotals = new Map<string, { amountPaise: number; count: number }>();
@@ -150,6 +160,15 @@ export async function GET(req: NextRequest) {
         const key = dateKey(payment.paidAt);
         dailyRevenue.set(key, (dailyRevenue.get(key) || 0) + payment.amountPaise);
       }
+    }
+    for (const membership of paidMemberships) {
+      const methodKey = membership.paymentMethod || 'UPI';
+      const method = methodTotals.get(methodKey) || { amountPaise: 0, count: 0 };
+      method.amountPaise += membership.pricePaidPaise;
+      method.count += 1;
+      methodTotals.set(methodKey, method);
+      const key = dateKey(membership.createdAt);
+      dailyRevenue.set(key, (dailyRevenue.get(key) || 0) + membership.pricePaidPaise);
     }
     for (const refund of refunds) {
       const stationId = refund.payment.booking.station.id;

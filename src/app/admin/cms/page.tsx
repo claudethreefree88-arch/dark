@@ -24,6 +24,7 @@ import {
   MapPin,
   Phone,
   QrCode,
+  Edit2,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -35,6 +36,7 @@ export default function AdminCmsPage() {
   // Testimonials State
   const [testimonials, setTestimonials] = useState<any[]>([]);
   const [testiModalOpen, setTestiModalOpen] = useState(false);
+  const [editingTesti, setEditingTesti] = useState<any | null>(null);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newRating, setNewRating] = useState('5');
@@ -42,6 +44,7 @@ export default function AdminCmsPage() {
   // Gallery State
   const [gallery, setGallery] = useState<any[]>([]);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [editingGallery, setEditingGallery] = useState<any | null>(null);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageAlt, setNewImageAlt] = useState('');
   const [newImageCategory, setNewImageCategory] = useState('gaming');
@@ -119,6 +122,22 @@ export default function AdminCmsPage() {
     }
   };
 
+  const openCreateTestimonial = () => {
+    setEditingTesti(null);
+    setNewCustomerName('');
+    setNewContent('');
+    setNewRating('5');
+    setTestiModalOpen(true);
+  };
+
+  const openEditTestimonial = (t: any) => {
+    setEditingTesti(t);
+    setNewCustomerName(t.customerName || '');
+    setNewContent(t.content || '');
+    setNewRating(String(t.rating || 5));
+    setTestiModalOpen(true);
+  };
+
   const handleCreateTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -133,30 +152,72 @@ export default function AdminCmsPage() {
     }
 
     try {
-      const res = await fetch('/api/admin/cms/testimonials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: newCustomerName.trim(),
-          content: newContent.trim(),
-          rating: parseInt(newRating, 10),
-          isApproved: true,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setTestimonials((prev) => [json.data, ...prev]);
-        setTestiModalOpen(false);
-        setNewCustomerName('');
-        setNewContent('');
-        toast.success('Testimonial published successfully');
+      if (editingTesti) {
+        const res = await fetch('/api/admin/cms/testimonials', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingTesti.id,
+            customerName: newCustomerName.trim(),
+            content: newContent.trim(),
+            rating: parseInt(newRating, 10),
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setTestimonials((prev) =>
+            prev.map((t) => (t.id === editingTesti.id ? json.data : t))
+          );
+          setTestiModalOpen(false);
+          setEditingTesti(null);
+          toast.success('Testimonial updated successfully');
+        } else {
+          toast.error(json.error?.message || 'Failed to update testimonial');
+        }
+      } else {
+        const res = await fetch('/api/admin/cms/testimonials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: newCustomerName.trim(),
+            content: newContent.trim(),
+            rating: parseInt(newRating, 10),
+            isApproved: true,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setTestimonials((prev) => [json.data, ...prev]);
+          setTestiModalOpen(false);
+          setNewCustomerName('');
+          setNewContent('');
+          toast.success('Testimonial published successfully');
+        } else {
+          toast.error(json.error?.message || 'Failed to create testimonial');
+        }
       }
     } catch {
-      toast.error('Failed to create testimonial');
+      toast.error('Failed to save testimonial');
     }
   };
 
   // Gallery Handlers
+  const openCreateGallery = () => {
+    setEditingGallery(null);
+    setNewImageUrl('');
+    setNewImageAlt('');
+    setNewImageCategory('gaming');
+    setGalleryModalOpen(true);
+  };
+
+  const openEditGallery = (g: any) => {
+    setEditingGallery(g);
+    setNewImageUrl(g.url || '');
+    setNewImageAlt(g.altText || '');
+    setNewImageCategory(g.category || 'gaming');
+    setGalleryModalOpen(true);
+  };
+
   const handleCreateGallery = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -166,26 +227,50 @@ export default function AdminCmsPage() {
     }
 
     try {
-      const res = await fetch('/api/admin/cms/gallery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: newImageUrl,
-          altText: newImageAlt,
-          category: newImageCategory,
-          isActive: true,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setGallery((prev) => [json.data, ...prev]);
-        setGalleryModalOpen(false);
-        setNewImageUrl('');
-        setNewImageAlt('');
-        toast.success('Photo added to gallery');
+      if (editingGallery) {
+        const res = await fetch('/api/admin/cms/gallery', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingGallery.id,
+            url: newImageUrl.trim(),
+            altText: newImageAlt.trim(),
+            category: newImageCategory,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setGallery((prev) => prev.map((g) => (g.id === editingGallery.id ? json.data : g)));
+          setGalleryModalOpen(false);
+          setEditingGallery(null);
+          toast.success('Gallery photo updated');
+        } else {
+          toast.error(json.error?.message || 'Failed to update photo');
+        }
+      } else {
+        const res = await fetch('/api/admin/cms/gallery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: newImageUrl.trim(),
+            altText: newImageAlt.trim(),
+            category: newImageCategory,
+            isActive: true,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setGallery((prev) => [json.data, ...prev]);
+          setGalleryModalOpen(false);
+          setNewImageUrl('');
+          setNewImageAlt('');
+          toast.success('Photo added to gallery');
+        } else {
+          toast.error(json.error?.message || 'Failed to add photo');
+        }
       }
     } catch {
-      toast.error('Failed to add image');
+      toast.error('Failed to save image');
     }
   };
 
@@ -316,7 +401,7 @@ export default function AdminCmsPage() {
               </p>
             </div>
 
-            <Button variant="accent" size="sm" onClick={() => setTestiModalOpen(true)}>
+            <Button variant="accent" size="sm" onClick={openCreateTestimonial}>
               <Plus className="w-4 h-4 mr-1.5" />
               <span>Add Testimonial</span>
             </Button>
@@ -343,10 +428,20 @@ export default function AdminCmsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Badge variant={t.isApproved ? 'success' : 'warning'} size="sm">
                       {t.isApproved ? 'PUBLISHED' : 'PENDING'}
                     </Badge>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditTestimonial(t)}
+                      className="text-xs p-1"
+                      title="Edit Review"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-ds-ice" />
+                    </Button>
 
                     <Button
                       variant="ghost"
@@ -395,7 +490,7 @@ export default function AdminCmsPage() {
               </p>
             </div>
 
-            <Button variant="accent" size="sm" onClick={() => setGalleryModalOpen(true)}>
+            <Button variant="accent" size="sm" onClick={openCreateGallery}>
               <Plus className="w-4 h-4 mr-1.5" />
               <span>Add Arena Photo</span>
             </Button>
@@ -415,13 +510,24 @@ export default function AdminCmsPage() {
                       {g.category}
                     </Badge>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteGallery(g.id)}
-                    className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-black/60 text-rose-400 hover:text-rose-300 backdrop-blur-md transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openEditGallery(g)}
+                      className="p-1.5 rounded-lg bg-black/60 text-ds-ice hover:text-white backdrop-blur-md transition-colors"
+                      title="Edit Photo"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGallery(g.id)}
+                      className="p-1.5 rounded-lg bg-black/60 text-rose-400 hover:text-rose-300 backdrop-blur-md transition-colors"
+                      title="Delete Photo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="p-3 text-xs text-ds-text-dim">
                   <p className="font-heading font-semibold text-ds-text truncate">
@@ -699,6 +805,10 @@ export default function AdminCmsPage() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error('QR image file must be under 5MB');
+                                return;
+                              }
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 const result = event.target?.result as string;
@@ -718,11 +828,14 @@ export default function AdminCmsPage() {
         </div>
       )}
 
-      {/* Modal: Add Testimonial */}
+      {/* Modal: Add / Edit Testimonial */}
       <Modal
         isOpen={testiModalOpen}
-        onClose={() => setTestiModalOpen(false)}
-        title="Add Customer Review"
+        onClose={() => {
+          setTestiModalOpen(false);
+          setEditingTesti(null);
+        }}
+        title={editingTesti ? 'Edit Customer Review' : 'Add Customer Review'}
       >
         <form onSubmit={handleCreateTestimonial} className="space-y-4 text-xs">
           <div>
@@ -761,21 +874,32 @@ export default function AdminCmsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setTestiModalOpen(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setTestiModalOpen(false);
+                setEditingTesti(null);
+              }}
+            >
               Cancel
             </Button>
             <Button variant="accent" size="sm" type="submit">
-              Publish Review
+              {editingTesti ? 'Save Changes' : 'Publish Review'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal: Add Gallery Photo */}
+      {/* Modal: Add / Edit Gallery Photo */}
       <Modal
         isOpen={galleryModalOpen}
-        onClose={() => setGalleryModalOpen(false)}
-        title="Add Photo to Venue Gallery"
+        onClose={() => {
+          setGalleryModalOpen(false);
+          setEditingGallery(null);
+        }}
+        title={editingGallery ? 'Edit Venue Gallery Photo' : 'Add Photo to Venue Gallery'}
       >
         <form onSubmit={handleCreateGallery} className="space-y-4 text-xs">
           <div>
@@ -812,11 +936,19 @@ export default function AdminCmsPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setGalleryModalOpen(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setGalleryModalOpen(false);
+                setEditingGallery(null);
+              }}
+            >
               Cancel
             </Button>
             <Button variant="accent" size="sm" type="submit">
-              Save Photo
+              {editingGallery ? 'Save Changes' : 'Save Photo'}
             </Button>
           </div>
         </form>

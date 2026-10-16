@@ -176,7 +176,7 @@ export default function AdminReportsPage() {
             {reportCurrency(summary.grossRevenuePaise)}
           </p>
           <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
-            Before refunds
+            Discounts: {reportCurrency(summary.discountPaise)}
           </span>
         </Card>
 
@@ -442,6 +442,59 @@ export default function AdminReportsPage() {
           </table>
         </div>
       </Card>
+
+      {/* Staff Desk Collections Breakdown */}
+      {(reportData?.staffCollections || []).length > 0 && (
+        <Card variant="glass" className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-bold text-sm uppercase tracking-wider text-ds-text">
+                Desk Staff Collections Audit
+              </h2>
+              <p className="text-xs text-ds-text-dim mt-0.5">
+                Cash and UPI payments recorded at the front desk by each staff operator.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-ds-border text-ds-text-dim font-mono uppercase text-[10px]">
+                  <th className="py-3 px-3">Staff Operator</th>
+                  <th className="py-3 px-3">Role</th>
+                  <th className="py-3 px-3">Transactions</th>
+                  <th className="py-3 px-3">Cash Collected</th>
+                  <th className="py-3 px-3">UPI Collected</th>
+                  <th className="py-3 px-3 text-right">Total Collected</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ds-border/40 font-mono">
+                {(reportData?.staffCollections || []).map((staff: any) => (
+                  <tr key={staff.id} className="hover:bg-ds-surface/40 transition-colors">
+                    <td className="py-3 px-3 font-heading font-bold text-ds-text">{staff.name}</td>
+                    <td className="py-3 px-3">
+                      <Badge variant="default" size="sm">
+                        {staff.role}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-3 text-ds-ice">{staff.count}</td>
+                    <td className="py-3 px-3 text-emerald-400">
+                      ₹{(staff.cashPaise / 100).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-3 text-sky-400">
+                      ₹{(staff.upiPaise / 100).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-3 text-right font-bold text-ds-text">
+                      ₹{(staff.totalPaise / 100).toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

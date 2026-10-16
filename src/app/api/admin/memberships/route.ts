@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiSuccess, AuthError, ForbiddenError, handleApiError, NotFoundError } from '@/lib/errors';
 import { requireRole } from '@/lib/session';
-import { grantUserMembership } from '@/lib/memberships';
+import { grantUserMembership, syncExpiredMemberships } from '@/lib/memberships';
 import { z } from 'zod';
 
 const adminGrantSchema = z.object({
@@ -19,6 +19,7 @@ async function requireAdmin() {
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin();
+    await syncExpiredMemberships();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || '';
     const userId = searchParams.get('userId') || '';

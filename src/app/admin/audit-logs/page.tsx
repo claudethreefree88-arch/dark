@@ -40,6 +40,8 @@ export default function AdminAuditLogsPage() {
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('ALL');
   const [entityFilter, setEntityFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 30, total: 0, totalPages: 1 });
 
   // Modal inspection state
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
@@ -47,18 +49,23 @@ export default function AdminAuditLogsPage() {
 
   const toast = useToast();
 
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = async (targetPage = page) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append('page', String(targetPage));
+      params.append('limit', '30');
       if (actionFilter !== 'ALL') params.append('action', actionFilter);
       if (entityFilter !== 'ALL') params.append('entityType', entityFilter);
-      if (search) params.append('search', search);
+      if (search.trim()) params.append('search', search.trim());
 
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       const json = await res.json();
       if (json.success && json.data) {
         setLogs(json.data.logs || []);
+        if (json.data.pagination) {
+          setPagination(json.data.pagination);
+        }
       }
     } catch {
       toast.error('Failed to load audit logs');
@@ -68,7 +75,8 @@ export default function AdminAuditLogsPage() {
   };
 
   useEffect(() => {
-    loadAuditLogs();
+    setPage(1);
+    loadAuditLogs(1);
   }, [actionFilter, entityFilter]);
 
   const handleExportCSV = () => {
@@ -101,6 +109,7 @@ export default function AdminAuditLogsPage() {
       case 'UPDATE':
         return 'info';
       case 'DELETE':
+      case 'REFUND':
         return 'danger';
       case 'STATUS_CHANGE':
         return 'warning';
@@ -139,7 +148,7 @@ export default function AdminAuditLogsPage() {
             <span>Export CSV</span>
           </Button>
 
-          <Button variant="outline" size="sm" onClick={loadAuditLogs}>
+          <Button variant="outline" size="sm" onClick={() => loadAuditLogs(page)}>
             <RotateCw className="w-3.5 h-3.5 mr-1.5" />
             <span>Refresh</span>
           </Button>
@@ -153,6 +162,12 @@ export default function AdminAuditLogsPage() {
             placeholder="Search by operator, email, or entity ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setPage(1);
+                loadAuditLogs(1);
+              }
+            }}
             className="text-xs py-1.5 pl-8"
           />
           <Search className="w-3.5 h-3.5 text-ds-text-dim absolute left-2.5 top-2.5" />
@@ -171,6 +186,7 @@ export default function AdminAuditLogsPage() {
             <option value="DELETE">DELETE</option>
             <option value="STATUS_CHANGE">STATUS_CHANGE</option>
             <option value="PAYMENT">PAYMENT</option>
+            <option value="REFUND">REFUND</option>
             <option value="LOGIN">LOGIN</option>
             <option value="LOGOUT">LOGOUT</option>
           </select>
@@ -184,13 +200,28 @@ export default function AdminAuditLogsPage() {
             <option value="ALL">All Entity Types</option>
             <option value="GamingStation">GamingStation</option>
             <option value="Booking">Booking</option>
+            <option value="Payment">Payment</option>
+            <option value="Membership">Membership</option>
+            <option value="MembershipPlan">MembershipPlan</option>
+            <option value="Game">Game</option>
             <option value="Coupon">Coupon</option>
             <option value="User">User</option>
             <option value="GamingSession">GamingSession</option>
             <option value="WebsiteSettings">WebsiteSettings</option>
+            <option value="Testimonial">Testimonial</option>
+            <option value="GalleryImage">GalleryImage</option>
+            <option value="BroadcastNotification">BroadcastNotification</option>
           </select>
 
-          <Button variant="ghost" size="sm" onClick={loadAuditLogs} className="text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPage(1);
+              loadAuditLogs(1);
+            }}
+            className="text-xs"
+          >
             Apply
           </Button>
         </div>
@@ -207,92 +238,129 @@ export default function AdminAuditLogsPage() {
             No audit log entries matching criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-ds-border bg-ds-surface/60 text-ds-text-dim font-mono uppercase text-[10px]">
-                  <th className="py-3 px-4">Timestamp (IST)</th>
-                  <th className="py-3 px-4">Operator</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Entity Type</th>
-                  <th className="py-3 px-4">Entity ID</th>
-                  <th className="py-3 px-4">IP Address</th>
-                  <th className="py-3 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ds-border/40 font-mono">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-ds-surface/40 transition-colors">
-                    <td className="py-3.5 px-4 text-ds-text-dim">
-                      {new Date(log.createdAt).toLocaleString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-heading font-bold text-ds-text">{log.operator}</div>
-                      <div className="text-[10px] text-ds-text-dim font-normal flex items-center gap-1.5">
-                        <span className="text-ds-ice">{log.role}</span> • {log.operatorEmail}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        {log.action === 'LOGOUT' ? (
-                          <>
-                            <Badge
-                              variant={log.newValue?.reason === 'SYSTEM_INACTIVE' ? 'warning' : 'default'}
-                              size="sm"
-                            >
-                              {log.newValue?.reason === 'SYSTEM_INACTIVE'
-                                ? 'LOGOUT (SYSTEM_TIMEOUT)'
-                                : 'LOGOUT (MANUAL)'}
-                            </Badge>
-                            {log.newValue?.description && (
-                              <span
-                                className={`text-[9px] font-mono leading-tight ${
-                                  log.newValue?.reason === 'SYSTEM_INACTIVE'
-                                    ? 'text-amber-400 font-semibold'
-                                    : 'text-ds-text-dim'
-                                }`}
-                              >
-                                {log.newValue.description}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <Badge variant={getActionBadgeVariant(log.action)} size="sm">
-                            {log.action}
-                          </Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-ds-ice font-semibold">{log.entityType}</td>
-                    <td className="py-3.5 px-4 text-ds-text truncate max-w-[120px]">
-                      {log.entityId}
-                    </td>
-                    <td className="py-3.5 px-4 text-ds-text-dim">{log.ipAddress}</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedLog(log);
-                          setInspectModalOpen(true);
-                        }}
-                        className="text-[11px] py-1 px-2.5"
-                      >
-                        <Eye className="w-3.5 h-3.5 mr-1 text-ds-accent" />
-                        <span>Inspect</span>
-                      </Button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-ds-border bg-ds-surface/60 text-ds-text-dim font-mono uppercase text-[10px]">
+                    <th className="py-3 px-4">Timestamp (IST)</th>
+                    <th className="py-3 px-4">Operator</th>
+                    <th className="py-3 px-4">Action</th>
+                    <th className="py-3 px-4">Entity Type</th>
+                    <th className="py-3 px-4">Entity ID</th>
+                    <th className="py-3 px-4">IP Address</th>
+                    <th className="py-3 px-4 text-right">Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-ds-border/40 font-mono">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-ds-surface/40 transition-colors">
+                      <td className="py-3.5 px-4 text-ds-text-dim">
+                        {new Date(log.createdAt).toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-heading font-bold text-ds-text">{log.operator}</div>
+                        <div className="text-[10px] text-ds-text-dim font-normal flex items-center gap-1.5">
+                          <span className="text-ds-ice">{log.role}</span> • {log.operatorEmail}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          {log.action === 'LOGOUT' ? (
+                            <>
+                              <Badge
+                                variant={log.newValue?.reason === 'SYSTEM_INACTIVE' ? 'warning' : 'default'}
+                                size="sm"
+                              >
+                                {log.newValue?.reason === 'SYSTEM_INACTIVE'
+                                  ? 'LOGOUT (SYSTEM_TIMEOUT)'
+                                  : 'LOGOUT (MANUAL)'}
+                              </Badge>
+                              {log.newValue?.description && (
+                                <span
+                                  className={`text-[9px] font-mono leading-tight ${
+                                    log.newValue?.reason === 'SYSTEM_INACTIVE'
+                                      ? 'text-amber-400 font-semibold'
+                                      : 'text-ds-text-dim'
+                                  }`}
+                                >
+                                  {log.newValue.description}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <Badge variant={getActionBadgeVariant(log.action)} size="sm">
+                              {log.action}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-ds-ice font-semibold">{log.entityType}</td>
+                      <td className="py-3.5 px-4 text-ds-text truncate max-w-[120px]">
+                        {log.entityId}
+                      </td>
+                      <td className="py-3.5 px-4 text-ds-text-dim">{log.ipAddress}</td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedLog(log);
+                            setInspectModalOpen(true);
+                          }}
+                          className="text-[11px] py-1 px-2.5"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1 text-ds-accent" />
+                          <span>Inspect</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Footer */}
+            {pagination.totalPages > 1 && (
+              <div className="p-3 bg-ds-surface/50 border-t border-ds-border flex items-center justify-between text-xs font-mono">
+                <span className="text-ds-text-dim">
+                  Page {pagination.page} of {pagination.totalPages} ({pagination.total} total records)
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => {
+                      const prev = Math.max(1, page - 1);
+                      setPage(prev);
+                      loadAuditLogs(prev);
+                    }}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= pagination.totalPages || loading}
+                    onClick={() => {
+                      const next = Math.min(pagination.totalPages, page + 1);
+                      setPage(next);
+                      loadAuditLogs(next);
+                    }}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 

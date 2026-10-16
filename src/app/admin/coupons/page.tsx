@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Tag, Plus, RotateCw, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { Tag, Plus, RotateCw, CheckCircle2, XCircle, Sparkles, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 interface Coupon {
@@ -28,6 +28,7 @@ export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
 
   // Form State
   const [formCode, setFormCode] = useState('');
@@ -37,6 +38,7 @@ export default function AdminCouponsPage() {
   const [formMinOrder, setFormMinOrder] = useState('200');
   const [formMaxDiscount, setFormMaxDiscount] = useState('100');
   const [formMaxUses, setFormMaxUses] = useState('250');
+  const [formValidDays, setFormValidDays] = useState('30');
   const [submitting, setSubmitting] = useState(false);
 
   const toast = useToast();
@@ -60,6 +62,36 @@ export default function AdminCouponsPage() {
     loadCoupons();
   }, []);
 
+  const openCreateModal = () => {
+    setEditingCoupon(null);
+    setFormCode('');
+    setFormName('');
+    setFormType('PERCENTAGE');
+    setFormValue('15');
+    setFormMinOrder('200');
+    setFormMaxDiscount('100');
+    setFormMaxUses('250');
+    setFormValidDays('30');
+    setModalOpen(true);
+  };
+
+  const openEditModal = (coupon: Coupon) => {
+    setEditingCoupon(coupon);
+    setFormCode(coupon.code);
+    setFormName(coupon.name);
+    setFormType(coupon.discountType);
+    setFormValue(String(Math.round(coupon.discountValue / 100)));
+    setFormMinOrder(coupon.minOrderPaise ? String(Math.round(coupon.minOrderPaise / 100)) : '');
+    setFormMaxDiscount(coupon.maxDiscountPaise ? String(Math.round(coupon.maxDiscountPaise / 100)) : '');
+    setFormMaxUses(coupon.maxUses ? String(coupon.maxUses) : '');
+    const daysLeft = Math.max(
+      1,
+      Math.ceil((new Date(coupon.validUntil).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    );
+    setFormValidDays(String(daysLeft));
+    setModalOpen(true);
+  };
+
   const handleToggle = async (coupon: Coupon) => {
     try {
       const res = await fetch('/api/admin/coupons', {
@@ -69,15 +101,33 @@ export default function AdminCouponsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        toast.info(`Coupon ${coupon.code} toggled`);
+        toast.info(`Coupon ${coupon.code} ${!coupon.isActive ? 'enabled' : 'disabled'}`);
         loadCoupons();
+      } else {
+        toast.error(json.error?.message || 'Failed to toggle coupon');
       }
     } catch {
       toast.error('Failed to toggle coupon');
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleDelete = async (coupon: Coupon) => {
+    if (!confirm(`Delete promo code "${coupon.code}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/coupons?id=${coupon.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.data?.message || `Coupon ${coupon.code} removed`);
+        loadCoupons();
+      } else {
+        toast.error(json.error?.message || 'Failed to delete coupon');
+      }
+    } catch {
+      toast.error('Error deleting coupon');
+    }
+  };
+
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const cleanCode = formCode.trim().toUpperCase();
@@ -106,6 +156,11 @@ export default function AdminCouponsPage() {
       toast.error('Percentage discount cannot exceed 100%');
       return;
     }
+    const parsedValidDays = parseInt(formValidDays, 10);
+    if (isNaN(parsedValidDays) || parsedValidDays < 1 || parsedValidDays > 365) {
+      toast.error('Validity must be between 1 and 365 days');
+      return;
+    }
 
     setSubmitting(true);
 
@@ -114,38 +169,64 @@ export default function AdminCouponsPage() {
         ? parsedVal * 100 // store percentage * 100
         : parsedVal * 100; // paise
 
-    const minOrderPaise = formMinOrder ? parseInt(formMinOrder, 10) * 100 : undefined;
-    const maxDiscountPaise = formMaxDiscount ? parseInt(formMaxDiscount, 10) * 100 : undefined;
-    const maxUses = formMaxUses ? parseInt(formMaxUses, 10) : undefined;
+    const minOrderPaise = formMinOrder ? parseInt(formMinOrder, 10) * 100 : null;
+    const maxDiscountPaise = formMaxDiscount ? parseInt(formMaxDiscount, 10) * 100 : null;
+    const maxUses = formMaxUses ? parseInt(formMaxUses, 10) : null;
 
     try {
-      const res = await fetch('/api/admin/coupons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: formCode.toUpperCase().trim(),
-          name: formName,
-          discountType: formType,
-          discountValue: discountVal,
-          minOrderPaise,
-          maxDiscountPaise,
-          maxUses,
-          validDays: 30,
-        }),
-      });
-
-      const json = await res.json();
-      if (json.success) {
-        toast.success(`Promo code ${formCode.toUpperCase()} created!`);
-        loadCoupons();
-        setModalOpen(false);
-        setFormCode('');
-        setFormName('');
+      if (editingCoupon) {
+        const res = await fetch('/api/admin/coupons', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            couponId: editingCoupon.id,
+            name: formName.trim(),
+            discountType: formType,
+            discountValue: discountVal,
+            minOrderPaise,
+            maxDiscountPaise,
+            maxUses,
+            validDays: parsedValidDays,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          toast.success(`Promo code ${editingCoupon.code} updated!`);
+          loadCoupons();
+          setModalOpen(false);
+          setEditingCoupon(null);
+        } else {
+          toast.error(json.error?.message || 'Failed to update coupon');
+        }
       } else {
-        toast.error(json.error?.message || 'Failed to create coupon');
+        const res = await fetch('/api/admin/coupons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: cleanCode,
+            name: formName.trim(),
+            discountType: formType,
+            discountValue: discountVal,
+            minOrderPaise: minOrderPaise ?? undefined,
+            maxDiscountPaise: maxDiscountPaise ?? undefined,
+            maxUses: maxUses ?? undefined,
+            validDays: parsedValidDays,
+          }),
+        });
+
+        const json = await res.json();
+        if (json.success) {
+          toast.success(`Promo code ${cleanCode} created!`);
+          loadCoupons();
+          setModalOpen(false);
+          setFormCode('');
+          setFormName('');
+        } else {
+          toast.error(json.error?.message || 'Failed to create coupon');
+        }
       }
     } catch {
-      toast.error('Error creating coupon');
+      toast.error('Error saving coupon');
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +249,7 @@ export default function AdminCouponsPage() {
             <span>Refresh</span>
           </Button>
 
-          <Button variant="accent" size="sm" onClick={() => setModalOpen(true)}>
+          <Button variant="accent" size="sm" onClick={openCreateModal}>
             <Plus className="w-4 h-4 mr-1.5" />
             <span>New Coupon</span>
           </Button>
@@ -193,7 +274,7 @@ export default function AdminCouponsPage() {
                   <th className="py-3 px-4">Redemptions</th>
                   <th className="py-3 px-4">Valid Until</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Switch</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ds-border/40">
@@ -225,14 +306,34 @@ export default function AdminCouponsPage() {
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <Button
-                          variant={c.isActive ? 'outline' : 'accent'}
-                          size="sm"
-                          onClick={() => handleToggle(c)}
-                          className="text-[11px] py-1 px-2.5"
-                        >
-                          {c.isActive ? 'Disable' : 'Enable'}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(c)}
+                            className="text-[11px] py-1 px-2"
+                            title="Edit Coupon"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant={c.isActive ? 'outline' : 'accent'}
+                            size="sm"
+                            onClick={() => handleToggle(c)}
+                            className="text-[11px] py-1 px-2.5"
+                          >
+                            {c.isActive ? 'Disable' : 'Enable'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(c)}
+                            className="text-[11px] py-1 px-2 text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
+                            title="Delete Coupon"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -243,9 +344,16 @@ export default function AdminCouponsPage() {
         )}
       </Card>
 
-      {/* CREATE COUPON MODAL */}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Create Promotional Coupon">
-        <form onSubmit={handleCreate} className="space-y-4">
+      {/* CREATE / EDIT COUPON MODAL */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingCoupon(null);
+        }}
+        title={editingCoupon ? `Edit Coupon: ${editingCoupon.code}` : 'Create Promotional Coupon'}
+      >
+        <form onSubmit={handleCreateOrUpdate} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-ds-text-muted uppercase">Code</label>
@@ -254,6 +362,7 @@ export default function AdminCouponsPage() {
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                 className="font-mono uppercase font-bold"
+                disabled={Boolean(editingCoupon)}
                 required
               />
             </div>
@@ -295,13 +404,14 @@ export default function AdminCouponsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-ds-text-muted uppercase">Min Order (₹)</label>
               <Input
                 type="number"
                 value={formMinOrder}
                 onChange={(e) => setFormMinOrder(e.target.value)}
+                placeholder="Optional"
               />
             </div>
 
@@ -311,25 +421,47 @@ export default function AdminCouponsPage() {
                 type="number"
                 value={formMaxDiscount}
                 onChange={(e) => setFormMaxDiscount(e.target.value)}
+                placeholder="Optional"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-ds-text-muted uppercase">Max Redemptions</label>
+              <label className="text-xs font-semibold text-ds-text-muted uppercase">Max Uses</label>
               <Input
                 type="number"
                 value={formMaxUses}
                 onChange={(e) => setFormMaxUses(e.target.value)}
+                placeholder="Unlimited"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ds-text-muted uppercase">Valid Days</label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={formValidDays}
+                onChange={(e) => setFormValidDays(e.target.value)}
+                required
               />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-3">
-            <Button variant="outline" type="button" onClick={() => setModalOpen(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                setModalOpen(false);
+                setEditingCoupon(null);
+              }}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button variant="accent" type="submit" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Issue Promo Code'}
+              {submitting ? 'Saving...' : editingCoupon ? 'Save Changes' : 'Issue Promo Code'}
             </Button>
           </div>
         </form>

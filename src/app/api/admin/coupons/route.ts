@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError, ConflictError } from '@/lib/errors';
+import { apiSuccess, handleApiError, ConflictError, NotFoundError } from '@/lib/errors';
 import { requireRole } from '@/lib/session';
 import { z } from 'zod';
 
@@ -10,33 +10,33 @@ const createCouponSchema = z.object({
   description: z.string().optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).default('PERCENTAGE'),
   discountValue: z.number().int().positive(), // percentage * 100 or paise
-  minOrderPaise: z.number().int().optional(),
-  maxDiscountPaise: z.number().int().optional(),
-  maxUses: z.number().int().optional(),
-  validDays: z.number().int().default(30),
+  minOrderPaise: z.number().int().nullable().optional(),
+  maxDiscountPaise: z.number().int().nullable().optional(),
+  maxUses: z.number().int().nullable().optional(),
+  validDays: z.number().int().min(1).max(3650).default(30),
 });
 
-const toggleCouponSchema = z.object({
+const updateCouponSchema = z.object({
   couponId: z.string().min(1),
-  isActive: z.boolean(),
+  isActive: z.boolean().optional(),
+  name: z.string().min(2).optional(),
+  description: z.string().optional(),
+  discountType: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).optional(),
+  discountValue: z.number().int().positive().optional(),
+  minOrderPaise: z.number().int().nullable().optional(),
+  maxDiscountPaise: z.number().int().nullable().optional(),
+  maxUses: z.number().int().nullable().optional(),
+  validDays: z.number().int().min(1).max(3650).optional(),
 });
 
 export async function GET() {
   try {
     await requireRole('ADMIN', 'SUPER_ADMIN');
-    try {
-      const coupons = await prisma.coupon.findMany({
-        orderBy: { createdAt: 'desc' },
-      });
+    const coupons = await prisma.coupon.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
-      if (coupons.length > 0) {
-        return apiSuccess(coupons);
-      }
-    } catch {
-      // Fallback
-    }
-
-    return apiSuccess(getDemoCoupons());
+    return apiSuccess(coupons);
   } catch (error) {
     return handleApiError(error);
   }
@@ -44,58 +44,54 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('ADMIN', 'SUPER_ADMIN');
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = createCouponSchema.parse(body);
 
     const now = new Date();
     const validUntil = new Date(now.getTime() + data.validDays * 24 * 3600 * 1000);
 
-    try {
-      const existing = await prisma.coupon.findUnique({
-        where: { code: data.code },
-      });
+    const existing = await prisma.coupon.findUnique({
+      where: { code: data.code },
+    });
 
-      if (existing) {
-        throw new ConflictError(`Coupon with code '${data.code}' already exists`);
-      }
-
-      const coupon = await prisma.coupon.create({
-        data: {
-          code: data.code,
-          name: data.name,
-          description: data.description || `${data.name} Promotion`,
-          discountType: data.discountType,
-          discountValue: data.discountValue,
-          minOrderPaise: data.minOrderPaise || null,
-          maxDiscountPaise: data.maxDiscountPaise || null,
-          maxUses: data.maxUses || null,
-          validFrom: now,
-          validUntil,
-          isActive: true,
-        },
-      });
-
-      return apiSuccess(coupon, 201);
-    } catch (err) {
-      if (err instanceof ConflictError) throw err;
-
-      return apiSuccess(
-        {
-          id: `coup-${Date.now()}`,
-          code: data.code,
-          name: data.name,
-          discountType: data.discountType,
-          discountValue: data.discountValue,
-          minOrderPaise: data.minOrderPaise,
-          maxDiscountPaise: data.maxDiscountPaise,
-          usedCount: 0,
-          isActive: true,
-          validUntil: validUntil.toISOString(),
-        },
-        201
-      );
+    if (existing) {
+      throw new ConflictError(`Coupon with code '${data.code}' already exists`);
     }
+
+    const coupon = await prisma.coupon.create({
+      data: {
+        code: data.code,
+        name: data.name,
+        description: data.description || `${data.name} Promotion`,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+        minOrderPaise: data.minOrderPaise || null,
+        maxDiscountPaise: data.maxDiscountPaise || null,
+        maxUses: data.maxUses || null,
+        validFrom: now,
+        validUntil,
+        isActive: true,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: 'CREATE',
+        entityType: 'Coupon',
+        entityId: coupon.id,
+        newValue: {
+          code: coupon.code,
+          name: coupon.name,
+          discountType: coupon.discountType,
+          discountValue: coupon.discountValue,
+          validUntil: coupon.validUntil,
+        },
+      },
+    }).catch(() => {});
+
+    return apiSuccess(coupon, 201);
   } catch (error) {
     return handleApiError(error);
   }
@@ -103,95 +99,131 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    await requireRole('ADMIN', 'SUPER_ADMIN');
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
-    const { couponId, isActive } = toggleCouponSchema.parse(body);
+    const data = updateCouponSchema.parse(body);
 
-    try {
-      const coupon = await prisma.coupon.update({
-        where: { id: couponId },
-        data: { isActive },
-      });
+    const existing = await prisma.coupon.findUnique({
+      where: { id: data.couponId },
+    });
 
-      return apiSuccess({
-        message: `Coupon ${coupon.code} is now ${isActive ? 'Active' : 'Inactive'}`,
-        coupon,
-      });
-    } catch {
-      return apiSuccess({
-        message: `Coupon updated to ${isActive ? 'Active' : 'Inactive'} (Preview)`,
-        coupon: { id: couponId, isActive },
-      });
+    if (!existing) {
+      throw new NotFoundError('Coupon not found');
     }
+
+    const now = new Date();
+    const validUntil =
+      data.validDays !== undefined
+        ? new Date(now.getTime() + data.validDays * 24 * 3600 * 1000)
+        : undefined;
+
+    const coupon = await prisma.coupon.update({
+      where: { id: data.couponId },
+      data: {
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.discountType !== undefined ? { discountType: data.discountType } : {}),
+        ...(data.discountValue !== undefined ? { discountValue: data.discountValue } : {}),
+        ...(data.minOrderPaise !== undefined ? { minOrderPaise: data.minOrderPaise } : {}),
+        ...(data.maxDiscountPaise !== undefined ? { maxDiscountPaise: data.maxDiscountPaise } : {}),
+        ...(data.maxUses !== undefined ? { maxUses: data.maxUses } : {}),
+        ...(validUntil !== undefined ? { validUntil } : {}),
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: data.isActive !== undefined && data.name === undefined ? 'STATUS_CHANGE' : 'UPDATE',
+        entityType: 'Coupon',
+        entityId: coupon.id,
+        oldValue: {
+          code: existing.code,
+          name: existing.name,
+          discountValue: existing.discountValue,
+          isActive: existing.isActive,
+        },
+        newValue: {
+          code: coupon.code,
+          name: coupon.name,
+          discountValue: coupon.discountValue,
+          isActive: coupon.isActive,
+        },
+      },
+    }).catch(() => {});
+
+    return apiSuccess({
+      message:
+        data.name !== undefined
+          ? `Coupon ${coupon.code} updated successfully`
+          : `Coupon ${coupon.code} is now ${coupon.isActive ? 'Active' : 'Inactive'}`,
+      coupon,
+    });
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-function getDemoCoupons() {
-  const now = new Date();
-  const nextMonth = new Date(now.getTime() + 30 * 24 * 3600 * 1000);
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
 
-  return [
-    {
-      id: 'coup-01',
-      code: 'WELCOME10',
-      name: 'Welcome Gamer Discount',
-      description: '10% off your first arena booking',
-      discountType: 'PERCENTAGE',
-      discountValue: 1000, // 10%
-      minOrderPaise: 20000,
-      maxDiscountPaise: 5000, // max ₹50
-      maxUses: 500,
-      usedCount: 42,
-      isActive: true,
-      validFrom: now.toISOString(),
-      validUntil: nextMonth.toISOString(),
-    },
-    {
-      id: 'coup-02',
-      code: 'SYNDICATE20',
-      name: 'Syndicate Clan Promo',
-      description: '20% off for 3+ hours marathon sessions',
-      discountType: 'PERCENTAGE',
-      discountValue: 2000, // 20%
-      minOrderPaise: 50000,
-      maxDiscountPaise: 10000, // max ₹100
-      maxUses: 200,
-      usedCount: 88,
-      isActive: true,
-      validFrom: now.toISOString(),
-      validUntil: nextMonth.toISOString(),
-    },
-    {
-      id: 'coup-03',
-      code: 'GLACIER50',
-      name: 'Glacier Flat Discount',
-      description: 'Flat ₹50 discount on any Pool or PS5 session',
-      discountType: 'FIXED_AMOUNT',
-      discountValue: 5000, // ₹50 in paise
-      minOrderPaise: 20000,
-      maxDiscountPaise: null,
-      maxUses: 1000,
-      usedCount: 154,
-      isActive: true,
-      validFrom: now.toISOString(),
-      validUntil: nextMonth.toISOString(),
-    },
-    {
-      id: 'coup-04',
-      code: 'SUMMERLAN',
-      name: 'Summer LAN Party Deal',
-      description: '25% off all-night passes',
-      discountType: 'PERCENTAGE',
-      discountValue: 2500,
-      minOrderPaise: 100000,
-      maxDiscountPaise: 25000,
-      maxUses: 50,
-      usedCount: 50,
-      isActive: false, // Expired / Maxed
-      validFrom: new Date(now.getTime() - 60 * 24 * 3600 * 1000).toISOString(),
-      validUntil: now.toISOString(),
-    },
-  ];
+    if (!id) {
+      throw new NotFoundError('Coupon ID is required');
+    }
+
+    const existing = await prisma.coupon.findUnique({
+      where: { id },
+      include: { _count: { select: { redemptions: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Coupon not found');
+    }
+
+    if (existing._count.redemptions > 0 || existing.usedCount > 0) {
+      await prisma.coupon.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'STATUS_CHANGE',
+          entityType: 'Coupon',
+          entityId: id,
+          oldValue: { code: existing.code, isActive: existing.isActive },
+          newValue: { code: existing.code, isActive: false, note: 'Deactivated instead of deleted due to past redemptions' },
+        },
+      }).catch(() => {});
+
+      return apiSuccess({
+        message: `Coupon ${existing.code} has ${existing.usedCount} redemptions and was deactivated to preserve financial history.`,
+        deactivatedOnly: true,
+      });
+    }
+
+    await prisma.coupon.delete({ where: { id } });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: session.userId,
+        action: 'DELETE',
+        entityType: 'Coupon',
+        entityId: id,
+        oldValue: { code: existing.code, name: existing.name },
+      },
+    }).catch(() => {});
+
+    return apiSuccess({
+      message: `Coupon ${existing.code} deleted permanently.`,
+      deactivatedOnly: false,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }

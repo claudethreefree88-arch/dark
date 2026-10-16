@@ -254,6 +254,8 @@ export default function AdminGamesPage() {
   const ps5Count = games.filter((g) => g.platform === 'PS5').length;
   const poolCount = games.filter((g) => g.platform === 'POOL_TABLE').length;
   const multiCount = games.filter((g) => g.maxPlayers > 1).length;
+  const ps5StationCount = stations.filter((s) => s.stationType === 'PS5').length;
+  const poolStationCount = stations.filter((s) => s.stationType === 'POOL_TABLE').length;
   const platformStations = stations.filter((s) => s.stationType === formPlatform);
 
   return (
@@ -304,7 +306,9 @@ export default function AdminGamesPage() {
             <Monitor className="w-4 h-4 text-ds-accent" />
           </div>
           <p className="text-2xl sm:text-3xl font-heading font-black text-ds-text mt-2">{ps5Count}</p>
-          <p className="text-[10px] text-ds-text-muted mt-1">Across 3 PS5 Battle Stations</p>
+          <p className="text-[10px] text-ds-text-muted mt-1">
+            Across {ps5StationCount} PS5 Battle Station{ps5StationCount === 1 ? '' : 's'}
+          </p>
         </Card>
 
         <Card variant="glass" className="p-4 border-amber-500/30">
@@ -313,7 +317,9 @@ export default function AdminGamesPage() {
             <Layers className="w-4 h-4 text-amber-400" />
           </div>
           <p className="text-2xl sm:text-3xl font-heading font-black text-amber-300 mt-2">{poolCount}</p>
-          <p className="text-[10px] text-amber-400/80 mt-1">Across 3 Championship Tables</p>
+          <p className="text-[10px] text-amber-400/80 mt-1">
+            Across {poolStationCount} Championship Table{poolStationCount === 1 ? '' : 's'}
+          </p>
         </Card>
 
         <Card variant="glass" className="p-4 border-emerald-500/30">
@@ -549,7 +555,12 @@ export default function AdminGamesPage() {
               </label>
               <select
                 value={formPlatform}
-                onChange={(e) => setFormPlatform(e.target.value as any)}
+                onChange={(e) => {
+                  const nextPlatform = e.target.value as any;
+                  setFormPlatform(nextPlatform);
+                  setFormStationIds([]);
+                  setFormAllStations(true);
+                }}
                 className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2.5 text-xs text-ds-text focus:outline-none focus:border-ds-accent"
               >
                 <option value="PS5">PlayStation 5</option>
@@ -594,6 +605,10 @@ export default function AdminGamesPage() {
                 <option value={1}>1 Player (Single)</option>
                 <option value={2}>2 Players (Versus / Co-op)</option>
                 <option value={4}>4 Players (Squad / Party)</option>
+                <option value={6}>6 Players (Group)</option>
+                <option value={8}>8 Players (Tournament)</option>
+                <option value={12}>12 Players (Lobby)</option>
+                <option value={16}>16 Players (Max Arena)</option>
               </select>
             </div>
           </div>

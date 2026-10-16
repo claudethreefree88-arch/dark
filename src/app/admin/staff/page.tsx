@@ -110,6 +110,7 @@ export default function AdminStaffPage() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'STAFF' | 'ADMIN'>('STAFF');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [address, setAddress] = useState('');
@@ -120,6 +121,7 @@ export default function AdminStaffPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Dossier Edit State
+  const [editRole, setEditRole] = useState<'STAFF' | 'ADMIN' | 'SUPER_ADMIN'>('STAFF');
   const [editAddress, setEditAddress] = useState('');
   const [editAadhaarNumber, setEditAadhaarNumber] = useState('');
   const [editAadhaarDoc, setEditAadhaarDoc] = useState('');
@@ -325,6 +327,7 @@ export default function AdminStaffPage() {
           lastName: lastName.trim(),
           email: email.trim().toLowerCase(),
           phone: cleanPhone,
+          role,
           password,
           address: address.trim(),
           aadhaarNumber: aadhaarNumber.trim(),
@@ -342,6 +345,7 @@ export default function AdminStaffPage() {
         setLastName('');
         setEmail('');
         setPhone('');
+        setRole('STAFF');
         setPassword('');
         setAddress('');
         setAadhaarNumber('');
@@ -362,6 +366,7 @@ export default function AdminStaffPage() {
   // Open Dossier Modal
   const openDossier = (member: StaffMember) => {
     setSelectedStaff(member);
+    setEditRole(member.role);
     setEditAddress(member.address || '');
     setEditAadhaarNumber(member.aadhaarNumber || '');
     setEditAadhaarDoc(member.aadhaarDocumentUrl || '');
@@ -369,7 +374,7 @@ export default function AdminStaffPage() {
     setDossierModalOpen(true);
   };
 
-  // Save Updated Dossier (Address & Aadhaar)
+  // Save Updated Dossier (Address, Role & Aadhaar)
   const handleSaveDossier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStaff) return;
@@ -381,6 +386,7 @@ export default function AdminStaffPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: selectedStaff.id,
+          role: selectedStaff.role !== 'SUPER_ADMIN' ? editRole : undefined,
           address: editAddress,
           aadhaarNumber: editAadhaarNumber,
           aadhaarDocumentUrl: editAadhaarDoc,
@@ -1322,7 +1328,21 @@ export default function AdminStaffPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
+                  Account Role <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as 'STAFF' | 'ADMIN')}
+                  className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text font-mono focus:outline-none focus:border-ds-accent"
+                >
+                  <option value="STAFF">Floor Operator (STAFF)</option>
+                  <option value="ADMIN">Administrator (ADMIN)</option>
+                </select>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text-dim">
                   Emergency Contact / Alternate Phone
@@ -1479,10 +1499,10 @@ export default function AdminStaffPage() {
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-heading font-bold text-ds-text uppercase tracking-wider block">
-                Floor Operator Permissions
+                Operator Access Permissions
               </span>
               <span>
-                All onboarded staff automatically receive access to the Live Station Grid, counter check-ins, walk-in registration, and session extensions.
+                Floor Operators receive access to the Live Station Grid, check-ins, walk-ins, and session extensions. Administrators also receive access to the Admin Portal.
               </span>
             </div>
           </div>
@@ -1552,11 +1572,28 @@ export default function AdminStaffPage() {
               </div>
             </div>
 
-            {/* Editable Address & Emergency Contact */}
+            {/* Editable Role, Address & Emergency Contact */}
             <div className="space-y-3">
               <span className="text-[10px] font-mono uppercase tracking-widest text-ds-accent font-bold block border-b border-ds-border/60 pb-1">
-                Residential Address & Emergency Contact
+                Role, Residential Address & Emergency Contact
               </span>
+
+              {selectedStaff.role !== 'SUPER_ADMIN' && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text-dim flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-ds-accent" />
+                    <span>Account Role</span>
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as 'STAFF' | 'ADMIN')}
+                    className="w-full bg-ds-dark border border-ds-border rounded-xl px-3 py-2 text-xs text-ds-text font-mono focus:outline-none focus:border-ds-accent"
+                  >
+                    <option value="STAFF">Floor Operator (STAFF)</option>
+                    <option value="ADMIN">Administrator (ADMIN)</option>
+                  </select>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-[11px] font-heading font-bold uppercase tracking-wider text-ds-text-dim flex items-center gap-1">

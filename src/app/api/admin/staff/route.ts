@@ -11,6 +11,7 @@ const createStaffSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid 10-digit phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.enum(['STAFF', 'ADMIN']).optional().default('STAFF'),
   address: z.string().optional().default(''),
   aadhaarNumber: z.string().optional().default(''),
   aadhaarDocumentUrl: z.string().optional().default(''),
@@ -23,64 +24,56 @@ const createStaffSchema = z.object({
 export async function GET() {
   try {
     await requireRole('ADMIN', 'SUPER_ADMIN');
-    try {
-      const staffMembers = await prisma.user.findMany({
-        where: {
-          role: { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] },
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          role: true,
-          status: true,
-          lastLoginAt: true,
-          createdAt: true,
-          staffProfile: {
-            select: {
-              address: true,
-              aadhaarNumber: true,
-              aadhaarDocumentUrl: true,
-              emergencyContact: true,
-              dateOfBirth: true,
-              joiningDate: true,
-              notes: true,
-            },
+    const staffMembers = await prisma.user.findMany({
+      where: {
+        role: { in: ['STAFF', 'ADMIN', 'SUPER_ADMIN'] },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true,
+        staffProfile: {
+          select: {
+            address: true,
+            aadhaarNumber: true,
+            aadhaarDocumentUrl: true,
+            emergencyContact: true,
+            dateOfBirth: true,
+            joiningDate: true,
+            notes: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-      });
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-      if (staffMembers.length > 0) {
-        return apiSuccess(
-          staffMembers.map((s) => ({
-            id: s.id,
-            name: `${s.firstName} ${s.lastName}`.trim(),
-            firstName: s.firstName,
-            lastName: s.lastName,
-            email: s.email,
-            phone: s.phone || '—',
-            role: s.role,
-            status: s.status,
-            lastLoginAt: s.lastLoginAt,
-            createdAt: s.createdAt,
-            address: s.staffProfile?.address || '',
-            aadhaarNumber: s.staffProfile?.aadhaarNumber || '',
-            aadhaarDocumentUrl: s.staffProfile?.aadhaarDocumentUrl || '',
-            emergencyContact: s.staffProfile?.emergencyContact || '',
-            dateOfBirth: s.staffProfile?.dateOfBirth ? s.staffProfile.dateOfBirth.toISOString().split('T')[0] : '',
-            joiningDate: s.staffProfile?.joiningDate || s.createdAt,
-            notes: s.staffProfile?.notes || '',
-          }))
-        );
-      }
-    } catch {
-      // Fallback
-    }
-
-    return apiSuccess(getDemoStaffList());
+    return apiSuccess(
+      staffMembers.map((s) => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`.trim(),
+        firstName: s.firstName,
+        lastName: s.lastName,
+        email: s.email,
+        phone: s.phone || '—',
+        role: s.role,
+        status: s.status,
+        lastLoginAt: s.lastLoginAt,
+        createdAt: s.createdAt,
+        address: s.staffProfile?.address || '',
+        aadhaarNumber: s.staffProfile?.aadhaarNumber || '',
+        aadhaarDocumentUrl: s.staffProfile?.aadhaarDocumentUrl || '',
+        emergencyContact: s.staffProfile?.emergencyContact || '',
+        dateOfBirth: s.staffProfile?.dateOfBirth ? s.staffProfile.dateOfBirth.toISOString().split('T')[0] : '',
+        joiningDate: s.staffProfile?.joiningDate || s.createdAt,
+        notes: s.staffProfile?.notes || '',
+      }))
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -89,9 +82,14 @@ export async function GET() {
 // ─── POST /api/admin/staff (Onboard Staff with KYC & Address) ────────────────
 export async function POST(req: NextRequest) {
   try {
-    await requireRole('ADMIN', 'SUPER_ADMIN');
+    const adminSession = await requireRole('ADMIN', 'SUPER_ADMIN');
     const body = await req.json();
     const data = createStaffSchema.parse(body);
+
+    const requestedRole = data.role === 'ADMIN' ? 'ADMIN' : 'STAFF';
+    if (requestedRole === 'ADMIN' && adminSession.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenError('Only Super Admin can onboard Administrator accounts');
+    }
 
     const cleanEmail = data.email.toLowerCase().trim();
     const cleanPhone = data.phone.trim();
@@ -118,7 +116,6 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(data.password);
 
-    // Create staff user with role automatically set to STAFF + staffProfile
     const newStaff = await prisma.user.create({
       data: {
         firstName: data.firstName.trim(),
@@ -126,7 +123,7 @@ export async function POST(req: NextRequest) {
         email: cleanEmail,
         phone: cleanPhone,
         passwordHash,
-        role: 'STAFF',
+        role: requestedRole,
         status: 'ACTIVE',
         staffProfile: {
           create: {
@@ -152,6 +149,20 @@ export async function POST(req: NextRequest) {
         staffProfile: true,
       },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: adminSession.userId,
+        action: 'CREATE',
+        entityType: 'User',
+        entityId: newStaff.id,
+        newValue: {
+          name: `${newStaff.firstName} ${newStaff.lastName}`.trim(),
+          email: newStaff.email,
+          role: newStaff.role,
+        },
+      },
+    }).catch(() => {});
 
     return apiSuccess(
       {
@@ -289,6 +300,26 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        userId: adminSession.userId,
+        action: status && status !== target.status ? 'STATUS_CHANGE' : 'UPDATE',
+        entityType: 'User',
+        entityId: id,
+        oldValue: {
+          name: `${target.firstName} ${target.lastName}`.trim(),
+          role: target.role,
+          status: target.status,
+        },
+        newValue: {
+          name: `${updated?.firstName} ${updated?.lastName}`.trim(),
+          role: updated?.role,
+          status: updated?.status,
+          passwordReset: Boolean(password && password.length >= 6),
+        },
+      },
+    }).catch(() => {});
+
     return apiSuccess({
       message: 'Staff account updated successfully',
       staff: {
@@ -344,6 +375,15 @@ export async function DELETE(req: NextRequest) {
 
     try {
       await prisma.user.delete({ where: { id } });
+      await prisma.auditLog.create({
+        data: {
+          userId: adminSession.userId,
+          action: 'DELETE',
+          entityType: 'User',
+          entityId: id,
+          oldValue: { name: `${target.firstName} ${target.lastName}`.trim(), email: target.email, role: target.role },
+        },
+      }).catch(() => {});
       return apiSuccess({
         message: `Staff account for ${target.firstName} ${target.lastName} deleted successfully`,
       });
@@ -352,6 +392,16 @@ export async function DELETE(req: NextRequest) {
         where: { id },
         data: { status: 'DEACTIVATED' },
       });
+      await prisma.auditLog.create({
+        data: {
+          userId: adminSession.userId,
+          action: 'STATUS_CHANGE',
+          entityType: 'User',
+          entityId: id,
+          oldValue: { status: target.status },
+          newValue: { status: 'DEACTIVATED', note: 'Deactivated instead of deleted due to session records' },
+        },
+      }).catch(() => {});
       return apiSuccess({
         message: `Staff account has existing session records and was deactivated`,
       });
@@ -359,58 +409,4 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
-}
-
-function getDemoStaffList() {
-  const now = new Date();
-  return [
-    {
-      id: 'staff-01',
-      name: 'Super Admin',
-      firstName: 'Super',
-      lastName: 'Admin',
-      email: 'admin@darksyndicate.in',
-      phone: '+91 98400 11223',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
-      address: 'Dark Syndicate Arena Headquarters, Anna Nagar, Chennai - 600040',
-      aadhaarNumber: '8901 2345 6789',
-      aadhaarDocumentUrl: '',
-      emergencyContact: '+91 98400 99999',
-      lastLoginAt: now.toISOString(),
-      createdAt: new Date(now.getTime() - 120 * 24 * 3600 * 1000).toISOString(),
-    },
-    {
-      id: 'staff-02',
-      name: 'Harish Kumar',
-      firstName: 'Harish',
-      lastName: 'Kumar',
-      email: 'harish@darksyndicate.in',
-      phone: '+91 97890 44556',
-      role: 'STAFF',
-      status: 'ACTIVE',
-      address: 'Flat 4B, Cyber Heights, Velachery Main Road, Chennai - 600042',
-      aadhaarNumber: '5642 1098 7654',
-      aadhaarDocumentUrl: '',
-      emergencyContact: '+91 97890 11111',
-      lastLoginAt: new Date(now.getTime() - 4 * 3600 * 1000).toISOString(),
-      createdAt: new Date(now.getTime() - 40 * 24 * 3600 * 1000).toISOString(),
-    },
-    {
-      id: 'staff-03',
-      name: 'Dinesh Balan',
-      firstName: 'Dinesh',
-      lastName: 'Balan',
-      email: 'dinesh@darksyndicate.in',
-      phone: '+91 99400 88776',
-      role: 'STAFF',
-      status: 'ACTIVE',
-      address: 'No 12, Syndicate Residency, T. Nagar, Chennai - 600017',
-      aadhaarNumber: '9920 4412 8831',
-      aadhaarDocumentUrl: '',
-      emergencyContact: '+91 99400 33221',
-      lastLoginAt: new Date(now.getTime() - 24 * 3600 * 1000).toISOString(),
-      createdAt: new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString(),
-    },
-  ];
 }

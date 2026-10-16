@@ -106,9 +106,27 @@ export async function ensureDefaultMembershipPlans() {
 }
 
 /**
+ * Transitions any ACTIVE memberships whose expiresAt has passed to EXPIRED.
+ */
+export async function syncExpiredMemberships(userId?: string) {
+  const now = new Date();
+  await prisma.membership.updateMany({
+    where: {
+      ...(userId ? { userId } : {}),
+      status: 'ACTIVE',
+      expiresAt: { lte: now },
+    },
+    data: {
+      status: 'EXPIRED',
+    },
+  }).catch(() => {});
+}
+
+/**
  * Returns the currently active membership for a user (if any).
  */
 export async function getActiveUserMembership(userId: string) {
+  await syncExpiredMemberships(userId);
   const now = new Date();
 
   const active = await prisma.membership.findFirst({
@@ -156,12 +174,33 @@ export async function grantUserMembership(params: {
   if (!plan) throw new Error('Membership plan not found');
 
   const now = new Date();
-  // If user already has an active membership, extend from current expiry date
+  // If user already has an active membership, stack remaining days onto the new pass while starting immediately
   const currentActive = await getActiveUserMembership(params.userId);
-  const startsAt = currentActive ? currentActive.expiresAt : now;
-  const expiresAt = new Date(startsAt.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
+  const startsAt = now;
+  const expiryBase =
+    currentActive && currentActive.expiresAt > now ? currentActive.expiresAt : now;
+  const expiresAt = new Date(expiryBase.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
+
+  const isComplimentary = params.paymentMethod === 'OTHER';
+  const effectivePricePaidPaise =
+    params.pricePaidPaise !== undefined
+      ? params.pricePaidPaise
+      : isComplimentary
+      ? 0
+      : plan.pricePaise;
 
   const membership = await prisma.$transaction(async (tx) => {
+    // Supersede any previously active memberships so the user has a single active pass
+    await tx.membership.updateMany({
+      where: {
+        userId: params.userId,
+        status: 'ACTIVE',
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
+
     const created = await tx.membership.create({
       data: {
         id: randomUUID(),
@@ -170,7 +209,7 @@ export async function grantUserMembership(params: {
         planNameSnapshot: plan.name,
         tierSnapshot: plan.tier,
         discountPercent: plan.discountPercent,
-        pricePaidPaise: params.pricePaidPaise ?? plan.pricePaise,
+        pricePaidPaise: effectivePricePaidPaise,
         paymentMethod: params.paymentMethod ?? 'UPI',
         paymentId: params.paymentId ?? null,
         status: 'ACTIVE',
@@ -183,6 +222,20 @@ export async function grantUserMembership(params: {
         user: { select: { firstName: true, lastName: true, email: true } },
       },
     });
+
+    if (effectivePricePaidPaise > 0) {
+      await tx.customerProfile.upsert({
+        where: { userId: params.userId },
+        create: {
+          userId: params.userId,
+          totalSpent: effectivePricePaidPaise,
+          totalBookings: 0,
+        },
+        update: {
+          totalSpent: { increment: effectivePricePaidPaise },
+        },
+      });
+    }
 
     // In-app alert to customer
     await tx.notification.create({
@@ -197,24 +250,24 @@ export async function grantUserMembership(params: {
     });
 
     // Audit log
-    if (params.adminId) {
-      await tx.auditLog.create({
-        data: {
-          id: randomUUID(),
-          userId: params.adminId,
-          action: 'CREATE',
-          entityType: 'Membership',
-          entityId: created.id,
-          newValue: {
-            planName: plan.name,
-            tier: plan.tier,
-            userId: params.userId,
-            customerName: `${created.user.firstName} ${created.user.lastName}`.trim(),
-            expiresAt: expiresAt.toISOString(),
-          },
+    await tx.auditLog.create({
+      data: {
+        id: randomUUID(),
+        userId: params.adminId || params.userId,
+        action: 'CREATE',
+        entityType: 'Membership',
+        entityId: created.id,
+        newValue: {
+          planName: plan.name,
+          tier: plan.tier,
+          pricePaidPaise: effectivePricePaidPaise,
+          paymentMethod: params.paymentMethod ?? 'UPI',
+          userId: params.userId,
+          customerName: `${created.user.firstName} ${created.user.lastName}`.trim(),
+          expiresAt: expiresAt.toISOString(),
         },
-      });
-    }
+      },
+    });
 
     return created;
   });

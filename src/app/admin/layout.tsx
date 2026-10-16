@@ -170,7 +170,9 @@ function SidebarNav({
                 <p className="font-heading font-bold text-ds-text leading-tight truncate">
                   {user?.firstName || 'System'} {user?.lastName || 'Admin'}
                 </p>
-                <span className="text-[10px] text-emerald-400 font-mono font-semibold uppercase">Super Admin</span>
+                <span className="text-[10px] text-emerald-400 font-mono font-semibold uppercase">
+                  {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Administrator'}
+                </span>
               </div>
             </div>
 

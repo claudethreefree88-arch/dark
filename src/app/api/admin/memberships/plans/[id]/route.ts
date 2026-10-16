@@ -143,9 +143,21 @@ export async function DELETE(
         data: { isActive: false },
       });
 
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'STATUS_CHANGE',
+          entityType: 'MembershipPlan',
+          entityId: id,
+          oldValue: { name: existing.name, isActive: existing.isActive },
+          newValue: { name: existing.name, isActive: false, note: 'Deactivated due to existing member history' },
+        },
+      }).catch(() => {});
+
       return apiSuccess({
         message: `${existing.name} has active gamer history, so it was set to Inactive`,
         plan: updated,
+        deactivatedOnly: true,
       });
     }
 
@@ -165,6 +177,7 @@ export async function DELETE(
 
     return apiSuccess({
       message: `${existing.name} deleted successfully`,
+      deactivatedOnly: false,
     });
   } catch (error) {
     return handleApiError(error);

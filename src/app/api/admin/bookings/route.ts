@@ -1,7 +1,15 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { apiSuccess, handleApiError } from '@/lib/errors';
+import { apiSuccess, ConflictError, handleApiError, NotFoundError } from '@/lib/errors';
 import { requireRole } from '@/lib/session';
+import { z } from 'zod';
+
+const patchBookingSchema = z.object({
+  bookingId: z.string().min(1),
+  action: z.enum(['CANCEL', 'MARK_PAID', 'NO_SHOW']),
+  paymentMethod: z.enum(['CASH', 'UPI']).optional().default('CASH'),
+  reason: z.string().optional(),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,7 +45,7 @@ export async function GET(req: NextRequest) {
         payments: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 500,
     });
 
     // Lookup staff activity logs for walk-ins without explicit session staff
@@ -104,6 +112,7 @@ export async function GET(req: NextRequest) {
           channel: isWalkIn ? 'DESK' : 'ONLINE',
           bookedVia: isWalkIn ? 'Front Desk Walk-in' : 'Online Website',
           staffName: isWalkIn ? staffName : null,
+          paymentId: booking.payments[0]?.id || null,
           paymentStatus: booking.payments[0]?.status || 'UNPAID',
           paymentMethod: booking.payments[0]?.method || null,
           createdAt: booking.createdAt,
@@ -137,6 +146,180 @@ export async function GET(req: NextRequest) {
         };
       })
     );
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'STAFF');
+    const body = await req.json();
+    const { bookingId, action, paymentMethod, reason } = patchBookingSchema.parse(body);
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        station: true,
+        user: true,
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        session: true,
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    const now = new Date();
+    const isGuestUser = booking.user?.email === 'guest@darksyndicate.in';
+
+    if (action === 'CANCEL') {
+      if (['CANCELLED', 'COMPLETED', 'IN_PROGRESS'].includes(booking.status)) {
+        throw new ConflictError(`Cannot cancel a booking that is already ${booking.status}.`);
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id: bookingId },
+          data: {
+            status: 'CANCELLED',
+            cancelledAt: now,
+            cancelReason: reason || 'Cancelled by Administrator',
+          },
+        });
+
+        await tx.payment.updateMany({
+          where: { bookingId, status: 'PENDING' },
+          data: { status: 'FAILED' },
+        });
+      });
+
+      if (!isGuestUser && booking.userId) {
+        await prisma.notification.create({
+          data: {
+            userId: booking.userId,
+            title: 'Booking Cancelled',
+            message: `Your reservation ${booking.bookingRef} at ${booking.station.name} has been cancelled.${reason ? ` Reason: ${reason}` : ''}`,
+            type: 'BOOKING_CANCELLED',
+          },
+        }).catch(() => {});
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'STATUS_CHANGE',
+          entityType: 'Booking',
+          entityId: bookingId,
+          oldValue: { status: booking.status, bookingRef: booking.bookingRef },
+          newValue: { status: 'CANCELLED', bookingRef: booking.bookingRef, reason: reason || 'Cancelled by Administrator' },
+        },
+      }).catch(() => {});
+
+      return apiSuccess({ message: `Booking ${booking.bookingRef} cancelled successfully.` });
+    }
+
+    if (action === 'NO_SHOW') {
+      if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+        throw new ConflictError(`Only PENDING or CONFIRMED bookings can be marked as No-Show.`);
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: 'NO_SHOW' },
+        });
+
+        await tx.payment.updateMany({
+          where: { bookingId, status: 'PENDING' },
+          data: { status: 'FAILED' },
+        });
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'STATUS_CHANGE',
+          entityType: 'Booking',
+          entityId: bookingId,
+          oldValue: { status: booking.status, bookingRef: booking.bookingRef },
+          newValue: { status: 'NO_SHOW', bookingRef: booking.bookingRef },
+        },
+      }).catch(() => {});
+
+      return apiSuccess({ message: `Booking ${booking.bookingRef} marked as No-Show.` });
+    }
+
+    if (action === 'MARK_PAID') {
+      const latestPayment = booking.payments[0];
+      if (latestPayment?.status === 'COMPLETED') {
+        throw new ConflictError(`Booking ${booking.bookingRef} is already paid.`);
+      }
+
+      await prisma.$transaction(async (tx) => {
+        if (latestPayment) {
+          await tx.payment.update({
+            where: { id: latestPayment.id },
+            data: {
+              status: 'COMPLETED',
+              method: paymentMethod,
+              paidAt: now,
+              recordedByStaffId: session.userId,
+            },
+          });
+        } else {
+          await tx.payment.create({
+            data: {
+              bookingId,
+              userId: booking.userId,
+              amountPaise: booking.totalPricePaise,
+              method: paymentMethod,
+              status: 'COMPLETED',
+              paidAt: now,
+              recordedByStaffId: session.userId,
+            },
+          });
+        }
+
+        if (booking.status === 'PENDING') {
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: 'CONFIRMED' },
+          });
+        }
+
+        if (!isGuestUser && booking.userId && booking.totalPricePaise > 0) {
+          await tx.customerProfile.upsert({
+            where: { userId: booking.userId },
+            create: { userId: booking.userId, totalSpent: booking.totalPricePaise },
+            update: { totalSpent: { increment: booking.totalPricePaise } },
+          });
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: session.userId,
+          action: 'PAYMENT',
+          entityType: 'Booking',
+          entityId: bookingId,
+          oldValue: { paymentStatus: latestPayment?.status || 'UNPAID', bookingRef: booking.bookingRef },
+          newValue: {
+            paymentStatus: 'COMPLETED',
+            method: paymentMethod,
+            amountPaise: booking.totalPricePaise,
+            bookingRef: booking.bookingRef,
+          },
+        },
+      }).catch(() => {});
+
+      return apiSuccess({
+        message: `Payment of ₹${(booking.totalPricePaise / 100).toLocaleString('en-IN')} recorded via ${paymentMethod} for ${booking.bookingRef}.`,
+      });
+    }
+
+    throw new ConflictError('Unsupported action');
   } catch (error) {
     return handleApiError(error);
   }
