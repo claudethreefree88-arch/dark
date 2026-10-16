@@ -19,33 +19,57 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || '';
     const stationId = searchParams.get('stationId') || '';
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        ...(status ? { status: status as any } : {}),
-        ...(stationId ? { stationId } : {}),
-        ...(search
-          ? {
-              OR: [
-                { bookingRef: { contains: search } },
-                { customerName: { contains: search } },
-                { customerPhone: { contains: search } },
-                { user: { email: { contains: search } } },
-              ],
-            }
-          : {}),
-      },
-      include: {
-        station: { include: { facility: true } },
-        user: { select: { firstName: true, lastName: true, email: true, phone: true } },
-        session: {
-          include: {
-            staff: { select: { id: true, firstName: true, lastName: true, role: true } },
-          },
+    const bookingInclude = {
+      station: { include: { facility: true } },
+      user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      session: {
+        include: {
+          staff: { select: { id: true, firstName: true, lastName: true, role: true } },
         },
-        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 500,
+      payments: { orderBy: { createdAt: 'desc' as const }, take: 1 },
+    };
+
+    const [recentBookings, activeFloorBookings] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          ...(status ? { status: status as any } : {}),
+          ...(stationId ? { stationId } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { bookingRef: { contains: search } },
+                  { customerName: { contains: search } },
+                  { customerPhone: { contains: search } },
+                  { user: { email: { contains: search } } },
+                ],
+              }
+            : {}),
+        },
+        include: bookingInclude,
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      !status
+        ? prisma.booking.findMany({
+            where: {
+              ...(stationId ? { stationId } : {}),
+              OR: [
+                { status: { in: ['IN_PROGRESS', 'CHECKED_IN'] } },
+                { session: { status: { in: ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'] } } },
+              ],
+            },
+            include: bookingInclude,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const seenBookingIds = new Set<string>();
+    const bookings = [...activeFloorBookings, ...recentBookings].filter((b) => {
+      if (seenBookingIds.has(b.id)) return false;
+      seenBookingIds.add(b.id);
+      return true;
     });
 
     // Lookup staff activity logs for walk-ins without explicit session staff
@@ -66,86 +90,96 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return apiSuccess(
-      bookings.map((booking) => {
-        const isWalkIn = Boolean(booking.isWalkIn);
-        let staffName: string | null = null;
+    const mappedBookings = bookings.map((booking) => {
+      const isWalkIn = Boolean(booking.isWalkIn);
+      let staffName: string | null = null;
 
-        if (isWalkIn) {
-          if (booking.session?.staff) {
-            staffName = `${booking.session.staff.firstName} ${booking.session.staff.lastName}`.trim();
-          } else if (staffMap.has(booking.id)) {
-            staffName = staffMap.get(booking.id)!;
-          } else if (booking.notes && /by\s+([A-Za-z0-9\s]+)/i.test(booking.notes)) {
-            const match = booking.notes.match(/by\s+([A-Za-z0-9\s]+)/i);
-            if (match && match[1]) {
-              staffName = match[1].trim();
-            }
-          }
-          if (!staffName) {
-            staffName = 'Front Desk Staff';
+      if (isWalkIn) {
+        if (booking.session?.staff) {
+          staffName = `${booking.session.staff.firstName} ${booking.session.staff.lastName}`.trim();
+        } else if (staffMap.has(booking.id)) {
+          staffName = staffMap.get(booking.id)!;
+        } else if (booking.notes && /by\s+([A-Za-z0-9\s]+)/i.test(booking.notes)) {
+          const match = booking.notes.match(/by\s+([A-Za-z0-9\s]+)/i);
+          if (match && match[1]) {
+            staffName = match[1].trim();
           }
         }
+        if (!staffName) {
+          staffName = 'Front Desk Staff';
+        }
+      }
 
-        const gameTitle =
-          booking.gameTitle ||
-          booking.session?.notes ||
-          (booking.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
-          null;
+      const gameTitle =
+        booking.gameTitle ||
+        booking.session?.notes ||
+        (booking.notes?.match(/Game:\s*([^.\n\r\[]+)/)?.[1]?.trim()) ||
+        null;
 
-        return {
-          id: booking.id,
-          bookingRef: booking.bookingRef,
-          customerName: booking.customerName || `${booking.user.firstName} ${booking.user.lastName}`.trim(),
-          customerEmail: booking.user.email,
-          customerPhone: booking.customerPhone || booking.user.phone,
-          stationId: booking.stationId,
-          stationName: booking.station.name,
-          facilityName: booking.station.facility.name,
-          date: booking.date,
-          startTime: booking.startTime,
-          endTime: booking.endTime,
-          durationMinutes: booking.durationMinutes,
-          totalPricePaise: booking.totalPricePaise,
-          status: booking.status,
-          isWalkIn,
-          channel: isWalkIn ? 'DESK' : 'ONLINE',
-          bookedVia: isWalkIn ? 'Front Desk Walk-in' : 'Online Website',
-          staffName: isWalkIn ? staffName : null,
-          paymentId: booking.payments[0]?.id || null,
-          paymentStatus: booking.payments[0]?.status || 'UNPAID',
-          paymentMethod: booking.payments[0]?.method || null,
-          createdAt: booking.createdAt,
-          gameTitle,
-          notes: booking.notes,
-          stationSpecs:
-            (booking.station?.metadata as any)?.specs || 'Ultra-low latency 4K 120Hz display',
-          stationCapacity:
-            (booking.station?.metadata as any)?.capacity || (booking.station?.stationType === 'PS5' ? 2 : 4),
-          stationType: booking.station?.stationType || 'PS5',
-          pricePerHourPaise: booking.station?.pricePerHourPaise || 15000,
-          session: booking.session
-            ? {
-                id: booking.session.id,
-                status: booking.session.status,
-                startedAt: booking.session.startedAt,
-                scheduledEndAt: booking.session.scheduledEndAt,
-                extensionMinutes: booking.session.extensionMinutes,
-                gameTitle,
-              }
-            : booking.status === 'IN_PROGRESS' || booking.status === 'CHECKED_IN'
-            ? {
-                id: `active-${booking.id}`,
-                status: 'ACTIVE',
-                startedAt: booking.startTime,
-                scheduledEndAt: booking.endTime,
-                extensionMinutes: 0,
-                gameTitle,
-              }
-            : null,
-        };
-      })
-    );
+      const hasActiveFloorSession = Boolean(
+        booking.session && ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'].includes(booking.session.status)
+      );
+      const effectiveStatus =
+        hasActiveFloorSession && (booking.status === 'CONFIRMED' || booking.status === 'PENDING')
+          ? 'IN_PROGRESS'
+          : booking.status;
+
+      return {
+        id: booking.id,
+        bookingRef: booking.bookingRef,
+        customerName: booking.customerName || `${booking.user.firstName} ${booking.user.lastName}`.trim(),
+        customerEmail: booking.user.email,
+        customerPhone: booking.customerPhone || booking.user.phone,
+        stationId: booking.stationId,
+        stationName: booking.station.name,
+        facilityName: booking.station.facility.name,
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        durationMinutes: booking.durationMinutes,
+        totalPricePaise: booking.totalPricePaise,
+        status: effectiveStatus,
+        isWalkIn,
+        channel: isWalkIn ? 'DESK' : 'ONLINE',
+        bookedVia: isWalkIn ? 'Front Desk Walk-in' : 'Online Website',
+        staffName: isWalkIn ? staffName : null,
+        paymentId: booking.payments[0]?.id || null,
+        paymentStatus: booking.payments[0]?.status || 'UNPAID',
+        paymentMethod: booking.payments[0]?.method || null,
+        createdAt: booking.createdAt,
+        gameTitle,
+        notes: booking.notes,
+        stationSpecs:
+          (booking.station?.metadata as any)?.specs || 'Ultra-low latency 4K 120Hz display',
+        stationCapacity:
+          (booking.station?.metadata as any)?.capacity || (booking.station?.stationType === 'PS5' ? 2 : 4),
+        stationType: booking.station?.stationType || 'PS5',
+        pricePerHourPaise: booking.station?.pricePerHourPaise || 15000,
+        session: booking.session
+          ? {
+              id: booking.session.id,
+              status: booking.session.status,
+              startedAt: booking.session.startedAt,
+              scheduledEndAt: booking.session.scheduledEndAt,
+              extensionMinutes: booking.session.extensionMinutes,
+              gameTitle,
+              staff: booking.session.staff || null,
+            }
+          : effectiveStatus === 'IN_PROGRESS' || effectiveStatus === 'CHECKED_IN'
+          ? {
+              id: `active-${booking.id}`,
+              status: 'ACTIVE',
+              startedAt: booking.startTime,
+              scheduledEndAt: booking.endTime,
+              extensionMinutes: 0,
+              gameTitle,
+              staff: null,
+            }
+          : null,
+      };
+    });
+
+    return apiSuccess(mappedBookings);
   } catch (error) {
     return handleApiError(error);
   }

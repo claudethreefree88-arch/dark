@@ -33,7 +33,30 @@ export function EndSessionModal({
   onSuccess,
 }: EndSessionModalProps) {
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [chargeOvertime, setChargeOvertime] = useState<boolean>(true);
   const toast = useToast();
+
+  const endDateTime = target?.scheduledEndAt ? new Date(target.scheduledEndAt) : null;
+  const validEndTime = endDateTime && !isNaN(endDateTime.getTime()) ? endDateTime : null;
+  const now = new Date();
+  const isOverdue = validEndTime ? now.getTime() > validEndTime.getTime() : false;
+  const extraMinutes = isOverdue && validEndTime
+    ? Math.max(1, Math.floor((now.getTime() - validEndTime.getTime()) / (60 * 1000)))
+    : 0;
+  const extraSeconds = isOverdue && validEndTime
+    ? Math.floor((now.getTime() - validEndTime.getTime()) / 1000) % 60
+    : 0;
+  const overtimeCharge = target?.pricePerHourPaise && extraMinutes > 0
+    ? Math.max(10, Math.round((extraMinutes / 60) * (target.pricePerHourPaise / 100)))
+    : null;
+  const isStalePreviousSession = extraMinutes > 180;
+
+  React.useEffect(() => {
+    if (isOpen && target) {
+      // Auto-default to waive overtime if session was left open for > 3 hours (e.g. previous day)
+      setChargeOvertime(extraMinutes > 0 && extraMinutes <= 180);
+    }
+  }, [isOpen, target?.sessionId, target?.bookingId, target?.stationId]);
 
   if (!isOpen || !target) return null;
 
@@ -47,13 +70,16 @@ export function EndSessionModal({
           sessionId: target.sessionId,
           stationId: target.stationId,
           bookingId: target.bookingId,
-          extraMinutes,
+          extraMinutes: chargeOvertime ? extraMinutes : 0,
         }),
       });
 
       const json = await res.json();
       if (json.success) {
         toast.success(json.data?.message || `Session ended. ${target.stationName} is now Available.`);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('ds-booking-updated'));
+        }
         onSuccess();
         onClose();
       } else {
@@ -65,20 +91,6 @@ export function EndSessionModal({
       setSubmitting(false);
     }
   };
-
-  const endDateTime = target.scheduledEndAt ? new Date(target.scheduledEndAt) : null;
-  const validEndTime = endDateTime && !isNaN(endDateTime.getTime()) ? endDateTime : null;
-  const now = new Date();
-  const isOverdue = validEndTime ? now.getTime() > validEndTime.getTime() : false;
-  const extraMinutes = isOverdue && validEndTime
-    ? Math.max(1, Math.floor((now.getTime() - validEndTime.getTime()) / (60 * 1000)))
-    : 0;
-  const extraSeconds = isOverdue && validEndTime
-    ? Math.floor((now.getTime() - validEndTime.getTime()) / 1000) % 60
-    : 0;
-  const overtimeCharge = target.pricePerHourPaise && extraMinutes > 0
-    ? Math.max(10, Math.round((extraMinutes / 60) * (target.pricePerHourPaise / 100)))
-    : null;
 
   return (
     <Modal
@@ -105,11 +117,13 @@ export function EndSessionModal({
 
         {/* Extra Time / Overtime Alert Banner if Overdue */}
         {isOverdue && (
-          <div className="p-4 rounded-xl bg-rose-500/15 border-2 border-rose-500/50 space-y-2.5">
+          <div className="p-4 rounded-xl bg-rose-500/15 border-2 border-rose-500/50 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-rose-300 font-heading font-black text-xs uppercase tracking-wider">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Extra Time (Overtime) Detected</span>
+                <span>
+                  {isStalePreviousSession ? 'Unclosed Past Session Detected' : 'Extra Time (Overtime) Detected'}
+                </span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-black bg-rose-500 text-white shadow-sm">
                 +{extraMinutes}m {extraSeconds.toString().padStart(2, '0')}s EXTRA
@@ -117,15 +131,61 @@ export function EndSessionModal({
             </div>
 
             <p className="text-xs text-rose-200/90 leading-relaxed font-body">
-              Scheduled slot ended at <strong className="text-white font-bold">{validEndTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>. The player has played <strong className="text-white font-bold">+{extraMinutes} minutes</strong> beyond their booked slot.
+              Scheduled slot ended at{' '}
+              <strong className="text-white font-bold">
+                {validEndTime?.toLocaleString('en-IN', {
+                  timeZone: 'Asia/Kolkata',
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </strong>
+              . Elapsed extra time: <strong className="text-white font-bold">+{extraMinutes} minutes</strong>.
             </p>
 
             {overtimeCharge !== null && (
-              <div className="pt-2 border-t border-rose-500/30 flex items-center justify-between font-mono text-xs">
-                <span className="text-rose-300 font-medium">Extra Time Overtime Fee:</span>
-                <span className="text-white font-bold text-sm bg-rose-950/80 px-2.5 py-0.5 rounded border border-rose-500/40">
-                  ₹{overtimeCharge}
+              <div className="pt-2 border-t border-rose-500/30 space-y-2">
+                <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-rose-200 block">
+                  Overtime Billing Option:
                 </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChargeOvertime(false)}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      !chargeOvertime
+                        ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-sm'
+                        : 'bg-black/40 border-white/10 text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-heading font-bold text-xs flex items-center justify-between">
+                      <span>Waive Overtime</span>
+                      <span className="font-mono text-emerald-300">₹0</span>
+                    </div>
+                    <p className="text-[10px] text-white/60 mt-0.5">
+                      Close session at original booking price
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setChargeOvertime(true)}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      chargeOvertime
+                        ? 'bg-rose-500/25 border-rose-400 text-white shadow-sm'
+                        : 'bg-black/40 border-white/10 text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-heading font-bold text-xs flex items-center justify-between">
+                      <span>Charge Overtime</span>
+                      <span className="font-mono text-rose-300">+₹{overtimeCharge}</span>
+                    </div>
+                    <p className="text-[10px] text-white/60 mt-0.5">
+                      Record +₹{overtimeCharge} Cash overtime fee
+                    </p>
+                  </button>
+                </div>
               </div>
             )}
           </div>

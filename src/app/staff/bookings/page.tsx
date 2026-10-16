@@ -214,6 +214,11 @@ export default function StaffBookingsSchedulePage() {
     return startIST === todayIST || dateIST === todayIST;
   };
 
+  const getIsSessionActive = (b: any) =>
+    b.status === 'IN_PROGRESS' ||
+    b.status === 'CHECKED_IN' ||
+    Boolean(b.session && ['ACTIVE', 'PAUSED', 'EXTENDED', 'OVERDUE'].includes(b.session.status));
+
   const getIsMine = (b: any) => {
     if (!user) return true;
     const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
@@ -222,10 +227,10 @@ export default function StaffBookingsSchedulePage() {
   };
 
   const filteredBookings = bookings.filter((b) => {
-    const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
+    const isSessionActive = getIsSessionActive(b);
 
-    // 1. Date Scope: TODAY by default
-    if (dateScope === 'TODAY' && !getIsToday(b)) {
+    // 1. Date Scope: TODAY by default, but always include currently active floor sessions
+    if (dateScope === 'TODAY' && !getIsToday(b) && !isSessionActive) {
       return false;
     }
 
@@ -238,7 +243,7 @@ export default function StaffBookingsSchedulePage() {
     const matchesStatus =
       statusFilter === 'ALL' ||
       (statusFilter === 'ACTIVE' && isSessionActive) ||
-      (statusFilter === 'UPCOMING' && b.status === 'CONFIRMED') ||
+      (statusFilter === 'UPCOMING' && b.status === 'CONFIRMED' && !isSessionActive) ||
       (statusFilter === 'COMPLETED' && b.status === 'COMPLETED');
 
     const matchesSearch =
@@ -251,10 +256,10 @@ export default function StaffBookingsSchedulePage() {
   });
 
   const activeInSessionCount = bookings.filter((b) => {
-    const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
-    if (dateScope === 'TODAY' && !getIsToday(b)) return false;
+    const isSessionActive = getIsSessionActive(b);
+    if (!isSessionActive) return false;
     if (staffScope === 'MINE' && !getIsMine(b)) return false;
-    return isSessionActive;
+    return true;
   }).length;
 
   const nearUpcomingBookings = bookings.filter((b) => {
@@ -742,13 +747,13 @@ export default function StaffBookingsSchedulePage() {
                 </thead>
                 <tbody className="divide-y divide-ds-border/40">
                   {filteredBookings.map((b) => {
-                    const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
+                    const isSessionActive = getIsSessionActive(b);
                     const scheduledEnd = b.session?.scheduledEndAt || b.endTime;
                     const countdown = isSessionActive ? getCountdown(scheduledEnd) : null;
 
                     const startDiffMs = b.startTime ? new Date(b.startTime).getTime() - currentTime : null;
-                    const isSlotNear = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && startDiffMs <= 15 * 60 * 1000 && startDiffMs >= -120 * 60 * 1000;
-                    const isSlotDue = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && startDiffMs <= 0 && startDiffMs >= -120 * 60 * 1000;
+                    const isSlotNear = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && !isSessionActive && startDiffMs <= 15 * 60 * 1000 && startDiffMs >= -120 * 60 * 1000;
+                    const isSlotDue = startDiffMs !== null && getIsToday(b) && b.status === 'CONFIRMED' && !isSessionActive && startDiffMs <= 0 && startDiffMs >= -120 * 60 * 1000;
                     const diffSec = startDiffMs !== null ? Math.floor(Math.abs(startDiffMs) / 1000) : 0;
                     const startMins = Math.floor(diffSec / 60);
                     const startSecs = diffSec % 60;
@@ -775,7 +780,7 @@ export default function StaffBookingsSchedulePage() {
                         <td className="py-3.5 px-4 font-mono text-ds-text">
                           <div className="flex items-center gap-1.5">
                             <span>
-                              {dateScope === 'ALL' && !getIsToday(b) && (
+                              {!getIsToday(b) && (
                                 <span className="mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] text-amber-300 font-bold font-mono">
                                   {new Date(b.startTime || b.date).toLocaleDateString('en-US', {
                                     timeZone: 'Asia/Kolkata',
@@ -926,7 +931,7 @@ export default function StaffBookingsSchedulePage() {
                             </Button>
 
                             {/* Check In action for confirmed bookings */}
-                            {b.status === 'CONFIRMED' && (
+                            {b.status === 'CONFIRMED' && !isSessionActive && (
                               <Button
                                 variant={isSlotNear || isSlotDue ? 'accent' : 'outline'}
                                 size="sm"
@@ -965,7 +970,7 @@ export default function StaffBookingsSchedulePage() {
         >
           {(() => {
             const b = selectedBookingForGrid;
-            const isSessionActive = b.status === 'IN_PROGRESS' || b.status === 'CHECKED_IN';
+            const isSessionActive = getIsSessionActive(b);
             const scheduledEnd = b.session?.scheduledEndAt || b.endTime;
             const countdown = isSessionActive ? getCountdown(scheduledEnd) : null;
 

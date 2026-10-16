@@ -156,7 +156,16 @@ export function SessionExpiryAlertManager() {
   useEffect(() => {
     fetchActiveSessions();
     const interval = setInterval(fetchActiveSessions, 10000);
-    return () => clearInterval(interval);
+    const handleBookingUpdate = () => fetchActiveSessions();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ds-booking-updated', handleBookingUpdate);
+    }
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ds-booking-updated', handleBookingUpdate);
+      }
+    };
   }, []);
 
   // 1-second live countdown evaluator
@@ -273,6 +282,17 @@ export function SessionExpiryAlertManager() {
     });
   };
 
+  const handleSessionActionComplete = (stationId?: string) => {
+    if (stationId) {
+      setActiveSessions((prev) => prev.filter((s) => s.stationId !== stationId));
+      setAlerts((prev) => prev.filter((a) => a.session.stationId !== stationId));
+    }
+    fetchActiveSessions();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('ds-booking-updated'));
+    }
+  };
+
   // If no alerts exist, only keep the standalone modals ready in DOM
   if (alerts.length === 0) {
     return (
@@ -282,8 +302,9 @@ export function SessionExpiryAlertManager() {
           onClose={() => setExtendStation(null)}
           station={extendStation}
           onSuccess={() => {
+            const stId = extendStation?.id;
             setExtendStation(null);
-            fetchActiveSessions();
+            handleSessionActionComplete(stId);
           }}
         />
         <EndSessionModal
@@ -291,8 +312,9 @@ export function SessionExpiryAlertManager() {
           onClose={() => setEndSessionTarget(null)}
           target={endSessionTarget}
           onSuccess={() => {
+            const stId = endSessionTarget?.stationId;
             setEndSessionTarget(null);
-            fetchActiveSessions();
+            handleSessionActionComplete(stId);
           }}
         />
       </>
@@ -542,12 +564,26 @@ export function SessionExpiryAlertManager() {
                   Scheduled End Time
                 </span>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span className="text-lg font-mono font-bold text-white">
-                    {new Date(currentAlert.session.scheduledEndAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-base sm:text-lg font-mono font-bold text-white">
+                    {(() => {
+                      const endDt = new Date(currentAlert.session.scheduledEndAt);
+                      const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+                      const endIST = endDt.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+                      if (endIST !== todayIST) {
+                        return endDt.toLocaleString('en-IN', {
+                          timeZone: 'Asia/Kolkata',
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                      }
+                      return endDt.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                    })()}
                   </span>
                 </div>
                 {currentAlert.session.bookingRef && (
@@ -716,8 +752,9 @@ export function SessionExpiryAlertManager() {
         onClose={() => setExtendStation(null)}
         station={extendStation}
         onSuccess={() => {
+          const stId = extendStation?.id;
           setExtendStation(null);
-          fetchActiveSessions();
+          handleSessionActionComplete(stId);
         }}
       />
 
@@ -726,8 +763,9 @@ export function SessionExpiryAlertManager() {
         onClose={() => setEndSessionTarget(null)}
         target={endSessionTarget}
         onSuccess={() => {
+          const stId = endSessionTarget?.stationId;
           setEndSessionTarget(null);
-          fetchActiveSessions();
+          handleSessionActionComplete(stId);
         }}
       />
     </>

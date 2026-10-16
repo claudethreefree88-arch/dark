@@ -117,7 +117,16 @@ export default function StaffStationGridPage() {
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 10000); // Polling every 10s
-    return () => clearInterval(interval);
+    const handleBookingUpdate = () => loadData();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ds-booking-updated', handleBookingUpdate);
+    }
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ds-booking-updated', handleBookingUpdate);
+      }
+    };
   }, []);
 
   // Timer tick every second for real-time countdowns
