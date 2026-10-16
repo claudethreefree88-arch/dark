@@ -67,19 +67,15 @@ function StaffSidebarNav({
               </span>
             </div>
           </Link>
-          {onClose && (
+          {isMobile && onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-ds-text-dim hover:text-ds-ice hover:bg-ds-surface transition-all shrink-0 ml-1"
-              title={isMobile ? 'Close menu' : 'Collapse sidebar (Ctrl+B)'}
-              aria-label="Close sidebar"
+              className="p-1.5 rounded-lg text-ds-text-dim hover:text-rose-400 hover:bg-rose-500/10 transition-all shrink-0 ml-1"
+              title="Close menu"
+              aria-label="Close menu"
             >
-              {isMobile ? (
-                <X className="w-4 h-4 text-ds-text-dim hover:text-rose-400" />
-              ) : (
-                <PanelLeftClose className="w-4 h-4 text-ds-accent hover:scale-110 transition-transform" />
-              )}
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
