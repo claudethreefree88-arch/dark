@@ -147,6 +147,7 @@ export async function GET(req: NextRequest) {
         paymentStatus: booking.payments[0]?.status || 'UNPAID',
         paymentMethod: booking.payments[0]?.method || null,
         createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
         gameTitle,
         notes: booking.notes,
         stationSpecs:
@@ -161,6 +162,7 @@ export async function GET(req: NextRequest) {
               status: booking.session.status,
               startedAt: booking.session.startedAt,
               scheduledEndAt: booking.session.scheduledEndAt,
+              endedAt: booking.session.endedAt || null,
               extensionMinutes: booking.session.extensionMinutes,
               gameTitle,
               staff: booking.session.staff || null,
@@ -171,6 +173,7 @@ export async function GET(req: NextRequest) {
               status: 'ACTIVE',
               startedAt: booking.startTime,
               scheduledEndAt: booking.endTime,
+              endedAt: null,
               extensionMinutes: 0,
               gameTitle,
               staff: null,

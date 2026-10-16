@@ -211,7 +211,23 @@ export default function StaffBookingsSchedulePage() {
     const dateIST = b.date
       ? new Date(b.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
       : '';
-    return startIST === todayIST || dateIST === todayIST;
+    const endIST = b.endTime
+      ? new Date(b.endTime).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+    const sessionEndIST = b.session?.endedAt
+      ? new Date(b.session.endedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+    const updatedIST = b.updatedAt
+      ? new Date(b.updatedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+
+    return (
+      startIST === todayIST ||
+      dateIST === todayIST ||
+      endIST === todayIST ||
+      sessionEndIST === todayIST ||
+      (b.status === 'COMPLETED' && updatedIST === todayIST)
+    );
   };
 
   const getIsSessionActive = (b: any) =>
@@ -258,6 +274,27 @@ export default function StaffBookingsSchedulePage() {
   const activeInSessionCount = bookings.filter((b) => {
     const isSessionActive = getIsSessionActive(b);
     if (!isSessionActive) return false;
+    if (staffScope === 'MINE' && !getIsMine(b)) return false;
+    return true;
+  }).length;
+
+  const upcomingCount = bookings.filter((b) => {
+    if (b.status !== 'CONFIRMED' || getIsSessionActive(b)) return false;
+    if (dateScope === 'TODAY' && !getIsToday(b)) return false;
+    if (staffScope === 'MINE' && !getIsMine(b)) return false;
+    return true;
+  }).length;
+
+  const completedCount = bookings.filter((b) => {
+    if (b.status !== 'COMPLETED') return false;
+    if (dateScope === 'TODAY' && !getIsToday(b)) return false;
+    if (staffScope === 'MINE' && !getIsMine(b)) return false;
+    return true;
+  }).length;
+
+  const allBookingsCount = bookings.filter((b) => {
+    const isSessionActive = getIsSessionActive(b);
+    if (dateScope === 'TODAY' && !getIsToday(b) && !isSessionActive) return false;
     if (staffScope === 'MINE' && !getIsMine(b)) return false;
     return true;
   }).length;
@@ -449,16 +486,19 @@ export default function StaffBookingsSchedulePage() {
           {/* Status Tabs */}
           <div className="flex flex-wrap items-center gap-1 bg-ds-dark p-1 rounded-xl border border-ds-border text-xs">
             {[
-              { id: 'ALL', label: dateScope === 'TODAY' ? 'All Today' : 'All Bookings' },
+              {
+                id: 'ALL',
+                label: dateScope === 'TODAY' ? `All Today (${allBookingsCount})` : `All Bookings (${allBookingsCount})`,
+              },
               { id: 'ACTIVE', label: `In Session / Checked In (${activeInSessionCount})` },
               {
                 id: 'UPCOMING',
                 label:
                   nearUpcomingBookings.length > 0
-                    ? `Upcoming (${nearUpcomingBookings.length} Near!)`
-                    : 'Upcoming',
+                    ? `Upcoming (${upcomingCount} • ${nearUpcomingBookings.length} Near!)`
+                    : `Upcoming (${upcomingCount})`,
               },
-              { id: 'COMPLETED', label: 'Completed' },
+              { id: 'COMPLETED', label: `Completed (${completedCount})` },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -730,7 +770,44 @@ export default function StaffBookingsSchedulePage() {
           {loading ? (
             <div className="p-16 text-center text-xs text-ds-text-dim">Loading schedule...</div>
           ) : filteredBookings.length === 0 ? (
-            <div className="p-16 text-center text-xs text-ds-text-dim">No reservations found.</div>
+            <div className="p-14 flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-ds-surface/60 border border-ds-border flex items-center justify-center text-ds-text-dim">
+                <Calendar className="w-6 h-6 text-ds-accent/60" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-heading font-bold text-ds-text">
+                  {statusFilter === 'COMPLETED'
+                    ? dateScope === 'TODAY'
+                      ? 'No reservations completed today'
+                      : 'No completed reservations found'
+                    : statusFilter === 'ACTIVE'
+                    ? 'No active sessions at the moment'
+                    : statusFilter === 'UPCOMING'
+                    ? dateScope === 'TODAY'
+                      ? 'No upcoming reservations scheduled for today'
+                      : 'No upcoming reservations found'
+                    : dateScope === 'TODAY'
+                    ? 'No reservations scheduled for today'
+                    : 'No reservations found'}
+                </p>
+                <p className="text-xs text-ds-text-muted max-w-sm">
+                  {dateScope === 'TODAY'
+                    ? 'There are no matching reservations for today. Switch to All History to inspect records from previous dates.'
+                    : 'Try adjusting your search query or station filters to see more results.'}
+                </p>
+              </div>
+              {dateScope === 'TODAY' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateScope('ALL')}
+                  className="mt-2 text-xs font-heading font-bold uppercase tracking-wider text-amber-300 border-amber-500/40 hover:bg-amber-500/10"
+                >
+                  <span>Switch to All History</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              )}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
